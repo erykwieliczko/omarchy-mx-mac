@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "bbf4cd0abba27f9264578ee6c02b87d4939eb66e9a533425b1197c0e67f2cc4e"
+      "sha256": "dc220f0f74883cfec24066007b67f0827578bb8fcbbd7ebe3e34c2799f7bfd9e"
     },
     {
       "path": "cleanroom/adapter.py",
@@ -18,7 +18,7 @@
     },
     {
       "path": "cleanroom/assemble_engine.py",
-      "sha256": "129b7d5e7f40f5ee79365f44334a00e2f691dafa8ce5921ab1d3b98edc22f296"
+      "sha256": "7fe9543bb30d97bfc46949684d66813d11170bf69a21d4d47f4d119e7b76bfdc"
     },
     {
       "path": "cleanroom/boot_inputs.py",
@@ -26,11 +26,11 @@
     },
     {
       "path": "cleanroom/build_payload.py",
-      "sha256": "831fd3eeae3ead4e6587dc029b589d70c5ccaf089613d557865418fd49745a9c"
+      "sha256": "bc82a8a4488e7f2bd36f26206470b44ea02f031a4b393140f81c6642bffee7fd"
     },
     {
       "path": "cleanroom/build_release.py",
-      "sha256": "5403d30c072cd8899125980da0ceef48d14d96ccd7b13403860684d930251b1e"
+      "sha256": "36d34e34c9d742aba74d95dc08447ae254c4b9614e9f56ac76eed58c3947d994"
     },
     {
       "path": "cleanroom/build_restore_package.py",

@@ -95,9 +95,10 @@ made from a test or historical package retains that package's capabilities.
 ### Private J713 testing package
 
 The private cleanroom candidate supports MacBook Air M4 J713 / Mac16,12 on
-macOS 26.6.2 (25G83). It includes the OS payload and Apple restore subset and
-requires an internet connection for Apple's public AEA release key. Its first
-Linux boot is a console: the accepted kernel does not enable the Asahi GPU.
+macOS 26.6.2 (25G83). The downloaded OS payload includes the Apple restore subset
+and requires an internet connection for Apple's public AEA release key. Linux
+boots to graphical login and Omarchy using Mesa software rendering and the
+patched Aquamarine backend. The accepted kernel does not enable the Asahi GPU.
 
 Build the cleanroom engine and sealed release with `Engine/cleanroom/` and the
 ISO repository's `builder/cleanroom/` image recipes. The source/artifact locks,
@@ -139,7 +140,8 @@ inspection engine in the app:
 
 ```bash
 python3 Engine/cleanroom/build_release.py /path/to/engine /path/to/payload.zip \
-  /path/to/new-Release --artifact-base-url https://downloads.example.org/immutable-release
+  /path/to/new-Release --artifact-base-url https://downloads.example.org/immutable-release \
+  --execution-scratch-bytes "$QUALIFIED_SCRATCH_BYTES"
 OMARCHY_PRIVATE_PACKAGE=1 OMARCHY_ENGINE_ONLY_RELEASE=1 \
   Packaging/build-app.sh /path/to/new-Release /path/to/new-app-output
 ```

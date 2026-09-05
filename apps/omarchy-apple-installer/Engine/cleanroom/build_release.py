@@ -14,6 +14,7 @@ import ipaddress
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from boot_inputs import load_profile
+from build_payload import descriptor
 
 
 def digest(path):
@@ -41,18 +42,28 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     templates = json.loads((engine / 'installer_data.json').read_text()).get('os_list', [])
     if len(templates) != 1 or templates[0].get('package') != payload.name:
         raise ValueError("metadata package does not match payload filename")
-    destination.mkdir(exist_ok=False)
-    assets = destination / 'Assets'
-    assets.mkdir()
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
     now = datetime.now(timezone.utc).replace(microsecond=0)
     engine_receipt = json.loads((engine / 'receipt.json').read_text())
+    for role, path in (('engine', engine / ('installer-' + engine_receipt['version'] + '.tar.gz')),
+                       ('metadata', engine / 'installer_data.json')):
+        if descriptor(path) != engine_receipt.get(role):
+            raise ValueError('engine receipt mismatch: ' + role)
+    payload_receipt = json.loads(payload.with_suffix('.receipt.json').read_text())
+    if descriptor(payload) != payload_receipt.get('payload'):
+        raise ValueError('payload receipt mismatch')
+    if (payload_receipt.get('profile') != profile
+            or templates[0].get('cleanroom', {}).get('sources') != profile['sources']):
+        raise ValueError('release component profile mismatch')
+    destination.mkdir(exist_ok=False)
+    assets = destination / 'Assets'
+    assets.mkdir()
     model = {'deviceIdentifier': profile['device_identifier'], 'status': 'enabled',
              'operation': 'install', 'engineFamily': 'cleanroom',
              'executionScratchBytes': execution_scratch_bytes,
              'componentRevisions': profile['sources'],
              'downstreamRevision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-             'engineVersion': engine_receipt['version'], 'evidenceRevision': 'private-j713-20260905'}
+             'engineVersion': engine_receipt['version'], 'evidenceRevision': payload.stem}
     for role, source in (
         ('engine', engine / ('installer-' + engine_receipt['version'] + '.tar.gz')),
         ('metadata', engine / 'installer_data.json'), ('payload', payload),
@@ -77,13 +88,13 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     (destination / 'catalog.json').write_bytes(data)
     (destination / 'catalog.json.sig').write_bytes(key.sign(data))
     (destination / 'trust-root.ed25519.pub').write_bytes(public)
-    descriptor = {'schema_version': 1,
+    release_descriptor = {'schema_version': 1,
                   'catalog_url': artifact_base_url + '/catalog.json',
                   'catalog_signature_url': artifact_base_url + '/catalog.json.sig',
                   'trust_root_fingerprint': 'sha256:' + hashlib.sha256(public).hexdigest(),
                   'helper_mach_service_name': 'com.omarchy.mx.installer.helper',
                   'helper_code_signing_requirement': 'identifier "com.omarchy.mx.installer.helper" and cdhash H"' + '0' * 40 + '"'}
-    (destination / 'release.json').write_text(json.dumps(descriptor, indent=2) + '\n')
+    (destination / 'release.json').write_text(json.dumps(release_descriptor, indent=2) + '\n')
     # The private catalog key is not retained or promoted to a public root.
     print(json.dumps({'sequence': catalog['sequence'], 'model': model['deviceIdentifier'],
                       'catalog_sha256': hashlib.sha256(data).hexdigest()}, indent=2))

@@ -1,16 +1,39 @@
 """Payload tree members must be extractable in archive order."""
 import io
+import json
 from pathlib import Path, PurePosixPath
 import stat
 import sys
+import tempfile
 import unittest
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'cleanroom'))
-from build_payload import write_directories
+from build_payload import descriptor, verified_descriptors, write_directories
 
 
 class PayloadLayoutTests(unittest.TestCase):
+    def test_stale_verification_cannot_seal_different_images_or_boot_files(self):
+        for changed in ('root.img', 'boot.img', 'initramfs.img', 'grub.cfg', 'BOOTAA64.EFI', 'boot.bin'):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                images, boot, verification = [root / name for name in ('images', 'boot', 'verification')]
+                for directory in (images, boot, verification):
+                    directory.mkdir()
+                (verification / 'result').write_text('passed\n')
+                for directory, receipt, names in (
+                    (images, verification / 'verification.json', ('root.img', 'boot.img', 'initramfs.img')),
+                    (boot, boot / 'receipt.json', ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin')),
+                ):
+                    for name in names:
+                        (directory / name).write_bytes(b'verified bytes')
+                    receipt.write_text(json.dumps({name: descriptor(directory / name) for name in names}))
+                self.assertEqual(len(verified_descriptors(images, boot, verification)), 6)
+                path = images / changed if (images / changed).exists() else boot / changed
+                path.write_bytes(b'different bytes')
+                with self.assertRaisesRegex(ValueError, 'verified input changed'):
+                    verified_descriptors(images, boot, verification)
+
     def test_parent_directories_precede_boot_files(self):
         names = ['root.img', 'esp/m1n1/boot.bin', 'esp/EFI/BOOT/BOOTAA64.EFI']
         output = io.BytesIO()

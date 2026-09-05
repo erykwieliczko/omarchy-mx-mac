@@ -23,6 +23,8 @@ def write_directories(archive, names):
 
 
 def descriptor(path):
+    if path.is_symlink() or not path.is_file():
+        raise ValueError('unsafe payload input: ' + str(path))
     digest = hashlib.sha256()
     with path.open('rb') as reader:
         while block := reader.read(4 * 1024 * 1024):
@@ -30,9 +32,25 @@ def descriptor(path):
     return {'size_bytes': path.stat().st_size, 'sha256': digest.hexdigest()}
 
 
-def build(inputs, images, boot, verification, destination):
+def verified_descriptors(images, boot, verification):
     if (verification / 'result').read_text() != 'passed\n':
         raise ValueError('root verification did not pass')
+    records = {}
+    for directory, receipt_name, names in (
+        (images, verification / 'verification.json', ('root.img', 'boot.img', 'initramfs.img')),
+        (boot, boot / 'receipt.json', ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin')),
+    ):
+        expected = json.loads(receipt_name.read_text())
+        for name in names:
+            record = descriptor(directory / name)
+            if record != expected.get(name):
+                raise ValueError('verified input changed: ' + name)
+            records[directory / name] = record
+    return records
+
+
+def build(inputs, images, boot, verification, destination):
+    verified = verified_descriptors(images, boot, verification)
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
     with zipfile.ZipFile(inputs / 'apple-restore.zip') as archive:
         stub_members(archive, profile)
@@ -57,7 +75,7 @@ def build(inputs, images, boot, verification, destination):
         for name, path in files.items():
             if path.is_symlink() or not path.is_file():
                 raise ValueError('unsafe payload member: ' + name)
-            record = descriptor(path)
+            record = verified[path] if path in verified else descriptor(path)
             receipt['files'][name] = record
             info = zipfile.ZipInfo(name, date_time=(2026, 9, 5, 0, 0, 0))
             info.create_system = 3

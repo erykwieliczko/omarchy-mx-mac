@@ -72,6 +72,19 @@ Mesa software rendering and the patched Aquamarine backend. The kernel does
 not enable the Asahi GPU driver. Kernel/boot updates require a new
 qualified complete boot bundle; the stock update-m1n1 path is removed.
 
+Assign each candidate its own engine version and payload basename when assembling:
+
+```sh
+python3 Engine/cleanroom/assemble_engine.py /path/to/transaction-checkout \
+  /path/to/inputs /path/to/new-engine --version v0.1.0-cleanroom.2 \
+  --payload-name omarchy-j713-private-0.8.0.zip
+```
+
+The payload sealer checks the exact root/initramfs verification and boot receipts
+before compression, then checks the streamed file digests and archive CRCs.
+Release assembly requires matching engine/metadata and payload receipts and the
+same component revisions throughout before signing its private catalog.
+
 Inspection may identify the model without root access to bputil. Execution
 requires positively identified macOS 26.6.2 and revalidates the complete model
 tuple. A source build and read-only preflight are not physical install proof.

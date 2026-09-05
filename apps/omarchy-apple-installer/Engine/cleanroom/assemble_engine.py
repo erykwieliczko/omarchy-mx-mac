@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import stat
 import tarfile
@@ -14,14 +15,17 @@ from boot_inputs import load_profile
 from stage_sources import stage_sources
 
 RUNTIME_SHA256 = '063fd0765fb2057384d9653f7bf547b0471af31fc764e039d578d4fef6dce4d5'
-VERSION = 'v0.1.0-cleanroom.1'
 
 
 def descriptor(path):
     return {'size_bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
-def assemble(checkout, inputs, destination):
+def assemble(checkout, inputs, destination, version, payload_name):
+    if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:[.-][A-Za-z0-9]+)*', version):
+        raise ValueError('invalid engine version')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*\.zip', payload_name):
+        raise ValueError('payload must be a ZIP basename')
     native = json.loads((Path(__file__).parent / 'native-artifacts.json').read_text())
     for name, expected in native['artifacts'].items():
         if descriptor(inputs / name) != expected:
@@ -30,7 +34,7 @@ def assemble(checkout, inputs, destination):
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
     metadata = json.loads((Path(__file__).parent.parent / 'installer_data.json').read_text())
     template = metadata['os_list'][0]
-    template['package'] = 'omarchy-j713-private-20260905.zip'
+    template['package'] = payload_name
     template['supported_fw'] = [profile['firmware']['version']]
     firmware = {p.relative_to(inputs / 'firmware').as_posix(): descriptor(p)['sha256']
                 for folder in ('apple', 'brcm') for p in (inputs / 'firmware' / folder).glob('*') if p.is_file()}
@@ -63,9 +67,9 @@ def assemble(checkout, inputs, destination):
         shutil.copyfile(inputs / 'base-images/omarchy-volume.icns', package / 'logo.icns')
         shutil.copyfile(metadata_path, package / 'installer_data.json')
         shutil.copyfile(tree / 'cleanroom-source-lock.json', package / 'cleanroom-source-lock.json')
-        (package / 'version.tag').write_text(VERSION + '\n')
+        (package / 'version.tag').write_text(version + '\n')
         (package / 'runtime-provenance.json').write_text(json.dumps({'carrier_sha256': RUNTIME_SHA256}) + '\n')
-        artifact = destination / ('installer-' + VERSION + '.tar.gz')
+        artifact = destination / ('installer-' + version + '.tar.gz')
         with artifact.open('xb') as writer, gzip.GzipFile(filename='', fileobj=writer, mode='wb', mtime=0, compresslevel=9) as compressor, tarfile.open(fileobj=compressor, mode='w|', format=tarfile.PAX_FORMAT) as archive:
             for path in sorted(package.rglob('*')):
                 if '__pycache__' in path.parts:
@@ -83,7 +87,7 @@ def assemble(checkout, inputs, destination):
                 else:
                     archive.addfile(info)
         receipt = {'engine': descriptor(artifact), 'metadata': descriptor(metadata_path),
-                   'runtime_carrier_sha256': RUNTIME_SHA256, 'version': VERSION}
+                   'runtime_carrier_sha256': RUNTIME_SHA256, 'version': version}
         (destination / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     return receipt
 
@@ -92,4 +96,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('checkout', 'inputs', 'destination'):
         parser.add_argument(name, type=Path)
+    parser.add_argument('--version', required=True)
+    parser.add_argument('--payload-name', required=True)
     print(json.dumps(assemble(**vars(parser.parse_args())), indent=2))

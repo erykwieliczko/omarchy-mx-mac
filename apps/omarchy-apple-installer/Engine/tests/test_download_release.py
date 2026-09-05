@@ -13,16 +13,27 @@ import build_release
 
 
 class DownloadReleaseTests(unittest.TestCase):
+    def candidate(self, root):
+        engine = root / 'engine'
+        engine.mkdir()
+        profile = build_release.load_profile(CLEANROOM / 'profiles/j713.json')
+        (engine / 'installer-v-test.tar.gz').write_bytes(b'engine')
+        (engine / 'installer_data.json').write_text(json.dumps({'os_list': [{
+            'package': 'payload.zip', 'cleanroom': {'sources': profile['sources']}}]}))
+        (engine / 'receipt.json').write_text(json.dumps({
+            'version': 'v-test',
+            'engine': build_release.descriptor(engine / 'installer-v-test.tar.gz'),
+            'metadata': build_release.descriptor(engine / 'installer_data.json')}))
+        payload = root / 'payload.zip'
+        payload.write_bytes(b'os payload')
+        payload.with_suffix('.receipt.json').write_text(json.dumps({
+            'payload': build_release.descriptor(payload), 'profile': profile}))
+        return engine, payload
+
     def test_release_only_bundles_engine_and_keeps_payload_identity(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            engine = root / 'engine'
-            engine.mkdir()
-            (engine / 'receipt.json').write_text(json.dumps({'version': 'v-test'}))
-            (engine / 'installer-v-test.tar.gz').write_bytes(b'engine')
-            (engine / 'installer_data.json').write_text(json.dumps({'os_list': [{'package': 'payload.zip'}]}))
-            payload = root / 'payload.zip'
-            payload.write_bytes(b'os payload')
+            engine, payload = self.candidate(root)
             output = root / 'Release'
             with patch('builtins.print'):
                 build_release.build(engine, payload, output, 'https://downloads.example.test/m4',
@@ -37,6 +48,27 @@ class DownloadReleaseTests(unittest.TestCase):
             (output / 'Assets/payload.zip').write_bytes(b'os payload')
             result = subprocess.run([sys.executable, str(verifier), str(output), '--engine-only'], capture_output=True)
             self.assertNotEqual(result.returncode, 0)
+
+    def test_stale_receipts_and_component_graph_fail_before_signing(self):
+        for changed in ('engine', 'metadata', 'payload', 'profile'):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                engine, payload = self.candidate(root)
+                if changed == 'profile':
+                    receipt = payload.with_suffix('.receipt.json')
+                    record = json.loads(receipt.read_text())
+                    record['profile']['sources']['linux'] = '0' * 40
+                    receipt.write_text(json.dumps(record))
+                else:
+                    path = {'engine': engine / 'installer-v-test.tar.gz',
+                            'metadata': engine / 'installer_data.json', 'payload': payload}[changed]
+                    with path.open('ab') as writer:
+                        writer.write(b' ')
+                with self.assertRaisesRegex(ValueError, 'mismatch'):
+                    build_release.build(engine, payload, root / 'Release',
+                                        'https://downloads.example.test/m4',
+                                        execution_scratch_bytes=8_589_934_592)
+                self.assertFalse((root / 'Release').exists())
 
     def test_http_requires_explicit_private_local_address(self):
         with tempfile.TemporaryDirectory() as temporary:
