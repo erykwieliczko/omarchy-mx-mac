@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "decoder_toolchain": "go1.27.0-X:nodwarf5 linux/amd64 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 -trimpath",
+  "stage1_source": "d403081ee7ddfc3987cf0967c5a23a529f830ee5",
+  "stage1_build": "RELEASE=1 CHAINLOADING=1",
+  "artifacts": {
+    "omarchy-restore-image": {
+      "size_bytes": 10173874,
+      "sha256": "1ecd3359d292ed4b9f6d52fbc04ebe8970835ee22bc067ba3925d5d2fe810ea0"
+    },
+    "m1n1-stage1-base.bin": {
+      "size_bytes": 1179648,
+      "sha256": "82efa30634e5f3db19d8cf9789ed2d73873bb2c43d6a9aefd8d9ec1713a4f2f2"
+    }
+  }
+}

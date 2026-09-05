@@ -374,7 +374,7 @@
         evidenceRevision: "evidence-handoff",
         delivery: delivery
       )
-      let catalog = catalogPayload(
+      let catalog = try catalogPayload(
         record: record,
         engine: engineArtifact,
         metadata: metadataArtifact,
@@ -475,7 +475,10 @@
       metadata: PinnedInstallerArtifact,
       payload: PinnedInstallerArtifact,
       repairManifest: PinnedInstallerArtifact?
-    ) -> Data {
+    ) throws -> Data {
+      let asahiTag = try XCTUnwrap(record.asahiInstallerTag)
+      let asahiRevision = try XCTUnwrap(record.asahiInstallerRevision)
+      let asahiDataRevision = try XCTUnwrap(record.asahiInstallerDataRevision)
       let issued = ISO8601DateFormatter().string(
         from: now.addingTimeInterval(-3_600)
       )
@@ -493,7 +496,7 @@
         } ?? ""
       let catalog = Data(
         """
-        {"schemaVersion":\(schemaVersion),"sequence":40,"issuedAt":"\(issued)","expiresAt":"\(expires)","models":[{"deviceIdentifier":"\(record.deviceIdentifier)","status":"enabled"\(operation),"asahiInstallerTag":"\(record.asahiInstallerTag)","asahiInstallerRevision":"\(record.asahiInstallerRevision)","asahiInstallerDataRevision":"\(record.asahiInstallerDataRevision)","downstreamRevision":"\(record.downstreamRevision)","engineDigest":"\(record.engineDigest)","metadataDigest":"\(record.metadataDigest)","payloadDigest":"\(record.payloadDigest)"\(repairFields),"evidenceRevision":"\(record.evidenceRevision)","engineArtifact":{"sourceURL":"\(engine.sourceURL.absoluteString)","fileName":"\(engine.fileName)","sizeBytes":\(engine.expectedSizeBytes)},"metadataArtifact":{"sourceURL":"\(metadata.sourceURL.absoluteString)","fileName":"\(metadata.fileName)","sizeBytes":\(metadata.expectedSizeBytes)},"payloadArtifact":{"sourceURL":"\(payload.sourceURL.absoluteString)","fileName":"\(payload.fileName)","sizeBytes":\(payload.expectedSizeBytes)}}]}
+        {"schemaVersion":\(schemaVersion),"sequence":40,"issuedAt":"\(issued)","expiresAt":"\(expires)","models":[{"deviceIdentifier":"\(record.deviceIdentifier)","status":"enabled"\(operation),"asahiInstallerTag":"\(asahiTag)","asahiInstallerRevision":"\(asahiRevision)","asahiInstallerDataRevision":"\(asahiDataRevision)","downstreamRevision":"\(record.downstreamRevision)","engineDigest":"\(record.engineDigest)","metadataDigest":"\(record.metadataDigest)","payloadDigest":"\(record.payloadDigest)"\(repairFields),"evidenceRevision":"\(record.evidenceRevision)","engineArtifact":{"sourceURL":"\(engine.sourceURL.absoluteString)","fileName":"\(engine.fileName)","sizeBytes":\(engine.expectedSizeBytes)},"metadataArtifact":{"sourceURL":"\(metadata.sourceURL.absoluteString)","fileName":"\(metadata.fileName)","sizeBytes":\(metadata.expectedSizeBytes)},"payloadArtifact":{"sourceURL":"\(payload.sourceURL.absoluteString)","fileName":"\(payload.fileName)","sizeBytes":\(payload.expectedSizeBytes)}}]}
         """.utf8
       )
       let text = String(decoding: catalog, as: UTF8.self)

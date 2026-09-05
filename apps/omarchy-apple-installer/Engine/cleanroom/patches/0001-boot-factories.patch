@@ -1,0 +1,67 @@
+diff --git a/src/main.py b/src/main.py
+index 0ecebb5..ed9c137 100644
+--- a/src/main.py
++++ b/src/main.py
+@@ -127,9 +127,9 @@ IPSW_VERSIONS = [
+ ]
+ 
+ class InstallerMain:
+-    def __init__(self, version):
++    def __init__(self, version, *, engine_runtime=None):
+         self.version = version
+-        self.engine_runtime = omarchy_runtime.EngineRuntime.from_environment()
++        self.engine_runtime = engine_runtime or omarchy_runtime.EngineRuntime.from_environment()
+         self.data = json.load(open("installer_data.json"))
+         if self.engine_runtime:
+             self.data = self.engine_runtime.metadata(self.data)
+@@ -958,6 +958,12 @@ class InstallerMain:
+ 
+         return True
+ 
++    def host_supported(self):
++        self.chip_min_ver = CHIP_MIN_VER.get(self.sysinfo.chip_id, None)
++        self.device = DEVICES.get(self.sysinfo.device_class, None)
++        return bool(self.chip_min_ver and self.device
++                    and (not self.device.expert_only or self.expert))
++
+     def main(self):
+         if not self.engine_runtime:
+             print()
+@@ -989,13 +995,7 @@ class InstallerMain:
+ 
+         bugs.run_checks(self)
+ 
+-        self.chip_min_ver = CHIP_MIN_VER.get(self.sysinfo.chip_id, None)
+-        self.device = DEVICES.get(self.sysinfo.device_class, None)
+-        supported = bool(
+-            self.chip_min_ver
+-            and self.device
+-            and (not self.device.expert_only or self.expert)
+-        )
++        supported = self.host_supported()
+         if self.engine_runtime:
+             self.engine_runtime.inspect(
+                 self.sysinfo.device_class,
+diff --git a/src/osinstall.py b/src/osinstall.py
+index c721fcb..81f716a 100644
+--- a/src/osinstall.py
++++ b/src/osinstall.py
+@@ -7,8 +7,9 @@ import unicodedata
+ 
+ class OSInstaller(PackageInstaller):
+     PART_ALIGNMENT = 1024 * 1024
+-    def __init__(self, dutil, data, template):
++    def __init__(self, dutil, data, template, *, boot_object_builder=None):
+         super().__init__()
++        self.boot_object_builder = boot_object_builder or m1n1.build
+         self.dutil = dutil
+         self.data = data
+         self.template = template
+@@ -195,6 +196,6 @@ class OSInstaller(PackageInstaller):
+         for i in m1n1_vars:
+             logging.info(f"  {i}")
+ 
+-        m1n1.build(os.path.join("boot", boot_object), stub_ins.boot_obj_path, m1n1_vars)
++        self.boot_object_builder(os.path.join("boot", boot_object), stub_ins.boot_obj_path, m1n1_vars)
+ 
+         logging.info(f"Built boot object at {stub_ins.boot_obj_path}")

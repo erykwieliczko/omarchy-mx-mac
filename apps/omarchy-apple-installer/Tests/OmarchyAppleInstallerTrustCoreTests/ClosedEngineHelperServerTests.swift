@@ -30,6 +30,142 @@
       XCTAssertTrue(try importedEntries(in: fixture.destination).isEmpty)
     }
 
+    func testHelperIndependentlyAdmitsInstalledCatalogAndRejectsSubstitutedIdentity() throws {
+      let fixture = try makeFixture()
+      defer { try? FileManager.default.removeItem(at: fixture.root) }
+      let policy = try sealedPolicy(for: fixture)
+      let source = try openDirectory(fixture.source)
+      defer { try? source.close() }
+      let importer = EngineHandoffPackageImporter(releasePolicy: policy)
+      let imported = try importer.prepare(from: source, in: fixture.destination)
+      try FileManager.default.removeItem(at: imported.packageURL)
+      let identityURL = fixture.source.appendingPathComponent("identity.json")
+      var identity =
+        try JSONSerialization.jsonObject(with: Data(contentsOf: identityURL)) as! [String: Any]
+      identity["trust_root_fingerprint"] = digest(Data("substituted app resources".utf8))
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o600], ofItemAtPath: identityURL.path)
+      try JSONSerialization.data(withJSONObject: identity).write(to: identityURL)
+      XCTAssertThrowsError(try importer.prepare(from: source, in: fixture.destination)) {
+        XCTAssertEqual($0 as? EngineHandoffImportError, .bindingMismatch)
+      }
+      XCTAssertTrue(try importedEntries(in: fixture.destination).isEmpty)
+      XCTAssertThrowsError(try policy.validatedCatalog(now: Date().addingTimeInterval(7200)))
+    }
+
+    func testSealedInspectionEngineRequiresValidCatalogAndItsNamedArtifact() throws {
+      let fixture = try makeFixture()
+      defer { try? FileManager.default.removeItem(at: fixture.root) }
+      let policy = try sealedPolicy(for: fixture)
+      let resources = fixture.root.appendingPathComponent("Resources")
+      let release = resources.appendingPathComponent("Release")
+      let assets = release.appendingPathComponent("Assets")
+      try FileManager.default.createDirectory(
+        at: assets, withIntermediateDirectories: true,
+        attributes: [.posixPermissions: 0o700])
+      let descriptor: [String: Any] = [
+        "schema_version": 1,
+        "catalog_url": "https://example.com/catalog.json",
+        "catalog_signature_url": "https://example.com/catalog.json.sig",
+        "trust_root_fingerprint": policy.configuration.trustRoot.fingerprint,
+        "helper_mach_service_name": InstallerProductIdentity.helperMachServiceName,
+        "helper_code_signing_requirement": "identifier \"com.omarchy.mx.installer.helper\"",
+      ]
+      try JSONSerialization.data(withJSONObject: descriptor).write(
+        to: release.appendingPathComponent("release.json"))
+      try policy.configuration.trustRoot.rawRepresentation.write(
+        to: release.appendingPathComponent("trust-root.ed25519.pub"))
+      let documents = try XCTUnwrap(policy.configuration.sealedCatalogDocuments)
+      try documents.payload.write(to: release.appendingPathComponent("catalog.json"))
+      let signature = release.appendingPathComponent("catalog.json.sig")
+      try documents.signature.write(to: signature)
+      let engine = assets.appendingPathComponent("engine.tar.gz")
+      try FileManager.default.copyItem(
+        at: fixture.source.appendingPathComponent("engine.tar.gz"), to: engine)
+      let locator = SealedEngineArtifactLocator()
+      XCTAssertNotNil(try locator.locate(for: "apple,j314s", resources: resources, now: Date()))
+      XCTAssertNil(try locator.locate(for: "apple,j614s", resources: resources, now: Date()))
+      try FileManager.default.removeItem(at: engine)
+      XCTAssertThrowsError(
+        try locator.locate(for: "apple,j314s", resources: resources, now: Date()))
+      try Data(repeating: 0, count: 64).write(to: signature)
+      XCTAssertThrowsError(
+        try locator.locate(for: "apple,j314s", resources: resources, now: Date()))
+      XCTAssertThrowsError(
+        try HelperReleasePolicy.loadInstalled(
+          executableURL: resources.appendingPathComponent("helper")))
+    }
+
+    private func sealedPolicy(for fixture: HelperServerFixture) throws -> HelperReleasePolicy {
+      let identityURL = fixture.source.appendingPathComponent("identity.json")
+      let manifestURL = fixture.source.appendingPathComponent("manifest.json")
+      var identity =
+        try JSONSerialization.jsonObject(with: Data(contentsOf: identityURL)) as! [String: Any]
+      var manifest =
+        try JSONSerialization.jsonObject(with: Data(contentsOf: manifestURL)) as! [String: Any]
+      let request =
+        try JSONSerialization.jsonObject(
+          with: Data(contentsOf: fixture.source.appendingPathComponent("request.json")))
+        as! [String: Any]
+      var model: [String: Any] = [
+        "deviceIdentifier": request["device_identifier"]!, "status": "enabled",
+        "operation": "install",
+        "engineFamily": "cleanroom", "executionScratchBytes": 8_589_934_592,
+        "engineVersion": request["engine_version"]!,
+        "downstreamRevision": String(repeating: "b", count: 40), "evidenceRevision": "helper-test",
+        "componentRevisions": Dictionary(
+          uniqueKeysWithValues: ["m1n1", "u_boot", "grub", "linux", "enablement"].map {
+            ($0, String(repeating: "a", count: 40))
+          }),
+      ]
+      for role in ["engine", "metadata", "payload"] {
+        let record = manifest[role] as! [String: Any]
+        model[role + "Digest"] = record["digest"]!
+        model[role + "Artifact"] = [
+          "sourceURL": "https://example.com/" + (record["file_name"] as! String),
+          "fileName": record["file_name"]!, "sizeBytes": record["size_bytes"]!,
+        ]
+      }
+      let now = Date()
+      let formatter = ISO8601DateFormatter()
+      let payload = try JSONSerialization.data(withJSONObject: [
+        "schemaVersion": 4, "sequence": 40,
+        "issuedAt": formatter.string(from: now.addingTimeInterval(-60)),
+        "expiresAt": formatter.string(from: now.addingTimeInterval(3600)), "models": [model],
+      ])
+      let key = Curve25519.Signing.PrivateKey()
+      let root = try AppOwnedTrustRoot(
+        rawRepresentation: key.publicKey.rawRepresentation,
+        expectedFingerprint: digest(key.publicKey.rawRepresentation))
+      identity["trust_root_fingerprint"] = root.fingerprint
+      identity["catalog_payload_digest"] = digest(payload)
+      let fields = [
+        "omarchy.apple.candidate-bound-plan", "1", root.fingerprint, "40", digest(payload),
+        request["plan_digest"] as! String, request["device_identifier"] as! String,
+        request["store_identifier"] as! String, request["layout_digest"] as! String,
+        request["candidate_kind"] as! String, request["source_identifier"] as! String,
+        String(describing: request["offset_bytes"]!), String(describing: request["length_bytes"]!),
+        identity["engine_digest"] as! String, identity["metadata_digest"] as! String,
+        identity["payload_digest"] as! String,
+      ]
+      let binding = lengthPrefixedDigest(fields, prefix: "sha256:")
+      identity["binding_digest"] = binding
+      manifest["binding_digest"] = binding
+      for (url, object) in [(identityURL, identity), (manifestURL, manifest)] {
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+      }
+      return HelperReleasePolicy(
+        configuration: InstallerReleaseConfiguration(
+          catalogURL: URL(string: "https://example.com/catalog.json")!,
+          catalogSignatureURL: URL(string: "https://example.com/catalog.json.sig")!,
+          trustRoot: root,
+          helperMachServiceName: InstallerProductIdentity.helperMachServiceName,
+          helperCodeSigningRequirement: "identifier com.omarchy.mx.installer.helper",
+          sealedCatalogDocuments: InstallerReleaseCatalogDocuments(
+            payload: payload, signature: try key.signature(for: payload))))
+    }
+
     func testM4PackageIsRejectedBeforeExecution() async throws {
       let fixture = try makeFixture(deviceIdentifier: "apple,j614s")
       defer { try? FileManager.default.removeItem(at: fixture.root) }

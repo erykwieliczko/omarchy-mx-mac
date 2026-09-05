@@ -4,9 +4,11 @@ import Foundation
 public struct PinnedInstallerRecord: Equatable, Sendable {
   public let deviceIdentifier: String
   public let operation: String
-  public let asahiInstallerTag: String
-  public let asahiInstallerRevision: String
-  public let asahiInstallerDataRevision: String
+  public let asahiInstallerTag: String?
+  public let asahiInstallerRevision: String?
+  public let asahiInstallerDataRevision: String?
+  public let engineFamily: String
+  public let componentRevisions: [String: String]?
   public let downstreamRevision: String
   public let engineVersion: String?
   public let engineDigest: String
@@ -15,13 +17,14 @@ public struct PinnedInstallerRecord: Equatable, Sendable {
   public let repairManifestDigest: String?
   public let evidenceRevision: String
   public let delivery: PinnedInstallerDelivery?
+  public let executionScratchBytes: UInt64
 
   public init(
     deviceIdentifier: String,
     operation: String = "install",
-    asahiInstallerTag: String,
-    asahiInstallerRevision: String,
-    asahiInstallerDataRevision: String,
+    asahiInstallerTag: String? = nil,
+    asahiInstallerRevision: String? = nil,
+    asahiInstallerDataRevision: String? = nil,
     downstreamRevision: String,
     engineVersion: String?,
     engineDigest: String,
@@ -29,13 +32,18 @@ public struct PinnedInstallerRecord: Equatable, Sendable {
     payloadDigest: String,
     repairManifestDigest: String? = nil,
     evidenceRevision: String,
-    delivery: PinnedInstallerDelivery?
+    delivery: PinnedInstallerDelivery?,
+    engineFamily: String = "asahi",
+    componentRevisions: [String: String]? = nil,
+    executionScratchBytes: UInt64 = 0
   ) {
     self.deviceIdentifier = deviceIdentifier
     self.operation = operation
     self.asahiInstallerTag = asahiInstallerTag
     self.asahiInstallerRevision = asahiInstallerRevision
     self.asahiInstallerDataRevision = asahiInstallerDataRevision
+    self.engineFamily = engineFamily
+    self.componentRevisions = componentRevisions
     self.downstreamRevision = downstreamRevision
     self.engineVersion = engineVersion
     self.engineDigest = engineDigest
@@ -44,6 +52,7 @@ public struct PinnedInstallerRecord: Equatable, Sendable {
     self.repairManifestDigest = repairManifestDigest
     self.evidenceRevision = evidenceRevision
     self.delivery = delivery
+    self.executionScratchBytes = executionScratchBytes
   }
 }
 
@@ -123,7 +132,7 @@ struct SignedSupportCatalogVerifier: Sendable {
       throw SupportCatalogError.invalidPayload
     }
 
-    guard [1, 2, 3].contains(manifest.schemaVersion) else {
+    guard [1, 2, 3, 4].contains(manifest.schemaVersion) else {
       throw SupportCatalogError.unsupportedSchema(manifest.schemaVersion)
     }
     guard manifest.sequence > 0 else {
@@ -149,9 +158,7 @@ struct SignedSupportCatalogVerifier: Sendable {
       guard isDeviceIdentifier(model.deviceIdentifier) else {
         throw SupportCatalogError.invalidField("models[\(index)].deviceIdentifier")
       }
-      guard isSemanticVersionTag(model.asahiInstallerTag) else {
-        throw SupportCatalogError.invalidField("models[\(index)].asahiInstallerTag")
-      }
+      try validateProvenance(model, schemaVersion: manifest.schemaVersion, index: index)
       guard SHA256Digest(rawValue: model.engineDigest) != nil else {
         throw SupportCatalogError.invalidField("models[\(index)].engineDigest")
       }
@@ -181,16 +188,6 @@ struct SignedSupportCatalogVerifier: Sendable {
       } else {
         operation = "install"
         repairManifestDigest = nil
-      }
-      guard isGitRevision(model.asahiInstallerRevision) else {
-        throw SupportCatalogError.invalidField(
-          "models[\(index)].asahiInstallerRevision"
-        )
-      }
-      guard isGitRevision(model.asahiInstallerDataRevision) else {
-        throw SupportCatalogError.invalidField(
-          "models[\(index)].asahiInstallerDataRevision"
-        )
       }
       guard isGitRevision(model.downstreamRevision) else {
         throw SupportCatalogError.invalidField(
@@ -240,11 +237,50 @@ struct SignedSupportCatalogVerifier: Sendable {
         payloadDigest: model.payloadDigest,
         repairManifestDigest: repairManifestDigest,
         evidenceRevision: model.evidenceRevision,
-        delivery: delivery
+        delivery: delivery,
+        engineFamily: model.engineFamily ?? "asahi",
+        componentRevisions: model.componentRevisions,
+        executionScratchBytes: model.executionScratchBytes ?? 0
       )
     }
 
     return SupportCatalog(sequence: manifest.sequence, records: records)
+  }
+
+  private func validateProvenance(
+    _ model: ModelRecord,
+    schemaVersion: Int,
+    index: Int
+  ) throws {
+    if schemaVersion == 4 {
+      guard model.engineFamily == "cleanroom",
+        let scratch = model.executionScratchBytes, scratch > 0,
+        model.operation == "install",
+        model.asahiInstallerTag == nil,
+        model.asahiInstallerRevision == nil,
+        model.asahiInstallerDataRevision == nil,
+        model.repairManifestDigest == nil,
+        model.repairManifestArtifact == nil,
+        let revisions = model.componentRevisions,
+        Set(revisions.keys) == Set(["m1n1", "u_boot", "grub", "linux", "enablement"]),
+        revisions.values.allSatisfy(isGitRevision)
+      else {
+        throw SupportCatalogError.invalidField("models[\(index)].cleanroomProvenance")
+      }
+      return
+    }
+    guard model.engineFamily == nil, model.componentRevisions == nil else {
+      throw SupportCatalogError.invalidField("models[\(index)].engineFamily")
+    }
+    guard let tag = model.asahiInstallerTag, isSemanticVersionTag(tag) else {
+      throw SupportCatalogError.invalidField("models[\(index)].asahiInstallerTag")
+    }
+    guard let revision = model.asahiInstallerRevision, isGitRevision(revision) else {
+      throw SupportCatalogError.invalidField("models[\(index)].asahiInstallerRevision")
+    }
+    guard let revision = model.asahiInstallerDataRevision, isGitRevision(revision) else {
+      throw SupportCatalogError.invalidField("models[\(index)].asahiInstallerDataRevision")
+    }
   }
 
   private func installerDelivery(
@@ -385,9 +421,12 @@ private struct ModelRecord: Decodable {
   let deviceIdentifier: String
   let status: ModelStatus
   let operation: String?
-  let asahiInstallerTag: String
-  let asahiInstallerRevision: String
-  let asahiInstallerDataRevision: String
+  let asahiInstallerTag: String?
+  let asahiInstallerRevision: String?
+  let asahiInstallerDataRevision: String?
+  let executionScratchBytes: UInt64?
+  let engineFamily: String?
+  let componentRevisions: [String: String]?
   let downstreamRevision: String
   let engineVersion: String?
   let engineDigest: String

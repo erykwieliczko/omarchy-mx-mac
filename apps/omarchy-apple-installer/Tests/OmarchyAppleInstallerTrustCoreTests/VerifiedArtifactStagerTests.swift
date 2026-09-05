@@ -516,6 +516,68 @@ final class VerifiedArtifactStagerTests: XCTestCase {
     )
   }
 
+  func testBundledArtifactIsVerifiedWithoutDownloading() async throws {
+    let data = Data("expected".utf8)
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let artifact = try descriptor(data: data)
+    let source = root.appendingPathComponent(artifact.sourceURL.lastPathComponent)
+    try data.write(to: source)
+    let fallback = FixtureArtifactDownloader(data: Data())
+    let stager = VerifiedArtifactStager(
+      downloader: BundledArtifactDownloader(directory: root, fallback: fallback))
+    let result = try await stager.stage(artifact, in: root.appendingPathComponent("staged"))
+    XCTAssertEqual(try Data(contentsOf: result.fileURL), data)
+    XCTAssertEqual(try Data(contentsOf: source), data)
+    let count = await fallback.downloadCount
+    XCTAssertEqual(count, 0)
+  }
+
+  func testBundledArtifactTamperingAndSymlinksFailClosed() async throws {
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let artifact = try descriptor(data: Data("expected".utf8))
+    let source = root.appendingPathComponent(artifact.sourceURL.lastPathComponent)
+    try Data("tampered".utf8).write(to: source)
+    let fallback = FixtureArtifactDownloader(data: Data("expected".utf8))
+    let stager = VerifiedArtifactStager(
+      downloader: BundledArtifactDownloader(directory: root, fallback: fallback))
+    let destination = root.appendingPathComponent("staged")
+    await assertThrows(try await stager.stage(artifact, in: destination)) { error in
+      guard case .digestMismatch = error as? ArtifactStageError else {
+        return XCTFail("Expected digest mismatch")
+      }
+    }
+    try FileManager.default.removeItem(at: source)
+    try FileManager.default.createSymbolicLink(atPath: source.path, withDestinationPath: "missing")
+    await assertThrows(try await stager.stage(artifact, in: destination)) { error in
+      guard case .unsafeStagedFile = error as? ArtifactStageError else {
+        return XCTFail("Expected unsafe bundled file")
+      }
+    }
+    let count = await fallback.downloadCount
+    XCTAssertEqual(count, 0)
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: destination.appendingPathComponent(artifact.fileName).path))
+  }
+
+  func testMissingBundledArtifactFallsBackToVerifiedDownload() async throws {
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let data = Data("expected".utf8)
+    let fallback = FixtureArtifactDownloader(data: data)
+    let stager = VerifiedArtifactStager(
+      downloader: BundledArtifactDownloader(
+        directory: root.appendingPathComponent("missing"), fallback: fallback))
+    let result = try await stager.stage(try descriptor(data: data), in: root)
+    XCTAssertEqual(try Data(contentsOf: result.fileURL), data)
+    let count = await fallback.downloadCount
+    XCTAssertEqual(count, 1)
+  }
+
   private func descriptor(
     source: String = "https://example.com/installer.tar.gz",
     fileName: String = "installer.tar.gz",

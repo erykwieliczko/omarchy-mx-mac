@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "device_identifier": "apple,j713",
+  "product_type": "Mac16,12",
+  "device_class": "j713ap",
+  "board_id": 44,
+  "chip_id": 33074,
+  "firmware": {
+    "version": "26.6.2",
+    "build": "25G83",
+    "variant": "macOS Customer",
+    "restore_behavior": "Erase"
+  },
+  "boot_format": "m1n1-uboot-grub-embedded-v1",
+  "sources": {
+    "m1n1": "d403081ee7ddfc3987cf0967c5a23a529f830ee5",
+    "u_boot": "7af6b444d69a291ea697f6f80591f75eec5ef7ff",
+    "grub": "d38d6a1a9b79427848976f53d474392cd29c2a71",
+    "linux": "84a385b855425f0bf6bf04e5930f759611012eef",
+    "enablement": "0a1c68920ab14959cfe5b6447c76a3ce4bc423e1"
+  },
+  "wifi": {
+    "source_directory": "usr/share/firmware/wifi/C-4388__s-C2",
+    "files": {
+      "brcm/brcmfmac4388c2-pcie.apple,garden.bin": "garden.trx",
+      "brcm/brcmfmac4388c2-pcie.apple,garden.sig": "garden.sig",
+      "brcm/brcmfmac4388c2-pcie.apple,garden.clm_blob": "garden.clmb",
+      "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob": "garden.txcb",
+      "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-u.txt": "P-garden_M-WLMT_V-u__m-4.9.txt",
+      "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-a.txt": "P-garden_M-WLMT_V-a__m-4.9.txt"
+    }
+  }
+}

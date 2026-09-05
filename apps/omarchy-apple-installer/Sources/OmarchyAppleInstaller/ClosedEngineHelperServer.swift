@@ -37,13 +37,14 @@
     public init(
       workingDirectory: URL,
       executor: any ImportedEngineHandoffExecuting,
+      releasePolicy: HelperReleasePolicy? = nil,
       credentialValidator: any MachineOwnerCredentialValidating =
         OpenDirectoryMachineOwnerCredentialValidator()
     ) {
       self.workingDirectory = workingDirectory
       self.executor = executor
       self.credentialValidator = credentialValidator
-      importer = EngineHandoffPackageImporter()
+      importer = EngineHandoffPackageImporter(releasePolicy: releasePolicy)
     }
 
     /// `progress` is optional and advisory: when a connected app exports the

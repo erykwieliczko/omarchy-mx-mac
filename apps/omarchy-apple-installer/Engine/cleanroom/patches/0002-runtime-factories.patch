@@ -1,0 +1,94 @@
+--- a/src/omarchy_asahi.py
++++ b/src/omarchy_asahi.py
+@@ -278,11 +278,15 @@
+         payload_path,
+         stub_size,
+         raw_partition_opener=None,
++        stub_factory=None,
++        os_factory=None,
+     ):
+         self.installer = installer
+         self.metadata_path = metadata_path
+         self.payload_path = payload_path
+         self.stub_size = stub_size
++        self.stub_factory = stub_factory or stub.StubInstaller
++        self.os_factory = os_factory or osinstall.OSInstaller
+         self.raw_partition_opener = (
+             raw_partition_opener or self._open_raw_partition
+         )
+@@ -306,7 +310,7 @@
+             )
+         self.installer.data = metadata
+         self.template = templates[0]
+-        self.osins = osinstall.OSInstaller(
++        self.osins = self.os_factory(
+             self.installer.dutil,
+             metadata,
+             self.template,
+@@ -331,7 +335,7 @@
+         ipsw = self.installer.choose_ipsw(
+             self.template.get("supported_fw"),
+         )
+-        self.installer.ins = stub.StubInstaller(
++        self.installer.ins = self.stub_factory(
+             self.installer.sysinfo,
+             self.installer.dutil,
+             self.installer.osinfo,
+@@ -512,7 +516,7 @@
+                 "efi_partition",
+                 "startup_volume_icon",
+                 "populated_partitions",
+-            },
++            } | self.boot_input_evidence_keys(),
+         )
+         if (
+             target["plan_digest"] != plan.plan_digest
+@@ -743,6 +747,12 @@
+             sort_keys=True,
+             separators=(",", ":"),
+         ).encode("utf-8")
++
++    def boot_input_evidence_keys(self):
++        return set()
++
++    def boot_input_evidence(self):
++        return {}
+ 
+     def _installed_evidence(self, plan):
+         osi = self.installer.ins.osi
+@@ -799,6 +809,7 @@
+                 ),
+                 "startup_volume_icon": startup_volume_icon,
+                 "populated_partitions": populated_partitions,
++                **self.boot_input_evidence(),
+             },
+             sort_keys=True,
+             separators=(",", ":"),
+--- a/src/omarchy_runtime.py
++++ b/src/omarchy_runtime.py
+@@ -32,13 +32,14 @@
+ 
+ 
+ class EngineRuntime:
+-    def __init__(self, *, mode, values):
++    def __init__(self, *, mode, values, stage1_adapter_factory=None):
+         self.mode = mode
+         self.values = values
+         self.journal = omarchy_contract.Journal(
+             values["OMARCHY_ENGINE_JOURNAL"]
+         )
+         self.device_identifier = None
++        self.stage1_adapter_factory = stage1_adapter_factory
+ 
+     @classmethod
+     def from_environment(cls, environment=None):
+@@ -238,7 +239,8 @@
+                 )
+             return completed
+ 
+-        adapter = omarchy_asahi.AsahiStage1Adapter(
++        adapter_factory = self.stage1_adapter_factory or omarchy_asahi.AsahiStage1Adapter
++        adapter = adapter_factory(
+             installer=installer,
+             metadata_path=self.values["OMARCHY_ENGINE_METADATA"],
+             payload_path=self.values["OMARCHY_ENGINE_PAYLOAD"],

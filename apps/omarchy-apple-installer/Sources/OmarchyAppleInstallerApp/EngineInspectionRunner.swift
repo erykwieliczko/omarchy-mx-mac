@@ -2,8 +2,13 @@ import Foundation
 import OmarchyAppleInstallerTrustCore
 
 struct EngineInspectionRunner: Sendable {
-  func inspect() async throws -> EngineInspectionResult {
+  func inspect(deviceIdentifier: String? = nil) async throws -> EngineInspectionResult {
     let scratch = try scratchDirectory()
+    if let deviceIdentifier,
+      let archive = try SealedEngineArtifactLocator().locate(for: deviceIdentifier)
+    {
+      return try await inspect(archive, in: scratch)
+    }
     let archive = try ValidationEngineArtifactLocator().locate()
     return try await inspect(archive, in: scratch)
   }
@@ -30,14 +35,16 @@ struct EngineInspectionRunner: Sendable {
   }
 
   private func scratchDirectory() throws -> URL {
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-      "com.omarchy.mx.installer-engine",
+    let directory = try FileManager.default.url(
+      for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+    ).appendingPathComponent(
+      "com.omarchy.mx.installer/scratch",
       isDirectory: true
     )
     if !FileManager.default.fileExists(atPath: directory.path) {
       try FileManager.default.createDirectory(
         at: directory,
-        withIntermediateDirectories: false,
+        withIntermediateDirectories: true,
         attributes: [.posixPermissions: 0o700]
       )
     }

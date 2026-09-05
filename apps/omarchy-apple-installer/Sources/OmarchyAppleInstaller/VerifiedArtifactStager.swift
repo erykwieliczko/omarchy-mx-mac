@@ -14,7 +14,7 @@ public struct PinnedArtifactPart: Equatable, Sendable {
     expectedDigest: String,
     expectedSizeBytes: UInt64
   ) throws {
-    guard sourceURL.scheme == "https",
+    guard InstallerDownloadURLPolicy.allows(sourceURL),
       sourceURL.host?.isEmpty == false,
       sourceURL.user == nil,
       sourceURL.password == nil,
@@ -60,7 +60,7 @@ public struct PinnedInstallerArtifact: Equatable, Sendable {
     guard !role.isEmpty, role.utf8.count <= 64 else {
       throw ArtifactStageError.invalidRole
     }
-    guard sourceURL.scheme == "https",
+    guard InstallerDownloadURLPolicy.allows(sourceURL),
       sourceURL.host?.isEmpty == false,
       sourceURL.user == nil,
       sourceURL.password == nil,
@@ -239,7 +239,7 @@ public struct VerifiedArtifactStager: Sendable {
   private let promoter: AtomicArtifactFilePromoter
 
   public init() {
-    downloader = ProgressReportingArtifactDownloader()
+    downloader = BundledArtifactDownloader()
     promoter = AtomicArtifactFilePromoter()
   }
 
@@ -809,6 +809,9 @@ final class ProgressReportingArtifactDownloader: NSObject, ArtifactDownloading,
     expectedSizeBytes: UInt64,
     onBytes: ArtifactByteProgressHandler?
   ) async throws -> URL {
+    guard InstallerDownloadURLPolicy.allows(sourceURL) else {
+      throw ArtifactStageError.invalidSourceURL
+    }
     let session = URLSession(
       configuration: .ephemeral,
       delegate: self,
@@ -829,6 +832,22 @@ final class ProgressReportingArtifactDownloader: NSObject, ArtifactDownloading,
       lock.unlock()
       task.resume()
     }
+  }
+
+  func urlSession(
+    _ session: URLSession,
+    task: URLSessionTask,
+    willPerformHTTPRedirection response: HTTPURLResponse,
+    newRequest request: URLRequest,
+    completionHandler: @escaping @Sendable (URLRequest?) -> Void
+  ) {
+    guard let target = request.url,
+      InstallerDownloadURLPolicy.allowsRedirect(from: task.originalRequest?.url, to: target)
+    else {
+      completionHandler(nil)
+      return
+    }
+    completionHandler(request)
   }
 
   func urlSession(
@@ -899,7 +918,10 @@ final class ProgressReportingArtifactDownloader: NSObject, ArtifactDownloading,
     }
 
     guard let response = downloadTask.response as? HTTPURLResponse,
-      (200...299).contains(response.statusCode)
+      (200...299).contains(response.statusCode),
+      response.url.map({
+        InstallerDownloadURLPolicy.allowsRedirect(from: downloadTask.originalRequest?.url, to: $0)
+      }) == true
     else {
       try? fileManager.removeItem(at: temporaryURL)
       let status = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 0

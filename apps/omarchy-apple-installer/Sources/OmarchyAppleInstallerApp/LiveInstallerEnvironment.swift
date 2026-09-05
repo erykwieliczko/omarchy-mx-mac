@@ -63,7 +63,8 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     var transcript: Data?
     var engineFailure: String?
     do {
-      let inspection = try await EngineInspectionRunner().inspect()
+      let inspection = try await EngineInspectionRunner().inspect(
+        deviceIdentifier: host.identity.deviceIdentifier)
       guard
         inspection.validated.deviceIdentifier == host.identity.deviceIdentifier
       else {
@@ -171,6 +172,8 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     }
     let recommendation = try InstallerAllocationRecommendation(
       inventory: inventory,
+      workingSpaceBytes: InstallerAllocationRecommendation.workingSpaceBytes(
+        for: release.assets.installer),
       targetBytes: omarchyBytes ?? InstallerAllocationRecommendation.balancedTargetBytes
     )
     let candidate = recommendation.candidate

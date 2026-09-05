@@ -114,7 +114,7 @@
     }
 
     private func validateURL(_ url: URL, field: String) throws {
-      guard url.scheme == "https",
+      guard InstallerDownloadURLPolicy.allows(url),
         url.host?.isEmpty == false,
         url.user == nil,
         url.password == nil,
@@ -359,7 +359,14 @@
       maximumBytes: Int,
       role: String
     ) async throws -> Data {
-      let (bytes, response) = try await URLSession.shared.bytes(from: url)
+      guard InstallerDownloadURLPolicy.allows(url) else {
+        throw InstallerReleaseConfigurationError.invalidURL(role)
+      }
+      let session = URLSession(
+        configuration: .ephemeral, delegate: InstallerDownloadRedirectDelegate(), delegateQueue: nil
+      )
+      defer { session.invalidateAndCancel() }
+      let (bytes, response) = try await session.bytes(from: url)
       guard let response = response as? HTTPURLResponse,
         (200...299).contains(response.statusCode)
       else {
@@ -368,7 +375,7 @@
         )
       }
       guard let finalURL = response.url,
-        finalURL.scheme == "https",
+        InstallerDownloadURLPolicy.allowsRedirect(from: url, to: finalURL),
         finalURL.host?.isEmpty == false,
         finalURL.user == nil,
         finalURL.password == nil,

@@ -33,6 +33,20 @@ marketing_version="${OMARCHY_APP_VERSION:-0.6.0}"
 build_number="${OMARCHY_APP_BUILD_NUMBER:-6}"
 signing_identity="${OMARCHY_APP_SIGNING_IDENTITY:--}"
 team_identifier="${OMARCHY_TEAM_ID:-}"
+private_package="${OMARCHY_PRIVATE_PACKAGE:-0}"
+bundled_release="${OMARCHY_BUNDLED_RELEASE:-0}"
+engine_only="${OMARCHY_ENGINE_ONLY_RELEASE:-0}"
+private_http_origin="${OMARCHY_PRIVATE_HTTP_ORIGIN:-}"
+if [[ -n $private_http_origin ]]; then
+  [[ $private_package == "1" && $engine_only == "1" ]] || fail "HTTP is only available for a private engine-only build"
+fi
+[[ $engine_only == "0" || $engine_only == "1" ]] || fail "invalid engine-only release flag"
+[[ $engine_only != "1" || $bundled_release == "0" ]] || fail "engine-only and bundled release are mutually exclusive"
+[[ $private_package == "0" || $private_package == "1" ]] || fail "invalid private package flag"
+[[ $bundled_release == "0" || $bundled_release == "1" ]] || fail "invalid bundled release flag"
+if [[ $private_package == "1" ]]; then
+  [[ $signing_identity == "-" && ( $bundled_release == "1" || $engine_only == "1" ) ]] || fail "private package requires ad-hoc signing and a sealed engine"
+fi
 
 [[ $marketing_version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9]+)*$ ]] \
   || fail "OMARCHY_APP_VERSION has an invalid format"
@@ -48,7 +62,13 @@ daemon_plist_name="$helper_identifier.plist"
 engine_file_name="installer-v0.9.0-omarchy.14.tar.gz"
 engine_digest="9e9277384b6c9e8b269cc79b1b24df7bfcdcbb898a596a677b74d1d18050aebe"
 
-if [[ $signing_identity == "-" ]]; then
+if [[ $private_package == "1" ]]; then
+  # The installed system daemon gets the final app cdhash after app signing.
+  # The embedded registration path deliberately admits no executable.
+  client_requirement="identifier \"$app_identifier\" and cdhash H\"0000000000000000000000000000000000000000\""
+  helper_requirement="identifier \"$helper_identifier\" and cdhash H\"0000000000000000000000000000000000000000\""
+  timestamp_arguments=(--timestamp=none)
+elif [[ $signing_identity == "-" ]]; then
   client_requirement="identifier \"$app_identifier\""
   helper_requirement="identifier \"$helper_identifier\""
   timestamp_arguments=(--timestamp=none)
@@ -103,6 +123,10 @@ if [[ -e $sealed_catalog || -L $sealed_catalog \
   sealed_catalog_available=true
 fi
 
+if [[ $signing_identity != "-" && $sealed_catalog_available != "true" ]]; then
+  fail "installation-capable releases require an embedded catalog for independent helper validation"
+fi
+
 descriptor_schema="$(plutil -extract schema_version raw -o - "$release_descriptor")"
 descriptor_service="$(plutil -extract helper_mach_service_name raw -o - "$release_descriptor")"
 descriptor_requirement="$(plutil -extract helper_code_signing_requirement raw -o - "$release_descriptor")"
@@ -121,7 +145,18 @@ if [[ $descriptor_fingerprint != "$actual_fingerprint" ]]; then
   fail "release.json trust root fingerprint does not match the public key"
 fi
 
-engine_source="$package_directory/Engine/artifacts/$engine_file_name"
+if [[ $bundled_release == "1" || $engine_only == "1" ]]; then
+  [[ $sealed_catalog_available == "true" ]] || fail "bundled release requires a sealed catalog"
+  verification_arguments=("$release_directory")
+  [[ $engine_only == "0" ]] || verification_arguments+=(--engine-only)
+  /usr/bin/python3 "$script_directory/verify-bundled-assets.py" "${verification_arguments[@]}"
+  engine_file_name=$(plutil -extract models.0.engineArtifact.fileName raw -o - "$sealed_catalog")
+  engine_digest=$(plutil -extract models.0.engineDigest raw -o - "$sealed_catalog")
+  engine_digest=${engine_digest#sha256:}
+  engine_source="$release_directory/Assets/$engine_file_name"
+else
+  engine_source="$package_directory/Engine/artifacts/$engine_file_name"
+fi
 if [[ ! -f $engine_source || -L $engine_source ]]; then
   fail "the pinned validation engine artifact is missing"
 fi
@@ -136,15 +171,22 @@ final_app="$output_directory/$app_name"
   || fail "refusing to overwrite existing app: $final_app"
 
 swift_tool="$(xcrun --find swift)"
+swift_arguments=(--configuration release)
+if [[ -n $private_http_origin ]]; then
+  swift_arguments+=(-Xswiftc -DOMARCHY_PRIVATE_HTTP)
+fi
+if [[ -n ${OMARCHY_SWIFT_WORK_DIRECTORY:-} ]]; then
+  swift_arguments+=(--cache-path "$OMARCHY_SWIFT_WORK_DIRECTORY/swift-cache" --config-path "$OMARCHY_SWIFT_WORK_DIRECTORY/swift-config" --security-path "$OMARCHY_SWIFT_WORK_DIRECTORY/swift-security")
+  export CLANG_MODULE_CACHE_PATH="$OMARCHY_SWIFT_WORK_DIRECTORY/clang-cache"
+fi
 (
   cd "$package_directory"
   "$swift_tool" build \
-    --configuration release \
-    --jobs "$build_jobs"
+    "${swift_arguments[@]}" --jobs "$build_jobs"
 )
 binary_directory="$({
   cd "$package_directory"
-  "$swift_tool" build --configuration release --show-bin-path
+  "$swift_tool" build "${swift_arguments[@]}" --show-bin-path
 })"
 
 app_binary="$binary_directory/$app_executable_name"
@@ -174,7 +216,17 @@ if [[ $sealed_catalog_available == "true" ]]; then
     "$sealed_catalog_signature" \
     "$resources/Release/catalog.json.sig"
 fi
-install -m 0444 "$engine_source" "$resources/Engine/artifacts/$engine_file_name"
+if [[ $engine_only == "1" ]]; then
+  mkdir "$resources/Release/Assets"
+  install -m 0444 "$engine_source" "$resources/Release/Assets/$engine_file_name"
+elif [[ $bundled_release == "1" ]]; then
+  mkdir "$resources/Release/Assets"
+  for asset in "$release_directory/Assets/"*; do
+    install -m 0444 "$asset" "$resources/Release/Assets/${asset##*/}"
+  done
+else
+  install -m 0444 "$engine_source" "$resources/Engine/artifacts/$engine_file_name"
+fi
 install -m 0444 \
   "$script_directory/OmarchyInstaller.icns" \
   "$resources/OmarchyInstaller.icns"
@@ -183,6 +235,29 @@ install -m 0444 \
   "$script_directory/$daemon_plist_name" \
   "$contents/Library/LaunchDaemons/$daemon_plist_name"
 
+chmod 0644 "$contents/Info.plist"
+if [[ -n $private_http_origin ]]; then
+  /usr/bin/python3 - "$contents/Info.plist" "$private_http_origin" <<'PYHTTP'
+import ipaddress, plistlib, sys
+from urllib.parse import urlsplit
+path, origin = sys.argv[1:]
+url = urlsplit(origin)
+if (url.scheme != 'http' or not url.hostname or url.username or url.password
+        or url.path not in ('', '/') or url.query or url.fragment):
+    raise SystemExit('private HTTP origin must be an explicit origin without credentials or path')
+address = ipaddress.ip_address(url.hostname)
+allowed = [ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10', '127.0.0.0/8')]
+if not any(address in network for network in allowed):
+    raise SystemExit('private HTTP origin must use a local or tailnet IPv4 address')
+with open(path, 'rb') as reader:
+    info = plistlib.load(reader)
+info['OmarchyPrivateHTTPOrigin'] = origin
+info['NSAppTransportSecurity'] = {'NSExceptionDomains': {url.hostname: {'NSExceptionAllowsInsecureHTTPLoads': True}}}
+info['NSLocalNetworkUsageDescription'] = 'Download the private Omarchy test image from your build machine.'
+with open(path, 'wb') as writer:
+    plistlib.dump(info, writer)
+PYHTTP
+fi
 chmod 0644 "$contents/Info.plist"
 chmod 0644 "$contents/Library/LaunchDaemons/$daemon_plist_name"
 plutil -replace CFBundleShortVersionString \
@@ -202,6 +277,14 @@ codesign --force --sign "$signing_identity" \
   --options runtime \
   --identifier "$helper_identifier" \
   "$resources/$helper_executable_name"
+if [[ $private_package == "1" ]]; then
+  helper_cdhash=$(codesign -d --verbose=4 "$resources/$helper_executable_name" 2>&1 | awk -F= '$1 == "CDHash" {print $2}')
+  [[ $helper_cdhash =~ ^[0-9a-f]{40}$ ]] || fail "missing helper cdhash"
+  helper_requirement="identifier \"$helper_identifier\" and cdhash H\"$helper_cdhash\""
+  chmod 0644 "$resources/Release/release.json"
+  plutil -replace helper_code_signing_requirement -string "$helper_requirement" "$resources/Release/release.json"
+  chmod 0444 "$resources/Release/release.json"
+fi
 codesign --force --sign "$signing_identity" \
   "${timestamp_arguments[@]}" \
   --options runtime \
@@ -211,9 +294,15 @@ codesign --verify --deep --strict --verbose=2 "$assembled_app"
 codesign --verify --strict \
   -R="$helper_requirement" \
   "$resources/$helper_executable_name"
-codesign --verify --strict \
-  -R="$client_requirement" \
-  "$assembled_app"
+if [[ $private_package == "1" ]]; then
+  if codesign --verify --strict -R="$client_requirement" "$assembled_app" 2>/dev/null; then
+    fail "embedded private daemon unexpectedly admits the app"
+  fi
+  app_cdhash=$(codesign -d --verbose=4 "$assembled_app" 2>&1 | awk -F= '$1 == "CDHash" {print $2}')
+  [[ $app_cdhash =~ ^[0-9a-f]{40}$ ]] || fail "missing app cdhash"
+  client_requirement="identifier \"$app_identifier\" and cdhash H\"$app_cdhash\""
+fi
+codesign --verify --strict -R="$client_requirement" "$assembled_app"
 
 mv "$assembled_app" "$final_app"
 echo "$final_app"

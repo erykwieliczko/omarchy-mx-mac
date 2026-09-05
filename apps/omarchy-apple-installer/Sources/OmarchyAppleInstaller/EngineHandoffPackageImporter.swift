@@ -61,7 +61,11 @@
   public struct EngineHandoffPackageImporter: Sendable {
     private static let maximumControlFileBytes = 65_536
 
-    public init() {}
+    private let releasePolicy: HelperReleasePolicy?
+
+    public init(releasePolicy: HelperReleasePolicy? = nil) {
+      self.releasePolicy = releasePolicy
+    }
 
     public func prepare(
       from packageDirectory: FileHandle,
@@ -476,6 +480,42 @@
       request: ImportedRequest,
       identity: ImportedIdentity
     ) throws {
+      if let releasePolicy {
+        let catalog = try releasePolicy.validatedCatalog(now: Date())
+        guard case .admitted(let record) = catalog.admission(for: request.deviceIdentifier),
+          let delivery = record.delivery,
+          identity.trustRootFingerprint == releasePolicy.configuration.trustRoot.fingerprint,
+          identity.catalogSequence == catalog.sequence,
+          identity.catalogPayloadDigest == catalog.acceptedIdentity.payloadDigest,
+          request.operation == record.operation, request.engineVersion == record.engineVersion
+        else { throw EngineHandoffImportError.bindingMismatch }
+        for (actual, expected) in [
+          (manifest.engine, delivery.engine),
+          (manifest.metadata, delivery.metadata), (manifest.payload, delivery.payload),
+        ] {
+          guard actual.fileName == expected.fileName, actual.digest == expected.expectedDigest,
+            actual.sizeBytes == expected.expectedSizeBytes
+          else { throw EngineHandoffImportError.bindingMismatch }
+        }
+        if let expected = delivery.repairManifest {
+          guard let actual = manifest.repairManifest, actual.fileName == expected.fileName,
+            actual.digest == expected.expectedDigest, actual.sizeBytes == expected.expectedSizeBytes
+          else { throw EngineHandoffImportError.bindingMismatch }
+        } else if manifest.repairManifest != nil {
+          throw EngineHandoffImportError.bindingMismatch
+        }
+        let binding = InstallerDigest.lengthPrefixedSHA256([
+          "omarchy.apple.candidate-bound-plan", "1", identity.trustRootFingerprint,
+          String(identity.catalogSequence), identity.catalogPayloadDigest, request.planDigest,
+          request.deviceIdentifier, request.storeIdentifier, request.layoutDigest,
+          request.candidateKind, request.sourceIdentifier, String(request.offsetBytes),
+          String(request.lengthBytes), identity.engineDigest, identity.metadataDigest,
+          identity.payloadDigest,
+        ]).rawValue
+        guard binding == identity.bindingDigest else {
+          throw EngineHandoffImportError.bindingMismatch
+        }
+      }
       var planFields = [
         request.deviceIdentifier,
         request.storeIdentifier,

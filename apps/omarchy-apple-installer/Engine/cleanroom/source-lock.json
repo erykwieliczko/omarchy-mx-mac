@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "status": "development-source-only",
+  "public_release_authorized": false,
+  "transaction_source_revision": "f0469cea0899f3efed8efead604174c7a53c4451",
+  "patches": [
+    "cleanroom/patches/0001-boot-factories.patch",
+    "cleanroom/patches/0002-runtime-factories.patch"
+  ],
+  "files": [
+    {
+      "path": "cleanroom/README.md",
+      "sha256": "bbf4cd0abba27f9264578ee6c02b87d4939eb66e9a533425b1197c0e67f2cc4e"
+    },
+    {
+      "path": "cleanroom/adapter.py",
+      "sha256": "4e3f720be34b834f13d3244fcb07068bd6bc02d9e4c8f4695070e453e6d58500"
+    },
+    {
+      "path": "cleanroom/assemble_engine.py",
+      "sha256": "129b7d5e7f40f5ee79365f44334a00e2f691dafa8ce5921ab1d3b98edc22f296"
+    },
+    {
+      "path": "cleanroom/boot_inputs.py",
+      "sha256": "553faadea09b05f4a60bc35aa7332ba23d4237bf35a8bc09ab7d43c1f60fe0e4"
+    },
+    {
+      "path": "cleanroom/build_payload.py",
+      "sha256": "831fd3eeae3ead4e6587dc029b589d70c5ccaf089613d557865418fd49745a9c"
+    },
+    {
+      "path": "cleanroom/build_release.py",
+      "sha256": "5403d30c072cd8899125980da0ceef48d14d96ccd7b13403860684d930251b1e"
+    },
+    {
+      "path": "cleanroom/build_restore_package.py",
+      "sha256": "333c01b243c1787501017220baf54bc3003e919ea4e49b7ffea05f0919c0dbc8"
+    },
+    {
+      "path": "cleanroom/firmware.py",
+      "sha256": "310606020e200bbdf5d2276fca3354f1dce99bd14c3705d4bd938b308ea7e96c"
+    },
+    {
+      "path": "cleanroom/main.py",
+      "sha256": "dcb6054d672b1fe17855ec1b7bf1aadc445a42217426bc58cd225be9a8e0bdbf"
+    },
+    {
+      "path": "cleanroom/native-artifacts.json",
+      "sha256": "ab97869b9390244bf7afe5fcecabd0f223099797733649d1f01f39c4c265cccd"
+    },
+    {
+      "path": "cleanroom/patches/0001-boot-factories.patch",
+      "sha256": "02e92863a8f34ece16a39a89fe39a3a8cca08c204f570373a5e375da67d58ba7"
+    },
+    {
+      "path": "cleanroom/patches/0002-runtime-factories.patch",
+      "sha256": "67f323af0489a8a8f92a8748acce866d845e7891933482c2022f9bf3498b3766"
+    },
+    {
+      "path": "cleanroom/profiles/j713.json",
+      "sha256": "ca84264cbbecdbbbf4532f47b11eb96f37d96d811b07518a5a459daef538e6c6"
+    },
+    {
+      "path": "cleanroom/recovery.py",
+      "sha256": "dce2839153ee5e0a5b7eb280deac8f51141659be782159252e6a6f2e029d032a"
+    },
+    {
+      "path": "cleanroom/restore-image/go.mod",
+      "sha256": "196ef11c961d3b4becc35c107ab5a057e4e7100485dab7e79f12c0cb4e2e5e88"
+    },
+    {
+      "path": "cleanroom/restore-image/main.go",
+      "sha256": "00fd2b1a5b27557eb8b0256f92a5ab4d205d52fd28c5359fb8d396a991f86861"
+    },
+    {
+      "path": "cleanroom/restore-image/main_test.go",
+      "sha256": "eaab80329be605ee91df8cf4d34916ae881aaca40dd970e32aa9c122a0cc9cd1"
+    },
+    {
+      "path": "cleanroom/stage_sources.py",
+      "sha256": "cf855ab741fe0b6a2b016ed4286b0cf7dc7e142eee24b64d7871c42883aaf71d"
+    },
+    {
+      "path": "cleanroom/step2.sh",
+      "sha256": "2a1f996955173133aabf8f2d06d8887e0b2648890b25cad5ba030c9cdd430cb0"
+    },
+    {
+      "path": "cleanroom/test_adapter.py",
+      "sha256": "f61eebccf0bb1f2044bfe38a5c38c65feceb50334dc4b1f57cc3f917b5677d4c"
+    },
+    {
+      "path": "installer_data.json",
+      "sha256": "2e6181ce6b6e17c11039e04bfadade8d10ae0e11889885ad8c9960b68f179a5d"
+    },
+    {
+      "path": "overlay/m1n1/data/bootlogo_128.bin",
+      "sha256": "b19cb017645c7a9068ea0be9b6bb394131d7ca11b28093cf6caa1ffca74b0a4e"
+    },
+    {
+      "path": "overlay/m1n1/data/bootlogo_256.bin",
+      "sha256": "9c659b392aacfa31c62c638003d2257abfdbe17919b5c90cde4c4e62f87addab"
+    },
+    {
+      "path": "overlay/m1n1/data/bootlogo_48.bin",
+      "sha256": "6668050653645711ad7523fe2abeb4cbe85a92c875f3eec754b6db23cea2191c"
+    },
+    {
+      "path": "overlay/src/omarchy_asahi.py",
+      "sha256": "5828d81c0ecd13bfc8e6c24638c6554e7f820cfea6227ca0835b0b3ea97613ae"
+    },
+    {
+      "path": "overlay/src/omarchy_contract.py",
+      "sha256": "823819832b103f34a6221af3e775179bedba5dd04217202dbf08153359b4ed0f"
+    },
+    {
+      "path": "overlay/src/omarchy_execution.py",
+      "sha256": "1f42d9017353d0ee0d069b97d9cdde0217b5e1b901e2e7b7384465a124461d23"
+    },
+    {
+      "path": "overlay/src/omarchy_planner.py",
+      "sha256": "a3202243e26290d2dcd3cb421e922ea3c6edf36c152fe70945513c8cd3b64c88"
+    },
+    {
+      "path": "overlay/src/omarchy_repair.py",
+      "sha256": "145feb79909ca056b6baf9bc6b67560f3714b97a63deaf95c2bbcf68979a10f9"
+    },
+    {
+      "path": "overlay/src/omarchy_runtime.py",
+      "sha256": "f3edbb8488718044929503a5d946aa8978e35601c3d19015982978a99abd810b"
+    },
+    {
+      "path": "overlay/src/omarchy_stage1.py",
+      "sha256": "83c25f40a9bab9518f949bae9f02f902dfff27830879e89a645331d8de48a20c"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_asahi.py",
+      "sha256": "57fba1d33b5e32e506329bebceeba3702adf469630e509b7b97a99dc87431222"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_contract.py",
+      "sha256": "5f7a31803653baf2ebe048a85ea761c1ec804d28c3a6e03d9adc44f0eb514154"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_execution.py",
+      "sha256": "4f619afa84be43b50024fdf1e6031474bacb6cfbe6a3bbe007b59b94d8b468c6"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_planner.py",
+      "sha256": "f569f256ccd8ebd519d138b80c0e3ad2c44f23939ff57bd7aafeecb53324eb07"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_repair.py",
+      "sha256": "e88084083405308ccf5ea2a08383bf02c18a4d6d15e441a7b7d44afe37c4234b"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_replace.py",
+      "sha256": "6e7e5aab3a4dff832031f47378db660775d4b81d379273815ecb325e672ae504"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_runtime.py",
+      "sha256": "aed2a085c03db9f4390ec4ddd9c37abbe0948a2570f5784dd53b8df20a177a5c"
+    },
+    {
+      "path": "overlay/tests/test_omarchy_stage1.py",
+      "sha256": "6c40f2a2a96c0ee97fc91215d7a793f0f6bef208d0bc887bdcc6ad92a46b295f"
+    },
+    {
+      "path": "patches/0001-omarchy-engine-runtime.patch",
+      "sha256": "dec1171e1b9881b2daf40f864dea9a4c83cbc5e2a3fda3e40922630afc05b706"
+    },
+    {
+      "path": "source-lock.json",
+      "sha256": "47ceaf6643675e0025b62a43a349198c253f706a2a134994df7cc559432d380d"
+    }
+  ]
+}

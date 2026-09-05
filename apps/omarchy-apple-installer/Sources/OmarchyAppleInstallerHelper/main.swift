@@ -6,6 +6,7 @@ private enum HelperBootstrapError: Error {
   case rootRequired
   case missingClientRequirement
   case unsafeWorkingDirectory
+  case missingExecutable
 }
 
 private func prepareWorkingDirectory() throws -> URL {
@@ -51,10 +52,15 @@ do {
   else {
     throw HelperBootstrapError.missingClientRequirement
   }
+  guard let executableURL = Bundle.main.executableURL else {
+    throw HelperBootstrapError.missingExecutable
+  }
+  let releasePolicy = try HelperReleasePolicy.loadInstalled(executableURL: executableURL)
   let workingDirectory = try prepareWorkingDirectory()
   let server = ClosedEngineHelperServer(
     workingDirectory: workingDirectory,
-    executor: PinnedAsahiEngineExecutor()
+    executor: PinnedAsahiEngineExecutor(),
+    releasePolicy: releasePolicy
   )
   let delegate = try AuthenticatedEngineXPCListenerDelegate(
     clientCodeSigningRequirement: clientRequirement,

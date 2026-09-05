@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 @testable import OmarchyAppleInstallerTrustCore
@@ -21,7 +22,7 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
 
     let recommendation = try InstallerAllocationRecommendation(
-      inventory: inventory([resize, free])
+      inventory: inventory([resize, free]), workingSpaceBytes: 0
     )
 
     XCTAssertEqual(recommendation.candidate, free)
@@ -38,7 +39,7 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
 
     let recommendation = try InstallerAllocationRecommendation(
-      inventory: inventory([free])
+      inventory: inventory([free]), workingSpaceBytes: 0
     )
 
     XCTAssertEqual(recommendation.requestedLengthBytes % unit, 0)
@@ -52,6 +53,51 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
   }
 
+  func testResizeRecommendationToleratesSmallIncreaseInAPFSMinimum() throws {
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 240 * gib,
+      minimumInstall: 64 * gib, minimumContainer: 120 * gib)
+    let proposed = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: 0)
+    XCTAssertEqual(proposed.requestedLengthBytes, 119 * gib)
+
+    let refreshed = candidate(
+      kind: "resize", source: "disk0s2", length: resize.lengthBytes,
+      minimumInstall: resize.minimumInstallBytes,
+      minimumContainer: resize.minimumContainerBytes + 1_048_576)
+    XCTAssertNoThrow(
+      try PinnedAsahiPlanRequest(
+        inventory: inventory([refreshed]), candidate: refreshed,
+        requestedLengthBytes: proposed.requestedLengthBytes))
+  }
+
+  func testExplicitOversizedResizeTargetAlsoKeepsHeadroom() throws {
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 240 * gib,
+      minimumInstall: 64 * gib, minimumContainer: 120 * gib)
+    let proposed = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: 0, targetBytes: 200 * gib)
+    XCTAssertEqual(proposed.requestedLengthBytes, 119 * gib)
+    let smaller = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: 0, targetBytes: 80 * gib)
+    XCTAssertEqual(smaller.requestedLengthBytes, 80 * gib)
+  }
+
+  func testResizeMustFitMinimumAndHeadroom() throws {
+    let tight = candidate(
+      kind: "resize", source: "disk0s2", length: 128 * gib,
+      minimumInstall: 64 * gib, minimumContainer: 64 * gib)
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation(inventory: inventory([tight]), workingSpaceBytes: 0))
+    let exact = candidate(
+      kind: "resize", source: "disk0s2", length: 129 * gib,
+      minimumInstall: 64 * gib, minimumContainer: 64 * gib)
+    XCTAssertEqual(
+      try InstallerAllocationRecommendation(inventory: inventory([exact]), workingSpaceBytes: 0)
+        .requestedLengthBytes,
+      64 * gib)
+  }
+
   func testFailsClosedWhenNoCandidateCanMeetMinimum() {
     let free = candidate(
       kind: "free",
@@ -61,7 +107,7 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
 
     XCTAssertThrowsError(
-      try InstallerAllocationRecommendation(inventory: inventory([free]))
+      try InstallerAllocationRecommendation(inventory: inventory([free]), workingSpaceBytes: 0)
     ) {
       XCTAssertEqual(
         $0 as? InstallerAllocationRecommendationError,
@@ -80,7 +126,7 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
 
     XCTAssertThrowsError(
-      try InstallerAllocationRecommendation(inventory: inventory([replace]))
+      try InstallerAllocationRecommendation(inventory: inventory([replace]), workingSpaceBytes: 0)
     ) {
       XCTAssertEqual(
         $0 as? InstallerAllocationRecommendationError,
@@ -105,10 +151,83 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     )
 
     let recommendation = try InstallerAllocationRecommendation(
-      inventory: inventory([replace, free])
+      inventory: inventory([replace, free]), workingSpaceBytes: 0
     )
 
     XCTAssertEqual(recommendation.candidate, free)
+  }
+
+  func testResizeSurvivesBothHandoffCopiesAndEngineWorkspace() throws {
+    let installer = try releaseRecord()
+    let workspace = try InstallerAllocationRecommendation.workingSpaceBytes(for: installer)
+    XCTAssertEqual(workspace, 2 * (23_337_845 + 2_664 + 5_927_464_429) + 8 * gib)
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 245_107_195_904,
+      minimumInstall: 76_562_825_216, minimumContainer: 120_740_380_672)
+    let recommendation = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: workspace)
+    let afterPreparation = candidate(
+      kind: "resize", source: resize.sourceIdentifier, length: resize.lengthBytes,
+      minimumInstall: resize.minimumInstallBytes,
+      minimumContainer: resize.minimumContainerBytes + workspace + 1_048_576)
+    XCTAssertNoThrow(
+      try PinnedAsahiPlanRequest(
+        inventory: inventory([afterPreparation]), candidate: afterPreparation,
+        requestedLengthBytes: recommendation.requestedLengthBytes))
+    XCTAssertGreaterThanOrEqual(recommendation.requestedLengthBytes, resize.minimumInstallBytes)
+    let tooMuchGrowth = candidate(
+      kind: "resize", source: resize.sourceIdentifier, length: resize.lengthBytes,
+      minimumInstall: resize.minimumInstallBytes,
+      minimumContainer: resize.lengthBytes - recommendation.requestedLengthBytes + 1)
+    XCTAssertThrowsError(
+      try PinnedAsahiPlanRequest(
+        inventory: inventory([tooMuchGrowth]), candidate: tooMuchGrowth,
+        requestedLengthBytes: recommendation.requestedLengthBytes))
+  }
+
+  func testWorkingSpaceCannotConsumeMinimumInstallOrFreeExtent() throws {
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 160 * gib,
+      minimumInstall: 64 * gib, minimumContainer: 80 * gib)
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation(
+        inventory: inventory([resize]), workingSpaceBytes: 16 * gib))
+    let free = candidate(
+      kind: "free", source: "disk0s3", length: 64 * gib, minimumInstall: 64 * gib)
+    XCTAssertEqual(
+      try InstallerAllocationRecommendation(
+        inventory: inventory([free]), workingSpaceBytes: 16 * gib
+      ).requestedLengthBytes,
+      64 * gib)
+  }
+
+  func testWorkingSpaceArithmeticFailsClosed() throws {
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation.workingSpaceBytes(
+        for: releaseRecord(payloadBytes: .max)))
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation.workingSpaceBytes(
+        for: releaseRecord(scratchBytes: .max)))
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation(inventory: inventory([]), workingSpaceBytes: .max))
+  }
+
+  private func releaseRecord(
+    payloadBytes: UInt64 = 5_927_464_429, scratchBytes: UInt64 = 8_589_934_592
+  ) throws -> PinnedInstallerRecord {
+    let digest = "sha256:" + String(repeating: "a", count: 64)
+    func artifact(_ role: String, _ size: UInt64) throws -> PinnedInstallerArtifact {
+      try PinnedInstallerArtifact(
+        role: role, sourceURL: URL(string: "https://example.com/" + role)!,
+        fileName: role, expectedDigest: digest, expectedSizeBytes: size)
+    }
+    return try PinnedInstallerRecord(
+      deviceIdentifier: "apple,j713", downstreamRevision: String(repeating: "b", count: 40),
+      engineVersion: "v0.1.0-cleanroom.1", engineDigest: digest,
+      metadataDigest: digest, payloadDigest: digest, evidenceRevision: "working-space-test",
+      delivery: PinnedInstallerDelivery(
+        engine: artifact("engine", 23_337_845), metadata: artifact("metadata", 2_664),
+        payload: artifact("payload", payloadBytes)), executionScratchBytes: scratchBytes)
   }
 
   private func inventory(

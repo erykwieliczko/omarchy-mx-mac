@@ -14,6 +14,17 @@ if [[ -f "$PLIST" ]]; then
   # failure through the installer instead of hiding it: PackageKit records
   # this script's output in /var/log/install.log and fails the package.
   /bin/launchctl bootout system/"$LABEL" 2>/dev/null || true
+  # bootout returns before launchd finishes removing an active job. Wait for
+  # its registration to disappear before bootstrapping the replacement.
+  attempts=0
+  while /bin/launchctl print system/"$LABEL" >/dev/null 2>&1; do
+    if (( attempts >= 10 )); then
+      echo "postinstall: timed out waiting for $LABEL to unload" >&2
+      exit 1
+    fi
+    /bin/sleep 1
+    (( attempts += 1 ))
+  done
   if ! bootstrap_error="$(/bin/launchctl bootstrap system "$PLIST" 2>&1)"; then
     echo "postinstall: failed to load $LABEL from $PLIST: $bootstrap_error" >&2
     /usr/bin/logger -t omarchy-installer-pkg "failed to load $LABEL: $bootstrap_error" || true

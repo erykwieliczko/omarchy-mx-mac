@@ -16,13 +16,15 @@
 set -euo pipefail
 
 APP="" PLIST="" VERSION="" OUT=""
+PRIVATE_UNSIGNED=false
 INSTALLER_ID="Developer ID Installer: MARCELO DE BARROS ALCANTARA (T2C384FJBD)"
 PKG_IDENTIFIER="com.omarchy.mx.installer.pkg"
 PKG_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="$PKG_DIR/scripts"
 
-while [[ $# -gt 0 ]]; do
+while (( $# > 0 )); do
   case "$1" in
+    --private-unsigned) PRIVATE_UNSIGNED=true; shift ;;
     --app) APP="$2"; shift 2 ;;
     --plist) PLIST="$2"; shift 2 ;;
     --version) VERSION="$2"; shift 2 ;;
@@ -37,6 +39,11 @@ done
 }
 [[ -z "$PLIST" || -f "$PLIST" ]] || { echo "build-pkg.sh: --plist is not a file: $PLIST" >&2; exit 64; }
 
+if [[ $PRIVATE_UNSIGNED == "true" && -n $PLIST ]]; then
+  echo "private packages must derive their exact client requirement" >&2
+  exit 65
+fi
+[[ ! -e $OUT && ! -L $OUT ]] || { echo "refusing existing package" >&2; exit 65; }
 work="$(mktemp -d /tmp/omarchy-pkg.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 root="$work/root"
@@ -54,6 +61,21 @@ if [[ -n "$PLIST" ]]; then
   /bin/cp "$PLIST" "$daemon_plist"
 else
   "$PKG_DIR/derive-daemon-plist" "$APP" "$daemon_plist" /Applications >/dev/null
+fi
+if [[ $PRIVATE_UNSIGNED == "true" ]]; then
+  staged_app="$root/Applications/$(basename "$APP")"
+  helper="$staged_app/Contents/Resources/omarchy-apple-installer-helper"
+  app_cdhash=$(/usr/bin/codesign -d --verbose=4 "$staged_app" 2>&1 | awk -F= '$1 == "CDHash" {print $2}')
+  helper_cdhash=$(/usr/bin/codesign -d --verbose=4 "$helper" 2>&1 | awk -F= '$1 == "CDHash" {print $2}')
+  [[ $app_cdhash =~ ^[0-9a-f]{40}$ && $helper_cdhash =~ ^[0-9a-f]{40}$ ]] || exit 65
+  client_requirement="identifier \"com.omarchy.mx.installer\" and cdhash H\"$app_cdhash\""
+  helper_requirement="identifier \"com.omarchy.mx.installer.helper\" and cdhash H\"$helper_cdhash\""
+  actual_helper_requirement=$(/usr/bin/plutil -extract helper_code_signing_requirement raw -o - "$staged_app/Contents/Resources/Release/release.json")
+  [[ $actual_helper_requirement == "$helper_requirement" ]] || { echo "private app does not pin this helper" >&2; exit 65; }
+  /usr/bin/codesign --verify --deep --strict "$staged_app"
+  /usr/bin/codesign --verify --strict -R="$client_requirement" "$staged_app"
+  /usr/bin/codesign --verify --strict -R="$helper_requirement" "$helper"
+  /usr/bin/plutil -replace EnvironmentVariables.OMARCHY_CLIENT_CODE_SIGNING_REQUIREMENT -string "$client_requirement" "$daemon_plist"
 fi
 prog="$(/usr/bin/plutil -extract Program raw -o - "$daemon_plist" 2>/dev/null || true)"
 [[ $prog == /Applications/* ]] || {
@@ -100,16 +122,19 @@ comp="$work/component.pkg"
   --ownership recommended \
   "$comp"
 
-echo "=== productbuild (signed distribution) ==="
-/usr/bin/productbuild \
-  --package "$comp" \
-  --identifier "$PKG_IDENTIFIER" \
-  --version "$VERSION" \
-  --sign "$INSTALLER_ID" \
-  "$OUT"
+product_arguments=(--package "$comp" --identifier "$PKG_IDENTIFIER" --version "$VERSION")
+if [[ $PRIVATE_UNSIGNED == "false" ]]; then
+  product_arguments+=(--sign "$INSTALLER_ID")
+fi
+echo "=== productbuild ==="
+/usr/bin/productbuild "${product_arguments[@]}" "$OUT"
 
 echo "=== verify signature ==="
-/usr/sbin/pkgutil --check-signature "$OUT" | head -6
+if [[ $PRIVATE_UNSIGNED == "false" ]]; then
+  /usr/sbin/pkgutil --check-signature "$OUT" | head -6
+else
+  echo "PRIVATE TEST PACKAGE: unsigned and unnotarized"
+fi
 
 echo "PKG_BUILT: $OUT"
 echo "sha256: $(/usr/bin/shasum -a 256 "$OUT" | awk '{print $1}')"
