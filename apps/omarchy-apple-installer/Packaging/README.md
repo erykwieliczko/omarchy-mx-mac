@@ -157,6 +157,22 @@ M4 distribution; a PKG is already part of the repository's helper design.
 The payload still needs temporary download space. The current staging cache is
 retained for retries; successful installation does not yet purge that cache.
 
+### Private J713 partition reset
+
+`uninstall-omarchy.command` is a standalone macOS Desktop utility for resetting
+the private J713 fresh-install layout. It discovers the running macOS store and
+requires the adjacent Omarchy stub, labeled ESP, boot and root partitions.
+`--check` performs read-only detection without sudo or confirmation.
+
+Normal invocation requests administrator access and an `ERASE` confirmation,
+selects and verifies the running macOS as the default startup disk, removes the
+four Omarchy partitions and expands macOS to the System Recovery boundary.
+Apple ISC and System Recovery are preserved. Any unexpected layout or changed
+partition identity stops execution. Logs go to
+`~/Library/Logs/Omarchy-Uninstall/`. It does not reboot or remove the macOS
+installer application. The destructive path requires the owner's smoke test;
+automated tests simulate disk operations and live qualification uses `--check`.
+
 ### Engine diagnostics
 
 Inspection and planning retain diagnostics under
