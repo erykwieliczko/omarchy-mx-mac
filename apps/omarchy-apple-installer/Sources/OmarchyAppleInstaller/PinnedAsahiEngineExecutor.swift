@@ -212,8 +212,11 @@
       process.currentDirectoryURL = bundle
       let inputPipe = standardInput == nil ? nil : Pipe()
       process.standardInput = inputPipe ?? FileHandle.nullDevice
-      process.standardOutput = FileHandle.nullDevice
-      process.standardError = FileHandle.nullDevice
+      let diagnostics = try EngineDiagnostics(
+        parent: executionParent,
+        operation: additionalEnvironment["OMARCHY_ENGINE_MODE"] ?? "unknown",
+        standardInput: standardInput)
+      try diagnostics.attach(to: process)
       do {
         try process.run()
         if let standardInput, let inputPipe {
@@ -222,8 +225,23 @@
         }
         process.waitUntilExit()
       } catch {
-        throw PinnedAsahiEngineExecutionError.launchFailed
+        if process.isRunning {
+          process.terminate()
+          process.waitUntilExit()
+        }
+        // terminationStatus is only defined after a successful launch.
+        if process.processIdentifier != 0 {
+          _ = diagnostics.finish(process: process, bundle: bundle, transcript: transcriptURL)
+        } else {
+          diagnostics.cancel()
+        }
+        throw EngineDiagnosticFailure(
+          operation: additionalEnvironment["OMARCHY_ENGINE_MODE"] ?? "unknown",
+          logDirectory: diagnostics.directory.path,
+          detail: "Could not launch or communicate with the engine: \(error)")
       }
+      let diagnosticTail = diagnostics.finish(
+        process: process, bundle: bundle, transcript: transcriptURL)
       guard process.terminationReason == .exit,
         process.terminationStatus == 0
       else {
@@ -236,9 +254,10 @@
           throw PinnedAsahiEngineExecutionError
             .recoveryAuthorizationFailed
         }
-        throw PinnedAsahiEngineExecutionError.engineExited(
-          process.terminationStatus
-        )
+        throw EngineDiagnosticFailure(
+          operation: additionalEnvironment["OMARCHY_ENGINE_MODE"] ?? "unknown",
+          logDirectory: diagnostics.directory.path,
+          detail: "Exit \(process.terminationStatus). \(diagnosticTail)")
       }
       return try readTranscript(transcriptURL)
     }

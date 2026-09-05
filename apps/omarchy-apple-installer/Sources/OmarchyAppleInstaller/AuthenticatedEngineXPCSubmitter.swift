@@ -30,6 +30,7 @@
     case recoveryAuthorizationFailed
     case machineOwnerCredentialsRejected
     case helperRejected(domain: String, code: Int)
+    case engineFailed(EngineDiagnosticFailure)
     case emptyResponse
   }
 
@@ -231,7 +232,17 @@
       "com.omarchy.mx.installer.machine-owner-authorization"
     static let machineOwnerAuthorizationCode = 1
 
+    private static let diagnosticDomain = "com.omarchy.mx.installer.engine-diagnostic"
+
     static func serviceError(for error: any Error) -> NSError {
+      if let failure = error as? EngineDiagnosticFailure {
+        return NSError(
+          domain: diagnosticDomain, code: 1,
+          userInfo: [
+            "operation": failure.operation, "logDirectory": failure.logDirectory,
+            "detail": failure.detail, NSLocalizedDescriptionKey: failure.description,
+          ])
+      }
       if let executionError = error
         as? PinnedAsahiEngineExecutionError,
         executionError == .recoveryAuthorizationFailed
@@ -257,6 +268,16 @@
     static func submissionError(
       _ error: NSError
     ) -> EngineXPCSubmissionError {
+      if error.domain == diagnosticDomain, error.code == 1,
+        let operation = error.userInfo["operation"] as? String,
+        let directory = error.userInfo["logDirectory"] as? String,
+        let detail = error.userInfo["detail"] as? String,
+        operation.utf8.count <= 128, directory.utf8.count <= 4096, detail.utf8.count <= 16384
+      {
+        return .engineFailed(
+          EngineDiagnosticFailure(
+            operation: operation, logDirectory: directory, detail: detail))
+      }
       if error.domain == recoveryAuthorizationDomain,
         error.code == recoveryAuthorizationCode
       {

@@ -6,6 +6,17 @@
   @testable import OmarchyInstallerUXCore
 
   final class PlainLanguageTests: XCTestCase {
+    func testEngineFailureShowsLogsWithoutClaimingNoDiskWork() {
+      let diagnostic = EngineDiagnosticFailure(
+        operation: "install", logDirectory: "/private/logs/run", detail: "Exit 1. Traceback")
+      for error: any Error in [diagnostic, EngineXPCSubmissionError.engineFailed(diagnostic)] {
+        let display = PlainLanguage.failure(for: error)
+        XCTAssertTrue(display.technicalDetail?.contains("Traceback") == true)
+        XCTAssertTrue(display.technicalDetail?.contains("/private/logs/run") == true)
+        XCTAssertFalse(display.plainDetail.contains("Nothing was changed"))
+      }
+    }
+
     func testEveryPhaseHasADistinctTitle() {
       let phases = [
         "preflight", "existing_removal", "apfs_preparation", "stub_and_esp",

@@ -39,6 +39,28 @@
       XCTAssertTrue(try executionEntries(in: scratch).isEmpty)
     }
 
+    func testFailedInspectionPreservesTracebackAndTranscriptAfterCleanup() async throws {
+      let fixture = try makeFixture(exitCode: 1)
+      defer { try? FileManager.default.removeItem(at: fixture.root) }
+      let archive = try PinnedAsahiEngineArchive(
+        fileURL: fixture.package.engineURL,
+        expectedDigest: try digest(of: fixture.package.engineURL),
+        expectedSizeBytes: try size(of: fixture.package.engineURL))
+      let executor = PinnedAsahiEngineExecutor(effectiveUserID: { 501 })
+      do {
+        _ = try await executor.inspect(archive, in: fixture.root)
+        XCTFail("Expected inspection failure")
+      } catch let failure as EngineDiagnosticFailure {
+        XCTAssertEqual(failure.operation, "inspect")
+        XCTAssertTrue(failure.detail.contains("synthetic engine failure"))
+        let directory = URL(fileURLWithPath: failure.logDirectory)
+        XCTAssertEqual(
+          try Data(contentsOf: directory.appendingPathComponent("transcript.jsonl")),
+          fixture.transcript)
+        XCTAssertTrue(try executionEntries(in: fixture.root).isEmpty)
+      }
+    }
+
     func testReadOnlyInspectionRejectsChangedArchiveDigest() async throws {
       let fixture = try makeFixture()
       defer { try? FileManager.default.removeItem(at: fixture.root) }
@@ -246,10 +268,14 @@
           authorization: try machineOwnerAuthorization()
         )
       ) {
-        XCTAssertEqual(
-          $0 as? PinnedAsahiEngineExecutionError,
-          .engineExited(17)
-        )
+        guard let failure = $0 as? EngineDiagnosticFailure else {
+          return XCTFail("Expected persistent engine diagnostics: \($0)")
+        }
+        XCTAssertEqual(failure.operation, "install")
+        XCTAssertTrue(failure.detail.contains("Exit 17"))
+        XCTAssertTrue(
+          FileManager.default.fileExists(
+            atPath: failure.logDirectory + "/stderr.log"))
       }
       XCTAssertTrue(try executionEntries(in: fixture.root).isEmpty)
       XCTAssertEqual(try journalEntries(in: fixture.root).count, 1)
@@ -473,6 +499,7 @@
         esac
         /bin/cp "$PWD/transcript.jsonl" "$OMARCHY_ENGINE_JOURNAL"
         \(checkpointCommands.joined(separator: "\n"))
+        echo "synthetic engine failure" >&2
         exit \(exitCode)
         """
       try script.data(using: .utf8)?.write(

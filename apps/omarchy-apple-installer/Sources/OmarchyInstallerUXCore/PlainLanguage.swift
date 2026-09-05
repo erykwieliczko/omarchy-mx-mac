@@ -234,11 +234,28 @@
     /// Maps a thrown error to the four-part failure card the screens render.
     /// `technicalDetail` always preserves `String(describing:)` so nothing is
     /// lost behind the plain-language headline.
+    private static func engineFailure(_ failure: EngineDiagnosticFailure) -> FailureDisplay {
+      FailureDisplay(
+        headline: "The installer engine stopped during \(failure.operation)",
+        plainDetail: "The engine’s diagnostic output has been saved.",
+        technicalDetail: failure.description,
+        remedy: "Inspect the logs before retrying: \(failure.logDirectory)")
+    }
+
     public static func failure(
       for error: any Error,
       retryRecoveryAvailable: Bool = false
     ) -> FailureDisplay {
       let technical = String(describing: error)
+
+      if let failure = error as? EngineDiagnosticFailure {
+        return engineFailure(failure)
+      }
+      if let submission = error as? EngineXPCSubmissionError,
+        case .engineFailed(let failure) = submission
+      {
+        return engineFailure(failure)
+      }
 
       if retryRecoveryAvailable {
         return FailureDisplay(
