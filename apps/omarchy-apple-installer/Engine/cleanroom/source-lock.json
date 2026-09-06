@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "76faa42eac4676a515fd119f06e4119ac813770b23fc70207a5ce010302cb7cf"
+      "sha256": "c9251a217caa4e8f2f9520c72e102112c8065ec3267e495bb83111e025d05633"
     },
     {
       "path": "cleanroom/adapter.py",
@@ -34,7 +34,7 @@
     },
     {
       "path": "cleanroom/build_release.py",
-      "sha256": "c616a07449afd84007462a30a301c215ad5c8cc68a2f3133f919538b625ac15b"
+      "sha256": "38eb7724fc39c15e729098260310b10c96a76e9d64ba930d3d6aec00aaa88c4e"
     },
     {
       "path": "cleanroom/build_restore_package.py",

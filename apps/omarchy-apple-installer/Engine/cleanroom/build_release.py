@@ -26,7 +26,7 @@ def digest(path):
     return 'sha256:' + hasher.hexdigest()
 
 
-def build(engine, payload, destination, artifact_base_url=None, bundle_payload=False, private_http=False, execution_scratch_bytes=None):
+def build(engine, payload, destination, artifact_base_url=None, bundle_payload=False, private_http=False, execution_scratch_bytes=None, payload_source_url=None):
     if artifact_base_url is None:
         raise ValueError("an explicit HTTPS artifact base URL is required; placeholder URLs are not usable releases")
     parsed = urlsplit(artifact_base_url)
@@ -38,6 +38,11 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     if (not valid_scheme or not parsed.hostname or parsed.username or parsed.password
             or parsed.query or parsed.fragment or artifact_base_url.endswith('/')):
         raise ValueError("artifact base must be an HTTPS directory without credentials, query or trailing slash")
+    if payload_source_url is not None:
+        source = urlsplit(payload_source_url)
+        if (source.scheme != 'https' or not source.hostname or source.username or source.password
+                or source.query or source.fragment or source.path.rsplit('/', 1)[-1] != quote(payload.name)):
+            raise ValueError('existing payload URL must be HTTPS with the exact payload basename')
     if type(execution_scratch_bytes) is not int or not 0 < execution_scratch_bytes < 2**64:
         raise ValueError("a qualified positive execution scratch budget is required")
     templates = json.loads((engine / 'installer_data.json').read_text()).get('os_list', [])
@@ -83,7 +88,8 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
         # Only the inspection engine belongs in the app. The existing verified
         # downloader obtains metadata and OS payload from the signed URLs.
         model[role + 'Digest'] = digest(source)
-        model[role + 'Artifact'] = {'sourceURL': artifact_base_url + '/' + quote(source.name),
+        model[role + 'Artifact'] = {'sourceURL': (payload_source_url if role == 'payload' and payload_source_url
+                                                else artifact_base_url + '/' + quote(source.name)),
                                    'fileName': source.name, 'sizeBytes': source.stat().st_size}
         if role == 'engine' or bundle_payload:
             shutil.copyfile(source, assets / source.name)
@@ -116,6 +122,8 @@ if __name__ == '__main__':
         parser.add_argument(name, type=Path)
     parser.add_argument('--artifact-base-url', required=True,
                         help='HTTPS directory serving the exact engine, metadata, and payload files')
+    parser.add_argument('--payload-source-url',
+                        help='reuse an already hosted HTTPS payload; local receipt and hash validation still apply')
     parser.add_argument('--execution-scratch-bytes', type=int, required=True,
                         help='qualified retained installation workspace bytes, excluding handoff copies')
     parser.add_argument('--private-http', action='store_true',

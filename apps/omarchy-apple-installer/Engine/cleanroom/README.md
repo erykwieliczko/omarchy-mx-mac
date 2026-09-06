@@ -173,3 +173,7 @@ an already cached block. Choosing the window from the remaining bytes after
 that cached prefix causes repeated 1 MiB requests and connection overhead.
 The regression exercises unaligned reads, byte correctness, cache bounds,
 and the final partial block; small ZIP metadata reads still fetch one block.
+
+Release assembly accepts `--payload-source-url` to reuse an unchanged,
+already hosted HTTPS OS payload. Its local receipt, component profile, size,
+and hash must still pass validation before the new catalog is signed.

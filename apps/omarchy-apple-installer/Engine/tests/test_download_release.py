@@ -51,6 +51,41 @@ class DownloadReleaseTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(verifier), str(output), '--engine-only'], capture_output=True)
             self.assertNotEqual(result.returncode, 0)
 
+    def test_reusing_hosted_payload_preserves_signed_byte_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            engine, payload = self.candidate(root)
+            with patch('builtins.print'):
+                build_release.build(engine, payload, root / 'Release',
+                                    'https://downloads.example.test/new',
+                                    execution_scratch_bytes=8_589_934_592,
+                                    payload_source_url='https://downloads.example.test/old/payload.zip')
+            model = json.loads((root / 'Release/catalog.json').read_text())['models'][0]
+            self.assertEqual(model['payloadArtifact']['sourceURL'], 'https://downloads.example.test/old/payload.zip')
+            self.assertEqual(model['payloadDigest'], build_release.digest(payload))
+            self.assertTrue(model['engineArtifact']['sourceURL'].startswith('https://downloads.example.test/new/'))
+            payload.write_bytes(b'changed')
+            with self.assertRaisesRegex(ValueError, 'receipt mismatch'):
+                build_release.build(engine, payload, root / 'BadRelease',
+                                    'https://downloads.example.test/new',
+                                    execution_scratch_bytes=8_589_934_592,
+                                    payload_source_url='https://downloads.example.test/old/payload.zip')
+            self.assertFalse((root / 'BadRelease').exists())
+
+    def test_reused_payload_url_rejects_wrong_name_or_insecure_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            engine, payload = self.candidate(root)
+            for url in ('http://downloads.example.test/payload.zip',
+                        'https://u:p@downloads.example.test/payload.zip',
+                        'https://downloads.example.test/wrong.zip',
+                        'https://downloads.example.test/payload.zip?q=1'):
+                with self.assertRaisesRegex(ValueError, 'payload URL'):
+                    build_release.build(engine, payload, root / 'Release',
+                                        'https://downloads.example.test/new',
+                                        execution_scratch_bytes=8_589_934_592, payload_source_url=url)
+                self.assertFalse((root / 'Release').exists())
+
     def test_stale_receipts_and_component_graph_fail_before_signing(self):
         for changed in ('engine', 'metadata', 'payload', 'profile'):
             with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
