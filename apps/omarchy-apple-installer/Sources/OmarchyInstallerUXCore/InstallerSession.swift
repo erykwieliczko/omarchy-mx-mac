@@ -110,6 +110,23 @@
         && environment.helperStatus.isEnabled
     }
 
+    public private(set) var developerOverride: DeveloperModelOverride?
+
+    public var canChangeModel: Bool {
+      guard !isBusy, !hasExecutionStarted else { return false }
+      switch phase {
+      case .welcome, .unsupported, .existingInstallRefused, .planReview, .awaitingInstall:
+        return true
+      default: return false
+      }
+    }
+
+    public func selectModelOverride(_ selection: DeveloperModelOverride?) async {
+      guard canChangeModel, selection != developerOverride else { return }
+      developerOverride = selection
+      await inspect()
+    }
+
     // MARK: Inspection
 
     public func inspect() async {
@@ -119,7 +136,7 @@
       defer { isBusy = false }
 
       do {
-        let host = try await environment.inspect()
+        let host = try await environment.inspect(developerOverride: developerOverride)
         if !host.existingInstalls.isEmpty {
           // Refuse before anything is fetched: no catalog, no download.
           lastHost = host

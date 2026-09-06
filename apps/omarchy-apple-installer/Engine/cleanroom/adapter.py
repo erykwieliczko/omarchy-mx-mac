@@ -151,6 +151,11 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         self.spec = None
         self.workspace = None
 
+    @property
+    def developer_override_enabled(self):
+        runtime = getattr(self.installer, "engine_runtime", None)
+        return getattr(runtime, "developer_model_override", None) == self.profile["device_identifier"]
+
     def preflight(self, plan):
         if self.preflight_complete:
             return
@@ -159,9 +164,10 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         if plan.device_identifier != self.profile["device_identifier"]:
             raise BootInputError("plan model differs from cleanroom profile")
         host = self.installer.sysinfo
-        validate_host(self.profile, product_type=host.product_type,
-                      device_class=host.device_class, board_id=host.board_id,
-                      chip_id=host.chip_id)
+        if not self.developer_override_enabled:
+            validate_host(self.profile, product_type=host.product_type,
+                          device_class=host.device_class, board_id=host.board_id,
+                          chip_id=host.chip_id)
         self.spec = cleanroom_spec(load_metadata(self.metadata_path), self.profile)
         self.stage1_path = Path("boot/m1n1.bin")
         self.verifier_path = Path("tools/omarchy-restore-image").resolve()
@@ -250,7 +256,8 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         script = Path("cleanroom/step2.sh").read_text()
         values = {
             "VGID": self.installer.ins.osi.vgid,
-            "PRODUCT": self.profile["product_type"],
+            "PRODUCT": (self.installer.sysinfo.product_type if self.developer_override_enabled
+                        else self.profile["product_type"]),
             "ESP": esp_uuid.upper(),
             "STAGE1_SHA256": hashlib.sha256(stage1).hexdigest(),
             "STAGE1_SIZE": str(len(stage1)),

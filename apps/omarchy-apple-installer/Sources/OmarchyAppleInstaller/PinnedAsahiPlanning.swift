@@ -60,6 +60,7 @@ public struct PinnedAsahiPlanRequest: Equatable, Sendable, Encodable {
 }
 
 public struct PinnedAsahiPlanIdentity: Equatable, Sendable, Encodable {
+  public let developerOverride: DeveloperModelOverride?
   public let schemaVersion = 1
   public let engineVersion: String
   public let engineDigest: String
@@ -72,7 +73,8 @@ public struct PinnedAsahiPlanIdentity: Equatable, Sendable, Encodable {
     engineDigest: String,
     metadataDigest: String,
     payloadDigest: String,
-    repairManifestDigest: String? = nil
+    repairManifestDigest: String? = nil,
+    developerOverride: DeveloperModelOverride? = nil
   ) throws {
     guard !engineVersion.isEmpty,
       engineVersion.utf8.count <= 128,
@@ -84,6 +86,7 @@ public struct PinnedAsahiPlanIdentity: Equatable, Sendable, Encodable {
     else {
       throw PinnedAsahiPlanningError.invalidEngineIdentity
     }
+    self.developerOverride = developerOverride
     self.engineVersion = engineVersion
     self.engineDigest = engineDigest
     self.metadataDigest = metadataDigest
@@ -93,18 +96,21 @@ public struct PinnedAsahiPlanIdentity: Equatable, Sendable, Encodable {
 
   public init(
     engineVersion: String,
-    installer: PinnedInstallerRecord
+    installer: PinnedInstallerRecord,
+    developerOverride: DeveloperModelOverride? = nil
   ) throws {
     try self.init(
       engineVersion: engineVersion,
       engineDigest: installer.engineDigest,
       metadataDigest: installer.metadataDigest,
       payloadDigest: installer.payloadDigest,
-      repairManifestDigest: installer.repairManifestDigest
+      repairManifestDigest: installer.repairManifestDigest,
+      developerOverride: developerOverride
     )
   }
 
   enum CodingKeys: String, CodingKey {
+    case developerOverride = "developer_model_override"
     case schemaVersion = "schema_version"
     case engineVersion = "engine_version"
     case engineDigest = "engine_digest"

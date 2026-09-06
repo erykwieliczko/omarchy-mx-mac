@@ -1,6 +1,7 @@
 import Foundation
 
 public struct ClosedEngineCandidateRequest: Sendable {
+  public let developerOverride: DeveloperModelOverride?
   public let planningTranscript: Data
   public let catalogPayload: Data
   public let catalogSignature: Data
@@ -14,8 +15,10 @@ public struct ClosedEngineCandidateRequest: Sendable {
     catalogSignature: Data,
     trustRoot: AppOwnedTrustRoot,
     validationTime: Date,
-    previouslyAcceptedCatalog: AcceptedCatalogIdentity? = nil
+    previouslyAcceptedCatalog: AcceptedCatalogIdentity? = nil,
+    developerOverride: DeveloperModelOverride? = nil
   ) {
+    self.developerOverride = developerOverride
     self.planningTranscript = planningTranscript
     self.catalogPayload = catalogPayload
     self.catalogSignature = catalogSignature
@@ -145,7 +148,10 @@ public struct ClosedEngineProcessAdapter: Sendable {
     guard let plan = transcript.plan else {
       throw ClosedEngineProcessError.planUnavailable
     }
-    guard plan.deviceIdentifier == transcript.deviceIdentifier,
+    guard
+      request.developerOverride == nil
+        || request.developerOverride?.rawValue == plan.deviceIdentifier,
+      plan.deviceIdentifier == transcript.deviceIdentifier,
       pinnedInstaller.engineVersion == nil
         || plan.engineVersion == pinnedInstaller.engineVersion,
       plan.engineDigest == pinnedInstaller.engineDigest,
@@ -158,7 +164,8 @@ public struct ClosedEngineProcessAdapter: Sendable {
     let candidateIdentity = CandidateBoundPlanIdentity(
       plan: plan,
       catalogIdentity: catalog.acceptedIdentity,
-      trustRootFingerprint: request.trustRoot.fingerprint
+      trustRootFingerprint: request.trustRoot.fingerprint,
+      developerOverride: request.developerOverride
     )
     return ClosedEngineInvocation(
       candidateIdentity: candidateIdentity,

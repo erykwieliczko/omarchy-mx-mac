@@ -339,6 +339,7 @@
   /// replays a recorded journal. Neither ever hands a credential back.
   public protocol InstallerEnvironment: Sendable {
     func inspect() async throws -> HostDisplay
+    func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay
     /// `omarchyBytes` asks the planner for that much space for Omarchy; nil
     /// keeps the balanced default. The engine still clamps the request to the
     /// candidate's real minimum and maximum.
@@ -369,7 +370,14 @@
     func requestShutdown() -> Bool
   }
 
+  public enum DeveloperOverrideError: Error { case unavailable }
+
   extension InstallerEnvironment {
+    public func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
+      guard developerOverride == nil else { throw DeveloperOverrideError.unavailable }
+      return try await inspect()
+    }
+
     public func requestShutdown() -> Bool { false }
   }
 #endif

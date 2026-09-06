@@ -7,6 +7,25 @@
 
   @MainActor
   final class InstallerSessionTests: XCTestCase {
+    func testChangingModelDiscardsApprovalAndRequiresNewPlan() async throws {
+      let environment = MockInstallerEnvironment()
+      let session = InstallerSession(environment: environment)
+      await session.inspect()
+      await session.continueToPlan()
+      session.continueToPlanReview()
+      session.setAcknowledged(true)
+      session.approve()
+      XCTAssertTrue(session.canStartInstallation)
+      await session.selectModelOverride(.m4MacBookAir)
+      XCTAssertEqual(environment.lastOverride, .m4MacBookAir)
+      XCTAssertFalse(session.canStartInstallation)
+      XCTAssertFalse(environment.hasApprovedPlan)
+      guard case .welcome = session.phase else { return XCTFail("Expected new inspection") }
+      await session.selectModelOverride(nil)
+      XCTAssertNil(environment.lastOverride)
+      XCTAssertNil(session.developerOverride)
+    }
+
     func testHappyPathFollowsTheTransitionTable() async throws {
       let environment = MockInstallerEnvironment()
       let session = InstallerSession(environment: environment)
@@ -510,6 +529,12 @@
 
     var hasApprovedPlan: Bool { approved }
     var helperStatus: HelperDisplay { helper }
+
+    var lastOverride: DeveloperModelOverride?
+    func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
+      lastOverride = developerOverride
+      return try await inspect()
+    }
 
     func inspect() async throws -> HostDisplay {
       approved = false

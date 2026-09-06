@@ -44,6 +44,56 @@ class CleanroomAdapterTests(unittest.TestCase):
                 installer.sysinfo = SimpleNamespace(**(values | {key: value}))
                 self.assertFalse(installer.host_supported())
 
+    def test_override_bypasses_only_model_gate(self):
+        installer = object.__new__(CleanroomInstaller)
+        installer.cleanroom_profile = self.profile
+        installer.engine_runtime = SimpleNamespace(mode="install", developer_model_override="apple,j713")
+        installer.sysinfo = SimpleNamespace(product_type="Mac99,1", device_class="j999ap",
+                                            board_id=99, chip_id=99, boot_mode="macOS", macos_ver="26.6.2")
+        self.assertTrue(installer.host_supported())
+        installer.sysinfo.boot_mode = "one true recoveryOS"
+        self.assertFalse(installer.host_supported())
+        installer.sysinfo.boot_mode = "macOS"
+        installer.engine_runtime.developer_model_override = None
+        self.assertFalse(installer.host_supported())
+
+    def test_override_inspection_normalizes_selected_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = CleanroomRuntime.from_environment({"OMARCHY_ENGINE_MODE": "inspect",
+                "OMARCHY_ENGINE_JOURNAL": str(Path(directory) / "journal"),
+                "OMARCHY_DEVELOPER_MODEL_OVERRIDE": "apple,j713"})
+            runtime.inspect("j999ap", True)
+            self.assertEqual(runtime.device_identifier, "apple,j713")
+
+    def test_override_requires_matching_planning_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            identity = Path(directory) / "identity.json"
+            values = {"schema_version": 1, "engine_version": "v1", "engine_digest": "sha256:" + "a" * 64,
+                      "metadata_digest": "sha256:" + "b" * 64, "payload_digest": "sha256:" + "c" * 64}
+            identity.write_text(json.dumps(values))
+            env = {"OMARCHY_ENGINE_MODE": "plan", "OMARCHY_ENGINE_JOURNAL": str(Path(directory) / "journal"),
+                   "OMARCHY_ENGINE_IDENTITY": str(identity), "OMARCHY_ENGINE_REQUEST": "request.json",
+                   "OMARCHY_DEVELOPER_MODEL_OVERRIDE": "apple,j713"}
+            with self.assertRaisesRegex(ValueError, "authenticated identity"):
+                CleanroomRuntime.from_environment(env)
+            values["developer_model_override"] = "apple,j713"
+            identity.write_text(json.dumps(values))
+            self.assertEqual(CleanroomRuntime.from_environment(env).developer_model_override, "apple,j713")
+            del env["OMARCHY_DEVELOPER_MODEL_OVERRIDE"]
+            with self.assertRaisesRegex(ValueError, "authenticated identity"):
+                CleanroomRuntime.from_environment(env)
+
+    def test_override_recovery_script_uses_actual_product(self):
+        adapter = object.__new__(CleanroomStage1Adapter)
+        adapter.profile = self.profile
+        adapter.installer = SimpleNamespace(engine_runtime=SimpleNamespace(developer_model_override="apple,j713"),
+            sysinfo=SimpleNamespace(product_type="Mac99,1"), ins=SimpleNamespace(osi=SimpleNamespace(vgid=VGID)))
+        with patch("adapter.Path.read_text", return_value="PRODUCT=##PRODUCT## VGID=##VGID##"):
+            self.assertIn("PRODUCT=Mac99,1", adapter._recovery_script(ESP, b"m1n1"))
+            adapter.installer.sysinfo.product_type = "bad;command"
+            with self.assertRaises(BootInputError):
+                adapter._recovery_script(ESP, b"m1n1")
+
     def test_unknown_boot_policy_is_only_allowed_for_unprivileged_inventory(self):
         installer = object.__new__(CleanroomInstaller)
         installer.cleanroom_profile = self.profile

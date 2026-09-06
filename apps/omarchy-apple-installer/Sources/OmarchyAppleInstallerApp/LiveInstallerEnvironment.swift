@@ -55,8 +55,21 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   // MARK: Inspection
 
   func inspect() async throws -> HostDisplay {
+    try await inspect(developerOverride: nil)
+  }
+
+  func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
+    lock.withLock {
+      hostInspection = nil
+      engineInspection = nil
+      engineInspectionTranscript = nil
+      planReview = nil
+      preparedPlan = nil
+      planApproval = nil
+      releaseConfiguration = nil
+    }
     let host = try await Task.detached(priority: .userInitiated) {
-      try AppleSiliconHostInspector().inspect()
+      try AppleSiliconHostInspector().inspect(developerOverride: developerOverride)
     }.value
 
     var engine: ValidatedEngineTranscript?
@@ -64,7 +77,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     var engineFailure: String?
     do {
       let inspection = try await EngineInspectionRunner().inspect(
-        deviceIdentifier: host.identity.deviceIdentifier)
+        deviceIdentifier: host.identity.deviceIdentifier, developerOverride: host.developerOverride)
       guard
         inspection.validated.deviceIdentifier == host.identity.deviceIdentifier
       else {
@@ -150,7 +163,8 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       expectedDigest: stagedEngine.artifact.expectedDigest,
       expectedSizeBytes: stagedEngine.artifact.expectedSizeBytes
     )
-    let signedInspection = try await EngineInspectionRunner().inspect(archive)
+    let signedInspection = try await EngineInspectionRunner().inspect(
+      archive, developerOverride: host.developerOverride)
     guard
       signedInspection.validated.deviceIdentifier
         == host.identity.deviceIdentifier,
@@ -284,9 +298,10 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
 
     // Re-inspection identity match: the Mac that is about to be written to
     // must still be the Mac the plan was bound to.
-    let currentHost = try AppleSiliconHostInspector().inspect()
+    let currentHost = try AppleSiliconHostInspector().inspect(
+      developerOverride: host.developerOverride)
     guard
-      currentHost.identity.deviceIdentifier == host.identity.deviceIdentifier
+      currentHost.identity == host.identity
     else {
       throw InstallerAppError.hostChanged
     }

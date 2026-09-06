@@ -7,6 +7,30 @@ final class ClosedEngineProcessAdapterTests: XCTestCase {
   private let adapter = ClosedEngineProcessAdapter()
   private let now = Date(timeIntervalSince1970: 1_788_000_000)
 
+  func testOverrideChangesApprovalBindingForIdenticalPlan() throws {
+    let automatic = try makeRequest(deviceIdentifier: "apple,j713")
+    let overridden = ClosedEngineCandidateRequest(
+      planningTranscript: automatic.planningTranscript, catalogPayload: automatic.catalogPayload,
+      catalogSignature: automatic.catalogSignature, trustRoot: automatic.trustRoot,
+      validationTime: automatic.validationTime, developerOverride: .m4MacBookAir)
+    let first = try adapter.candidateIdentity(for: automatic)
+    let second = try adapter.candidateIdentity(for: overridden)
+    XCTAssertEqual(first.planDigest, second.planDigest)
+    XCTAssertNotEqual(first.bindingDigest, second.bindingDigest)
+    XCTAssertEqual(first.format, 1)
+    XCTAssertEqual(second.format, 2)
+    XCTAssertEqual(second.developerOverride, .m4MacBookAir)
+  }
+
+  func testOverrideCannotSelectDifferentCatalogPayload() throws {
+    let original = try makeRequest(deviceIdentifier: "apple,j314s")
+    let overridden = ClosedEngineCandidateRequest(
+      planningTranscript: original.planningTranscript, catalogPayload: original.catalogPayload,
+      catalogSignature: original.catalogSignature, trustRoot: original.trustRoot,
+      validationTime: original.validationTime, developerOverride: .m4MacBookAir)
+    XCTAssertThrowsError(try adapter.candidateIdentity(for: overridden))
+  }
+
   func testCancellationStopsBeforeProcessExecution() async throws {
     let fixture = try makeFixture()
     let authorization = ControlledAuthorization(decision: .cancelled)

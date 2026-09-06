@@ -120,7 +120,8 @@
       )
       let planIdentity = try PinnedAsahiPlanIdentity(
         engineVersion: engineVersion,
-        installer: request.release.assets.installer
+        installer: request.release.assets.installer,
+        developerOverride: request.host.developerOverride
       )
       let engine = request.release.assets.engine
       let archive = try PinnedAsahiEngineArchive(
@@ -151,7 +152,8 @@
         catalogSignature: request.release.catalogDocuments.signature,
         trustRoot: request.configuration.trustRoot,
         validationTime: request.validationTime,
-        previouslyAcceptedCatalog: request.previouslyAcceptedCatalog
+        previouslyAcceptedCatalog: request.previouslyAcceptedCatalog,
+        developerOverride: request.host.developerOverride
       )
       return PreparedInstallerPlanExecution(
         review: review,

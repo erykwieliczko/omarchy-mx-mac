@@ -2,29 +2,34 @@ import Foundation
 import OmarchyAppleInstallerTrustCore
 
 struct EngineInspectionRunner: Sendable {
-  func inspect(deviceIdentifier: String? = nil) async throws -> EngineInspectionResult {
+  func inspect(deviceIdentifier: String? = nil, developerOverride: DeveloperModelOverride? = nil)
+    async throws -> EngineInspectionResult
+  {
     let scratch = try scratchDirectory()
     if let deviceIdentifier,
       let archive = try SealedEngineArtifactLocator().locate(for: deviceIdentifier)
     {
-      return try await inspect(archive, in: scratch)
+      return try await inspect(archive, developerOverride: developerOverride, in: scratch)
     }
     let archive = try ValidationEngineArtifactLocator().locate()
-    return try await inspect(archive, in: scratch)
+    return try await inspect(archive, developerOverride: developerOverride, in: scratch)
   }
 
   func inspect(
-    _ archive: PinnedAsahiEngineArchive
+    _ archive: PinnedAsahiEngineArchive,
+    developerOverride: DeveloperModelOverride? = nil
   ) async throws -> EngineInspectionResult {
-    try await inspect(archive, in: scratchDirectory())
+    try await inspect(archive, developerOverride: developerOverride, in: scratchDirectory())
   }
 
   private func inspect(
     _ archive: PinnedAsahiEngineArchive,
+    developerOverride: DeveloperModelOverride?,
     in scratch: URL
   ) async throws -> EngineInspectionResult {
     let transcript = try await PinnedAsahiEngineExecutor().inspect(
       archive,
+      developerOverride: developerOverride,
       in: scratch
     )
     return EngineInspectionResult(

@@ -95,6 +95,7 @@
     public func inspect(
       _ archive: PinnedAsahiEngineArchive,
       repairManifestURL: URL? = nil,
+      developerOverride: DeveloperModelOverride? = nil,
       in scratchDirectory: URL
     ) async throws -> Data {
       try validateJournalDirectory(scratchDirectory)
@@ -106,7 +107,8 @@
         journal: nil,
         additionalEnvironment: repairEnvironment(
           mode: "inspect",
-          repairManifestURL: repairManifestURL
+          repairManifestURL: repairManifestURL,
+          developerOverride: developerOverride
         )
       )
     }
@@ -143,6 +145,7 @@
         additionalEnvironment: repairEnvironment(
           mode: "plan",
           repairManifestURL: repairManifestURL,
+          developerOverride: identity.developerOverride,
           additional: [
             "OMARCHY_ENGINE_MODE": "plan",
             "OMARCHY_ENGINE_REQUEST": requestURL.path,
@@ -348,6 +351,9 @@
         "DISTRO": "Omarchy MX Mac",
         "DISTRO_DOCS": "https://omarchy.org/manual/",
       ]
+      if let override = package.developerOverride {
+        environment["OMARCHY_DEVELOPER_MODEL_OVERRIDE"] = override.rawValue
+      }
       if let repairManifestURL = package.repairManifestURL {
         environment["OMARCHY_ENGINE_REPAIR_MANIFEST"] =
           repairManifestURL.path
@@ -358,9 +364,13 @@
     private func repairEnvironment(
       mode: String,
       repairManifestURL: URL?,
+      developerOverride: DeveloperModelOverride? = nil,
       additional: [String: String] = [:]
     ) -> [String: String] {
       var environment = additional
+      if let developerOverride {
+        environment["OMARCHY_DEVELOPER_MODEL_OVERRIDE"] = developerOverride.rawValue
+      }
       environment["OMARCHY_ENGINE_MODE"] = mode
       if let repairManifestURL {
         environment["OMARCHY_ENGINE_REPAIR_MANIFEST"] =

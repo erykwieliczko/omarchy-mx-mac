@@ -17,6 +17,7 @@ struct OnePageInstallerView: View {
   /// the page through the phases that no longer carry them.
   @State private var host: HostDisplay?
   @State private var plan: PlanDisplay?
+  @State private var selectedModel = DeveloperModelOverride.m4MacBookAir
 
   init(environment: any InstallerEnvironment) {
     _session = State(initialValue: InstallerSession(environment: environment))
@@ -31,6 +32,13 @@ struct OnePageInstallerView: View {
 
       header
         .padding(.bottom, 26)
+
+      if session.canChangeModel || session.developerOverride != nil && !session.hasExecutionStarted
+      {
+        developerControls
+          .frame(maxWidth: 560)
+          .padding(.bottom, 18)
+      }
 
       if !centresStage {
         VStack(alignment: .leading, spacing: 14) {
@@ -125,7 +133,9 @@ struct OnePageInstallerView: View {
         if isBlocked {
           StatusBadge(text: PlainLanguage.blockedBadge, kind: .blocked)
         } else {
-          StatusBadge(text: PlainLanguage.supportedBadge, kind: .ok)
+          StatusBadge(
+            text: session.developerOverride == nil
+              ? PlainLanguage.supportedBadge : "Developer override", kind: .ok)
         }
       }
       .lineLimit(1)
@@ -139,6 +149,39 @@ struct OnePageInstallerView: View {
   /// Only the Recovery steps sit in the exact middle of the window (drawn as
   /// an overlay so the header and button don't skew them); everything else
   /// hugs the header.
+  private var developerControls: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Toggle(
+        "OVERRIDE. I'm a dev, I know what I'm doing.",
+        isOn: Binding(
+          get: { session.developerOverride != nil },
+          set: { enabled in
+            Task { await session.selectModelOverride(enabled ? selectedModel : nil) }
+          }
+        )
+      )
+      .toggleStyle(.checkbox)
+      if session.developerOverride != nil {
+        Picker(
+          "Install profile",
+          selection: Binding(
+            get: { selectedModel },
+            set: { model in
+              selectedModel = model
+              Task { await session.selectModelOverride(model) }
+            }
+          )
+        ) {
+          ForEach(DeveloperModelOverride.allCases, id: \.self) { model in
+            Text(model.displayName).tag(model)
+          }
+        }
+      }
+    }
+    .font(.system(size: 13))
+    .disabled(!session.canChangeModel)
+  }
+
   private var centresStage: Bool {
     if case .awaitingRecovery = session.phase {
       return true

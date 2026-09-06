@@ -185,12 +185,12 @@
       {
         "path": "overlay/src/omarchy_execution.py",
         "destination": "src/omarchy_execution.py",
-        "sha256": "1f42d9017353d0ee0d069b97d9cdde0217b5e1b901e2e7b7384465a124461d23"
+        "sha256": "b53f783cea4f90495f00e4a2a3755d3721b69334c34dd0a05d8dfa7b09a0ad95"
       },
       {
         "path": "overlay/src/omarchy_planner.py",
         "destination": "src/omarchy_planner.py",
-        "sha256": "a3202243e26290d2dcd3cb421e922ea3c6edf36c152fe70945513c8cd3b64c88"
+        "sha256": "8df1e31a9a64f09f2483aa11594e9b30bfe737a117328d46cfdd9ac57567ffbf"
       },
       {
         "path": "overlay/src/omarchy_repair.py",
@@ -220,7 +220,7 @@
       {
         "path": "overlay/tests/test_omarchy_execution.py",
         "destination": "tests/test_omarchy_execution.py",
-        "sha256": "4f619afa84be43b50024fdf1e6031474bacb6cfbe6a3bbe007b59b94d8b468c6"
+        "sha256": "29b7d6edf75f73dc672323f286215f5e09bf975573e984f327ea1818c580fe00"
       },
       {
         "path": "overlay/tests/test_omarchy_planner.py",

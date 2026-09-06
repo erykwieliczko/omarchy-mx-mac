@@ -148,3 +148,20 @@ local development state and is never included in release assets.
 Mount admission resolves filesystem aliases such as `/var` and `/private/var`
 before comparing the requested directory with hdiutil's reported mount path.
 Qualification must exercise the helper's `/var/db` path, not just `/Users/Shared`.
+
+### Explicit developer model override
+
+The app starts in automatic detection mode. The developer checkbox selects a
+release profile (currently M4 MacBook Air / `apple,j713`), including on a model
+that automatic detection rejects or cannot identify. Switching it clears the
+plan and its approval. The selected profile is included in the authenticated
+handoff identity and a version-2 candidate approval digest; the helper and
+engine reject mismatched selections. Automatic approvals keep their version-1
+binding unchanged.
+
+Override bypasses only the hardware tuple gate. The engine preserves actual
+sysinfo for Apple personalization and binds Recovery's product check to the
+actual Mac. Boot mode, macOS baseline, signed artifacts, firmware validation,
+live disk layout, existing-install refusal, and owner authorization still
+apply. Selecting a profile does not supply drivers or Apple restore support
+for other hardware. The app opts out of macOS relaunch at login on startup.

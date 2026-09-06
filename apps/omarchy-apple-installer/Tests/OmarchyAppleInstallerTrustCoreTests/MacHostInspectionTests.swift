@@ -40,6 +40,27 @@
       )
     }
 
+    func testExplicitOverrideAcceptsUnknownModelAndPreservesObservedChip() throws {
+      let inspector = makeInspector(model: "Mac99,1", chip: "Apple M99", target: "")
+      XCTAssertThrowsError(try inspector.inspect())
+      let host = try inspector.inspect(developerOverride: .m4MacBookAir)
+      XCTAssertEqual(host.identity.deviceIdentifier, "apple,j713")
+      XCTAssertEqual(host.identity.model, "Mac99,1")
+      XCTAssertEqual(host.identity.chip, "Apple M99")
+      XCTAssertEqual(host.developerOverride, .m4MacBookAir)
+      XCTAssertEqual(host.eligibility, .requiresSignedCatalog)
+    }
+
+    func testExplicitOverrideDoesNotEnableAutomaticModelSupport() throws {
+      let inspector = makeInspector(target: "J614s")
+      XCTAssertEqual(
+        try inspector.inspect(developerOverride: .m4MacBookAir).identity.deviceIdentifier,
+        "apple,j713")
+      guard case .blocked = try inspector.inspect().eligibility else {
+        return XCTFail("Unchecked override must restore the hardware gate")
+      }
+    }
+
     func testUnsafeContainerIdentifierStopsBeforeLimitsQuery() {
       let commands = FixtureReadOnlyCommandRunner(
         root: propertyList([

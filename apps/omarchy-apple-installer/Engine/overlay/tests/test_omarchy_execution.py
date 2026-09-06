@@ -57,6 +57,28 @@ class ExecutionAdmissionTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             plan.length_bytes = 1
 
+    def test_developer_override_requires_its_own_approval_binding(self):
+        self.request = self._request(device_identifier="apple,j713")
+        self.identity = self._identity()
+        self.identity["developer_model_override"] = "apple,j713"
+        self._write_inputs()
+        self._assert_rejected("override approval binding mismatch")
+        request, identity = self.request, self.identity
+        fields = ["omarchy.apple.candidate-bound-plan", "2", identity["trust_root_fingerprint"],
+                  str(identity["catalog_sequence"]), identity["catalog_payload_digest"],
+                  request["plan_digest"], request["device_identifier"], request["store_identifier"],
+                  request["layout_digest"], request["candidate_kind"], request["source_identifier"],
+                  str(request["offset_bytes"]), str(request["length_bytes"]),
+                  identity["engine_digest"], identity["metadata_digest"], identity["payload_digest"],
+                  "apple,j713"]
+        self.binding_digest = self._length_prefixed(fields, prefix="sha256:")
+        self.identity["binding_digest"] = self.binding_digest
+        self._write_inputs()
+        self.assertEqual(self._admit().device_identifier, "apple,j713")
+        self.identity["developer_model_override"] = "apple,j999"
+        self._write_inputs()
+        self._assert_rejected("unknown developer model")
+
     def test_valid_resize_candidate_uses_end_aligned_extent(self):
         self.inventory = self._inventory(kind="resize")
         candidate = self.inventory["candidates"][0]

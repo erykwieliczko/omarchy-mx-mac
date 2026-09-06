@@ -10,11 +10,11 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "176f1b51aa1ac6050fe2b7d56d8097a9515134b79ec61425c0204919497c3e37"
+      "sha256": "2b6843bbba68b0d59e419db0a95d3b74e42d0d34ef2f15467d59729015913b8d"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "03dad84ae3d79b94e786c94c644ef3720d2d22d56ff3394ddd6e2cd0026ce1aa"
+      "sha256": "ec6758ab7c4ef4cf02edbc1991167ac20ecdf83430345d2ca0e81e1fd4a5d342"
     },
     {
       "path": "cleanroom/apple_inputs.py",
@@ -46,7 +46,7 @@
     },
     {
       "path": "cleanroom/main.py",
-      "sha256": "dcb6054d672b1fe17855ec1b7bf1aadc445a42217426bc58cd225be9a8e0bdbf"
+      "sha256": "b53c2ced3e27577bfbfc800bb635259a88455cdb9b7fcadfc7da62987583cf3d"
     },
     {
       "path": "cleanroom/native-artifacts.json",
@@ -94,7 +94,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "6dd23ae35c4cc2d51ae3012947f373d1550e44b7a3df9347e9a93d851e01cd4b"
+      "sha256": "f4f8c55884c27bf6f84141bfdc7c219e43bf74e7865e6c5f6a80a36cb479cdd1"
     },
     {
       "path": "installer_data.json",
@@ -122,11 +122,11 @@
     },
     {
       "path": "overlay/src/omarchy_execution.py",
-      "sha256": "1f42d9017353d0ee0d069b97d9cdde0217b5e1b901e2e7b7384465a124461d23"
+      "sha256": "b53f783cea4f90495f00e4a2a3755d3721b69334c34dd0a05d8dfa7b09a0ad95"
     },
     {
       "path": "overlay/src/omarchy_planner.py",
-      "sha256": "a3202243e26290d2dcd3cb421e922ea3c6edf36c152fe70945513c8cd3b64c88"
+      "sha256": "8df1e31a9a64f09f2483aa11594e9b30bfe737a117328d46cfdd9ac57567ffbf"
     },
     {
       "path": "overlay/src/omarchy_repair.py",
@@ -150,7 +150,7 @@
     },
     {
       "path": "overlay/tests/test_omarchy_execution.py",
-      "sha256": "4f619afa84be43b50024fdf1e6031474bacb6cfbe6a3bbe007b59b94d8b468c6"
+      "sha256": "29b7d6edf75f73dc672323f286215f5e09bf975573e984f327ea1818c580fe00"
     },
     {
       "path": "overlay/tests/test_omarchy_planner.py",
@@ -178,7 +178,7 @@
     },
     {
       "path": "source-lock.json",
-      "sha256": "47ceaf6643675e0025b62a43a349198c253f706a2a134994df7cc559432d380d"
+      "sha256": "567d07a606bb4fc839a86ecf4946b2d8c9070417c16e9c3c661622255995ad1a"
     },
     {
       "path": "cleanroom/apple_ranges.py",

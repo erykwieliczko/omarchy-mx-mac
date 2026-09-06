@@ -185,6 +185,10 @@ def _load_exact_json(path, keys, role):
         value = json.loads(data)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ExecutionAdmissionError(f"invalid {role}") from error
+    if role == "identity" and isinstance(value, dict) and "developer_model_override" in value:
+        if value["developer_model_override"] != "apple,j713":
+            raise ExecutionAdmissionError("unknown developer model override")
+        keys = keys | {"developer_model_override"}
     if not isinstance(value, dict) or set(value) != keys:
         raise ExecutionAdmissionError(f"unexpected {role} fields")
     return value
@@ -262,6 +266,21 @@ def _validate_environment_binding(
 
 
 def _validate_request_identity_binding(request, identity):
+    override = identity.get("developer_model_override")
+    if override is not None:
+        if override != request["device_identifier"] or request["operation"] != "install":
+            raise ExecutionAdmissionError("developer profile differs from approved plan")
+        fields = [
+            "omarchy.apple.candidate-bound-plan", "2", identity["trust_root_fingerprint"],
+            str(identity["catalog_sequence"]), identity["catalog_payload_digest"],
+            request["plan_digest"], request["device_identifier"], request["store_identifier"],
+            request["layout_digest"], request["candidate_kind"], request["source_identifier"],
+            str(request["offset_bytes"]), str(request["length_bytes"]),
+            identity["engine_digest"], identity["metadata_digest"], identity["payload_digest"],
+            override,
+        ]
+        if _length_prefixed_digest(fields, prefix="sha256:") != identity["binding_digest"]:
+            raise ExecutionAdmissionError("developer override approval binding mismatch")
     if request["plan_digest"] != identity["plan_digest"]:
         raise ExecutionAdmissionError("request identity mismatch")
 

@@ -3,6 +3,7 @@
   import Foundation
 
   public struct AppleSiliconHostInspection: Equatable, Sendable {
+    public var developerOverride: DeveloperModelOverride? = nil
     public let identity: AppleMacIdentity
     public let eligibility: AppleSiliconInstallEligibility
     public let macOSVersion: String
@@ -72,8 +73,20 @@
       self.operatingSystem = operatingSystem
     }
 
-    public func inspect() throws -> AppleSiliconHostInspection {
-      let identity = try inspectIdentity()
+    public func inspect(developerOverride: DeveloperModelOverride? = nil) throws
+      -> AppleSiliconHostInspection
+    {
+      let identity: AppleMacIdentity
+      if let developerOverride {
+        identity = AppleMacIdentity(
+          model: (try? nonemptyHardwareProperty("hw.model")) ?? "Unknown Mac",
+          chip: (try? nonemptyHardwareProperty("machdep.cpu.brand_string"))
+            ?? "Unknown Apple silicon",
+          deviceIdentifier: developerOverride.rawValue
+        )
+      } else {
+        identity = try inspectIdentity()
+      }
       let storage = try ReadOnlyStorageProbe(commands: commands).inspect()
       let powerSource = try readPowerSource()
       let eligibility: AppleSiliconInstallEligibility
@@ -91,6 +104,7 @@
       }
 
       return AppleSiliconHostInspection(
+        developerOverride: developerOverride,
         identity: identity,
         eligibility: eligibility,
         macOSVersion: operatingSystem.versionString(),

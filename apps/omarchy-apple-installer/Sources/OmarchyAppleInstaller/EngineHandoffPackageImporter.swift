@@ -4,6 +4,7 @@
   import Foundation
 
   public struct ImportedEngineHandoffPackage: Sendable {
+    public let developerOverride: DeveloperModelOverride?
     public let packageURL: URL
     public let manifestURL: URL
     public let requestURL: URL
@@ -29,8 +30,10 @@
       bindingDigest: String,
       planDigest: String,
       deviceIdentifier: String,
-      storeIdentifier: String
+      storeIdentifier: String,
+      developerOverride: DeveloperModelOverride? = nil
     ) {
+      self.developerOverride = developerOverride
       self.packageURL = packageURL
       self.manifestURL = manifestURL
       self.requestURL = requestURL
@@ -170,7 +173,8 @@
         bindingDigest: identity.bindingDigest,
         planDigest: request.planDigest,
         deviceIdentifier: request.deviceIdentifier,
-        storeIdentifier: request.storeIdentifier
+        storeIdentifier: request.storeIdentifier,
+        developerOverride: identity.developerOverride
       )
     }
 
@@ -444,6 +448,12 @@
         if rawObject["repair_manifest_digest"] != nil {
           identityKeys.insert("repair_manifest_digest")
         }
+        if let raw = rawObject["developer_model_override"] {
+          guard let value = raw as? String, DeveloperModelOverride(rawValue: value) != nil else {
+            throw EngineHandoffImportError.invalidIdentity
+          }
+          identityKeys.insert("developer_model_override")
+        }
         _ = try exactObject(
           data,
           keys: identityKeys,
@@ -504,14 +514,25 @@
         } else if manifest.repairManifest != nil {
           throw EngineHandoffImportError.bindingMismatch
         }
-        let binding = InstallerDigest.lengthPrefixedSHA256([
-          "omarchy.apple.candidate-bound-plan", "1", identity.trustRootFingerprint,
-          String(identity.catalogSequence), identity.catalogPayloadDigest, request.planDigest,
-          request.deviceIdentifier, request.storeIdentifier, request.layoutDigest,
-          request.candidateKind, request.sourceIdentifier, String(request.offsetBytes),
-          String(request.lengthBytes), identity.engineDigest, identity.metadataDigest,
-          identity.payloadDigest,
-        ]).rawValue
+      }
+      guard
+        identity.developerOverride == nil
+          || identity.developerOverride?.rawValue == request.deviceIdentifier
+      else {
+        throw EngineHandoffImportError.bindingMismatch
+      }
+      if releasePolicy != nil || identity.developerOverride != nil {
+        let binding = InstallerDigest.lengthPrefixedSHA256(
+          [
+            "omarchy.apple.candidate-bound-plan", identity.developerOverride == nil ? "1" : "2",
+            identity.trustRootFingerprint,
+            String(identity.catalogSequence), identity.catalogPayloadDigest, request.planDigest,
+            request.deviceIdentifier, request.storeIdentifier, request.layoutDigest,
+            request.candidateKind, request.sourceIdentifier, String(request.offsetBytes),
+            String(request.lengthBytes), identity.engineDigest, identity.metadataDigest,
+            identity.payloadDigest,
+          ] + (identity.developerOverride.map { [$0.rawValue] } ?? [])
+        ).rawValue
         guard binding == identity.bindingDigest else {
           throw EngineHandoffImportError.bindingMismatch
         }
@@ -659,6 +680,7 @@
   }
 
   private struct ImportedIdentity: Decodable {
+    let developerOverride: DeveloperModelOverride?
     let format: Int
     let bindingDigest: String
     let trustRootFingerprint: String
@@ -671,6 +693,7 @@
     let repairManifestDigest: String?
 
     enum CodingKeys: String, CodingKey {
+      case developerOverride = "developer_model_override"
       case format
       case bindingDigest = "binding_digest"
       case trustRootFingerprint = "trust_root_fingerprint"

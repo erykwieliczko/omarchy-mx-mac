@@ -64,7 +64,8 @@
         catalogSignature: request.release.catalogDocuments.signature,
         trustRoot: request.configuration.trustRoot,
         validationTime: request.validationTime,
-        previouslyAcceptedCatalog: request.previouslyAcceptedCatalog
+        previouslyAcceptedCatalog: request.previouslyAcceptedCatalog,
+        developerOverride: request.host.developerOverride
       )
       let identity = try processAdapter.candidateIdentity(
         for: candidateRequest

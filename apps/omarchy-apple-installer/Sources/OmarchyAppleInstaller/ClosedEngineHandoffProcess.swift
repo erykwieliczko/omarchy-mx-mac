@@ -353,6 +353,7 @@
   }
 
   private struct EngineExecutionIdentity: Encodable {
+    let developerOverride: DeveloperModelOverride?
     let format = 1
     let bindingDigest: String
     let trustRootFingerprint: String
@@ -365,6 +366,7 @@
     let repairManifestDigest: String?
 
     init(invocation: ClosedEngineInvocation) {
+      developerOverride = invocation.candidateIdentity.developerOverride
       bindingDigest = invocation.candidateIdentity.bindingDigest
       trustRootFingerprint = invocation.candidateIdentity.trustRootFingerprint
       catalogSequence = invocation.catalogIdentity.sequence
@@ -377,6 +379,7 @@
     }
 
     enum CodingKeys: String, CodingKey {
+      case developerOverride = "developer_model_override"
       case format
       case bindingDigest = "binding_digest"
       case trustRootFingerprint = "trust_root_fingerprint"

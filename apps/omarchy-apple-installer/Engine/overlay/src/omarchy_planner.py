@@ -248,6 +248,8 @@ def emit_plan(
         identity_keys,
         "planning identity",
     )
+    if identity.get("developer_model_override", device_identifier) != device_identifier:
+        raise PlanningError("developer profile differs from inspected model")
     requested = request["requested_length_bytes"]
     if (
         not isinstance(requested, int)
@@ -306,6 +308,10 @@ def _load_exact_json(path, keys, role):
         value = json.loads(data)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise PlanningError(f"invalid {role}") from error
+    if role == "planning identity" and isinstance(value, dict) and "developer_model_override" in value:
+        if value["developer_model_override"] != "apple,j713":
+            raise PlanningError("unknown developer model override")
+        keys = keys | {"developer_model_override"}
     if (
         not isinstance(value, dict)
         or set(value) != keys

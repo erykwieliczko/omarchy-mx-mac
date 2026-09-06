@@ -45,6 +45,7 @@ public enum AppOwnedTrustRootError: Error, Equatable, Sendable {
 }
 
 public struct CandidateBoundPlanIdentity: Equatable, Sendable {
+  public let developerOverride: DeveloperModelOverride?
   public let format: Int
   public let bindingDigest: String
   public let trustRootFingerprint: String
@@ -61,9 +62,11 @@ public struct CandidateBoundPlanIdentity: Equatable, Sendable {
   init(
     plan: ValidatedEnginePlan,
     catalogIdentity: AcceptedCatalogIdentity,
-    trustRootFingerprint: String
+    trustRootFingerprint: String,
+    developerOverride: DeveloperModelOverride? = nil
   ) {
-    format = 1
+    self.developerOverride = developerOverride
+    format = developerOverride == nil ? 1 : 2
     self.trustRootFingerprint = trustRootFingerprint
     self.catalogIdentity = catalogIdentity
     planDigest = plan.planDigest
@@ -75,24 +78,26 @@ public struct CandidateBoundPlanIdentity: Equatable, Sendable {
     offsetBytes = plan.offsetBytes
     lengthBytes = plan.lengthBytes
     bindingDigest =
-      InstallerDigest.lengthPrefixedSHA256([
-        "omarchy.apple.candidate-bound-plan",
-        "1",
-        trustRootFingerprint,
-        String(catalogIdentity.sequence),
-        catalogIdentity.payloadDigest,
-        plan.planDigest,
-        plan.deviceIdentifier,
-        plan.storeIdentifier,
-        plan.layoutDigest,
-        plan.candidateKind,
-        plan.sourceIdentifier,
-        String(plan.offsetBytes),
-        String(plan.lengthBytes),
-        plan.engineDigest,
-        plan.metadataDigest,
-        plan.payloadDigest,
-      ]).rawValue
+      InstallerDigest.lengthPrefixedSHA256(
+        [
+          "omarchy.apple.candidate-bound-plan",
+          String(format),
+          trustRootFingerprint,
+          String(catalogIdentity.sequence),
+          catalogIdentity.payloadDigest,
+          plan.planDigest,
+          plan.deviceIdentifier,
+          plan.storeIdentifier,
+          plan.layoutDigest,
+          plan.candidateKind,
+          plan.sourceIdentifier,
+          String(plan.offsetBytes),
+          String(plan.lengthBytes),
+          plan.engineDigest,
+          plan.metadataDigest,
+          plan.payloadDigest,
+        ] + (developerOverride.map { [$0.rawValue] } ?? [])
+      ).rawValue
   }
 }
 
