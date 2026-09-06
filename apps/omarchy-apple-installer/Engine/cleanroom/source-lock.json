@@ -46,7 +46,7 @@
     },
     {
       "path": "cleanroom/native-artifacts.json",
-      "sha256": "ab97869b9390244bf7afe5fcecabd0f223099797733649d1f01f39c4c265cccd"
+      "sha256": "046ce6633058be328a0e90f0b221cb9790b2d32408ecb575697ee4ab85ea45b0"
     },
     {
       "path": "cleanroom/patches/0001-boot-factories.patch",
@@ -58,7 +58,7 @@
     },
     {
       "path": "cleanroom/profiles/j713.json",
-      "sha256": "ca84264cbbecdbbbf4532f47b11eb96f37d96d811b07518a5a459daef538e6c6"
+      "sha256": "1c275b704e2951c493456c1d6b82a56f1ef57eb550675423e85e652db952a51e"
     },
     {
       "path": "cleanroom/recovery.py",
