@@ -8,6 +8,8 @@ private final class InstallerApplicationDelegate: NSObject, NSApplicationDelegat
   private var instanceLease: InstallerAppInstanceLease?
 
   func applicationWillFinishLaunching(_ notification: Notification) {
+    // Installation is explicitly started by the user, never restored at login.
+    NSApp.disableRelaunchOnLogin()
     do {
       let lockFile = try InstallerAppInstanceLease.defaultLockFileURL()
       instanceLease = try InstallerAppInstanceLease.acquire(at: lockFile)
