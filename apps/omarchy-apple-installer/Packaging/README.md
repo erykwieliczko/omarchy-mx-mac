@@ -164,11 +164,14 @@ the private J713 fresh-install layout. It discovers the running macOS store and
 requires the adjacent Omarchy stub, labeled ESP, boot and root partitions.
 `--check` performs read-only detection without sudo or confirmation.
 
-Normal invocation requests administrator access and an `ERASE` confirmation,
-selects and verifies the running macOS as the default startup disk, removes the
+Normal invocation asks for the administrator password once, immediately kills
+the Omarchy app/helper/engine process tree, then selects and verifies the running macOS as the default startup disk, removes the
 four Omarchy partitions and expands macOS to the System Recovery boundary.
 Apple ISC and System Recovery are preserved. Any unexpected layout or changed
-partition identity stops execution. Logs go to
+partition identity stops execution. Busy-disk failures get bounded retries with
+fresh partition checks. The same password is passed privately to startup-disk
+selection if needed; there is no typed erase confirmation. The helper is
+reloaded afterward for the next install. Logs go to
 `~/Library/Logs/Omarchy-Uninstall/`. It does not reboot or remove the macOS
 installer application. The destructive path requires the owner's smoke test;
 automated tests simulate disk operations and live qualification uses `--check`.
