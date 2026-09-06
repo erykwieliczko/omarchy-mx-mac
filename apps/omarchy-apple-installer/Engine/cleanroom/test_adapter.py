@@ -130,19 +130,22 @@ class CleanroomAdapterTests(unittest.TestCase):
             apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
             spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
             plan = SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713")
-            with patch("adapter.load_metadata", return_value={}), \
-                    patch("adapter.cleanroom_spec", return_value=spec), \
-                    patch("adapter.file_descriptor", return_value=spec["stage1"]), \
-                    patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=128 * 1024**3)), \
-                    patch("adapter.download_ipsw", side_effect=BootInputError("Apple download failed")), \
-                    patch("adapter.AsahiStage1Adapter.preflight") as transaction:
-                try:
-                    with self.assertRaisesRegex(BootInputError, "Apple download failed"):
-                        adapter.preflight(plan)
-                    transaction.assert_not_called()
-                    self.assertFalse(adapter.preflight_complete)
-                finally:
-                    adapter.workspace.cleanup()
+            for free_gib, message in ((128, "Apple download failed"), (16, "64 GiB")):
+                with patch("adapter.load_metadata", return_value={}), \
+                        patch("adapter.cleanroom_spec", return_value=spec), \
+                        patch("adapter.file_descriptor", return_value=spec["stage1"]), \
+                        patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=free_gib * 1024**3)), \
+                        patch("adapter.download_ipsw", side_effect=BootInputError("Apple download failed")) as download, \
+                        patch("adapter.AsahiStage1Adapter.preflight") as transaction:
+                    try:
+                        with self.assertRaisesRegex(BootInputError, message):
+                            adapter.preflight(plan)
+                        if free_gib < 64:
+                            download.assert_not_called()
+                        transaction.assert_not_called()
+                        self.assertFalse(adapter.preflight_complete)
+                    finally:
+                        adapter.workspace.cleanup()
 
     def test_engine_cannot_enter_interactive_or_repair_mode(self):
         with self.assertRaisesRegex(ValueError, "authenticated engine mode"):

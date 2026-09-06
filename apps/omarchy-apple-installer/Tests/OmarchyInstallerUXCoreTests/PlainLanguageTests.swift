@@ -6,6 +6,17 @@
   @testable import OmarchyInstallerUXCore
 
   final class PlainLanguageTests: XCTestCase {
+    func testAllocationFailureExplainsSpaceFiguresAndRemedy() {
+      let display = PlainLanguage.failure(
+        for: InstallerAllocationRecommendationError.insufficientSpace(
+          availableBytes: 32 * 1_073_741_824, requiredBytes: 64 * 1_073_741_824,
+          workingSpaceBytes: 8 * 1_073_741_824))
+      XCTAssertTrue(display.plainDetail.contains("32.0 GiB"))
+      XCTAssertTrue(display.plainDetail.contains("64.0 GiB"))
+      XCTAssertTrue(display.plainDetail.contains("8.0 GiB"))
+      XCTAssertTrue(display.remedy?.contains("Free more space") == true)
+    }
+
     func testEngineFailureShowsLogsWithoutClaimingNoDiskWork() {
       let diagnostic = EngineDiagnosticFailure(
         operation: "install", logDirectory: "/private/logs/run", detail: "Exit 1. Traceback")

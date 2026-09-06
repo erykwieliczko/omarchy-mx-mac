@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 
 from asahi_firmware.multitouch import MultitouchFWCollection
-from apple_inputs import AppleWorkspace, download_ipsw, load_apple_inputs, mounted_system_image, progress
+from apple_inputs import AppleWorkspace, download_ipsw, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
 from firmware import collect_macos_wifi
 import osinstall
 import stub
@@ -168,7 +168,7 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             raise BootInputError("engine stage-1 artifact differs from metadata")
         self.workspace = AppleWorkspace()
         work = Path(self.workspace.name)
-        if shutil.disk_usage(work).free < self.spec["apple_inputs"]["execution_scratch_bytes"]:
+        if shutil.disk_usage(work).free < self.spec["apple_inputs"]["preflight_scratch_bytes"]:
             raise BootInputError("Apple firmware preparation needs 64 GiB of temporary free space")
         # Our OS package contains no Apple archive. Fetch the signed metadata's
         # exact Apple build before Recovery preparation or partition allocation.
@@ -186,6 +186,8 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
                                       work, self.verifier_path) as system_root:
                 self.firmware = self._collect_linux_firmware(archive, work, system_root)
+        restore = retain_stub_inputs(restore, self.profile, work / "apple-restore.zip")
+        verify_retained_workspace(work, self.spec["apple_inputs"]["execution_scratch_bytes"])
         progress("Recovery, Wi-Fi and touchpad firmware verified; preparation complete")
         self.installer.cleanroom_restore_path = restore
         super().preflight(plan)

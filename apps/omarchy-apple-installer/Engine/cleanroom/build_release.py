@@ -44,7 +44,7 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
         raise ValueError("metadata package does not match payload filename")
     apple = templates[0].get('cleanroom', {}).get('apple_inputs')
     if apple is not None and execution_scratch_bytes < apple['execution_scratch_bytes']:
-        raise ValueError('execution scratch budget does not cover Apple input preparation')
+        raise ValueError('execution scratch budget does not cover retained Apple inputs')
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
     now = datetime.now(timezone.utc).replace(microsecond=0)
     engine_receipt = json.loads((engine / 'receipt.json').read_text())
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('--artifact-base-url', required=True,
                         help='HTTPS directory serving the exact engine, metadata, and payload files')
     parser.add_argument('--execution-scratch-bytes', type=int, required=True,
-                        help='qualified peak engine workspace bytes, excluding handoff copies')
+                        help='qualified retained installation workspace bytes, excluding handoff copies')
     parser.add_argument('--private-http', action='store_true',
                         help='owner-authorized local HTTP test origin only')
     parser.add_argument('--bundle-payload', action='store_true',

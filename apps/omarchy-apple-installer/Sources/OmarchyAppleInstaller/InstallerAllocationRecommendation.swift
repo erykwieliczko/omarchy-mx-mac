@@ -4,6 +4,7 @@ public enum InstallerAllocationRecommendationError:
   Error, Equatable, Sendable
 {
   case noEligibleCandidate
+  case insufficientSpace(availableBytes: UInt64, requiredBytes: UInt64, workingSpaceBytes: UInt64)
   case invalidWorkingSpace
 }
 
@@ -26,6 +27,7 @@ public struct InstallerAllocationRecommendation:
     let (reserve, overflow) = workingSpaceBytes.addingReportingOverflow(Self.resizeHeadroomBytes)
     guard !overflow else { throw InstallerAllocationRecommendationError.invalidWorkingSpace }
     let unit = PinnedAsahiPlanRequest.allocationUnitBytes
+    var shortages: [(available: UInt64, required: UInt64)] = []
     let ranked = inventory.candidates.compactMap { candidate -> Ranked? in
       let maximum: UInt64
       if candidate.kind == "free" {
@@ -34,8 +36,7 @@ public struct InstallerAllocationRecommendation:
         candidate.lengthBytes > candidate.minimumContainerBytes
       {
         let available = candidate.lengthBytes - candidate.minimumContainerBytes
-        guard available > reserve else { return nil }
-        maximum = available - reserve
+        maximum = available > reserve ? available - reserve : 0
       } else {
         return nil
       }
@@ -46,6 +47,7 @@ public struct InstallerAllocationRecommendation:
       )
       let alignedMaximum = maximum - (maximum % unit)
       guard minimum <= alignedMaximum else {
+        shortages.append((available: alignedMaximum, required: minimum))
         return nil
       }
       return Ranked(
@@ -65,6 +67,13 @@ public struct InstallerAllocationRecommendation:
     }
 
     guard let selected = ranked.first else {
+      if let shortage = shortages.min(by: {
+        $0.required - $0.available < $1.required - $1.available
+      }) {
+        throw InstallerAllocationRecommendationError.insufficientSpace(
+          availableBytes: shortage.available, requiredBytes: shortage.required,
+          workingSpaceBytes: workingSpaceBytes)
+      }
       throw InstallerAllocationRecommendationError.noEligibleCandidate
     }
     let alignedTarget = targetBytes - (targetBytes % unit)
@@ -77,7 +86,8 @@ public struct InstallerAllocationRecommendation:
 
   /// Originals are already staged when inspection runs. Both the app handoff
   /// and the helper import create independent verified copies after approval.
-  /// The signed release also budgets the engine's extraction and Recovery work.
+  /// The signed release also budgets the engine's extraction and retained Recovery work. Temporary Apple download
+  /// and decoding space is checked separately before shrinking macOS.
   public static func workingSpaceBytes(for installer: PinnedInstallerRecord) throws -> UInt64 {
     guard let delivery = installer.delivery else {
       throw InstallerAllocationRecommendationError.invalidWorkingSpace

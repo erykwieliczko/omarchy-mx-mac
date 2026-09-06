@@ -27,5 +27,6 @@
     "brcm/brcmfmac4388c2-pcie.apple,garden.sig": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710",
     "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6"
   },
-  "execution_scratch_bytes": 68719476736
+  "execution_scratch_bytes": 8589934592,
+  "preflight_scratch_bytes": 68719476736
 }

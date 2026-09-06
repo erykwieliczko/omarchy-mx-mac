@@ -106,20 +106,26 @@ class DownloadReleaseTests(unittest.TestCase):
                                         execution_scratch_bytes=budget)
                 self.assertFalse((root / 'output').exists())
 
-    def test_apple_download_budget_cannot_be_replaced_with_old_offline_budget(self):
+    def test_catalog_reserves_retained_budget_and_not_preparation_peak(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             engine, payload = self.candidate(root)
             metadata = engine / 'installer_data.json'
             value = json.loads(metadata.read_text())
-            value['os_list'][0]['cleanroom']['apple_inputs'] = {'execution_scratch_bytes': 64 * 1024**3}
+            value['os_list'][0]['cleanroom']['apple_inputs'] = {'execution_scratch_bytes': 8 * 1024**3, 'preflight_scratch_bytes': 64 * 1024**3}
             metadata.write_text(json.dumps(value))
             receipt_path = engine / 'receipt.json'
             receipt = json.loads(receipt_path.read_text())
             receipt['metadata'] = build_release.descriptor(metadata)
             receipt_path.write_text(json.dumps(receipt))
-            with self.assertRaisesRegex(ValueError, 'Apple input preparation'):
+            with self.assertRaisesRegex(ValueError, 'retained Apple inputs'):
+                build_release.build(engine, payload, root / 'output',
+                                    'https://downloads.example.test/m4',
+                                    execution_scratch_bytes=8 * 1024**3 - 1)
+            self.assertFalse((root / 'output').exists())
+            with patch('builtins.print'):
                 build_release.build(engine, payload, root / 'output',
                                     'https://downloads.example.test/m4',
                                     execution_scratch_bytes=8 * 1024**3)
-            self.assertFalse((root / 'output').exists())
+            model = json.loads((root / 'output/catalog.json').read_text())['models'][0]
+            self.assertEqual(model['executionScratchBytes'], 8 * 1024**3)

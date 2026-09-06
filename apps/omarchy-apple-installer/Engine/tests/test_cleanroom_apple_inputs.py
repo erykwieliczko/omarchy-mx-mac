@@ -2,6 +2,8 @@
 import hashlib
 import io
 import plistlib
+import json
+import stat
 from pathlib import Path
 import sys
 import tempfile
@@ -13,8 +15,8 @@ import urllib.request
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cleanroom"))
-from apple_inputs import AppleRedirects, AppleWorkspace, apple_url, download_ipsw, mounted_system_image
-from boot_inputs import BootInputError
+from apple_inputs import AppleRedirects, AppleWorkspace, apple_url, download_ipsw, mounted_system_image, retain_stub_inputs, verify_retained_workspace, load_apple_inputs
+from boot_inputs import BootInputError, load_profile
 
 
 URL = "https://updates.cdn-apple.com/build/Restore.ipsw"
@@ -132,6 +134,67 @@ class AppleInputDownloadTests(unittest.TestCase):
             self.assertIn('-nobrowse', attach)
             self.assertEqual(calls[-1], ['/usr/bin/hdiutil', 'detach', str(work / 'apple-system')])
             self.assertEqual(list(work.iterdir()), [source])
+
+    def test_preparation_and_retained_budgets_are_independently_required(self):
+        profile_path = Path(__file__).resolve().parents[1] / "cleanroom/profiles/j713.json"
+        profile = load_profile(profile_path)
+        lock_path = profile_path.with_name("j713-apple-inputs.json")
+        lock = load_apple_inputs(lock_path, profile)
+        self.assertEqual(lock["execution_scratch_bytes"], 8 * 1024**3)
+        self.assertEqual(lock["preflight_scratch_bytes"], 64 * 1024**3)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "lock.json"
+            for field in ("execution_scratch_bytes", "preflight_scratch_bytes"):
+                invalid = dict(lock)
+                invalid[field] -= 1
+                path.write_text(json.dumps(invalid))
+                with self.assertRaisesRegex(BootInputError, field):
+                    load_apple_inputs(path, profile)
+
+    def test_retained_subset_preserves_links_and_discards_large_download(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            source, target = work / "Apple.ipsw", work / "restore.zip"
+            link = zipfile.ZipInfo("framework/Current")
+            link.create_system = 3
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("framework/A/binary", b"boot code")
+                archive.writestr(link, b"A")
+                archive.writestr("System.dmg.aea", b"large system image")
+            members = ["framework/A/binary", "framework/Current"]
+            with patch("apple_inputs.stub_members", return_value=members):
+                retain_stub_inputs(source, {}, target)
+            self.assertFalse(source.exists())
+            with zipfile.ZipFile(target) as archive:
+                self.assertEqual(archive.namelist(), members)
+                self.assertEqual(archive.read("framework/A/binary"), b"boot code")
+                self.assertEqual(archive.read(link.filename), b"A")
+                self.assertEqual(archive.getinfo(link.filename).external_attr, link.external_attr)
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
+    def test_failed_subset_validation_keeps_source_and_does_not_admit_subset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, target = Path(directory) / "Apple.ipsw", Path(directory) / "restore.zip"
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("boot", b"code")
+            with patch("apple_inputs.stub_members", side_effect=[["boot"], []]):
+                with self.assertRaisesRegex(BootInputError, "subset"):
+                    retain_stub_inputs(source, {}, target)
+            self.assertTrue(source.exists())
+            self.assertFalse(target.exists())
+            self.assertEqual(list(Path(directory).iterdir()), [source])
+
+    def test_retained_budget_leaves_room_for_engine_and_rejects_active_mount(self):
+        with tempfile.TemporaryDirectory() as directory, patch("apple_inputs.progress"):
+            work = Path(directory)
+            (work / "Recovery").write_bytes(b"recovery")
+            self.assertEqual(verify_retained_workspace(work, 1024**3 + 8), 8)
+            with self.assertRaisesRegex(BootInputError, "budget"):
+                verify_retained_workspace(work, 1024**3 + 7)
+            (work / ".apple-image-mount-active").touch()
+            with self.assertRaisesRegex(BootInputError, "detach"):
+                verify_retained_workspace(work, 8 * 1024**3)
 
     def test_workspace_preserved_until_detach_is_confirmed(self):
         workspace = AppleWorkspace()

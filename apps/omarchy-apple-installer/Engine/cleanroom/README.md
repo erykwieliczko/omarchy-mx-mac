@@ -111,13 +111,13 @@ tuple. A source build and read-only preflight are not physical install proof.
 
 Resize planning reserves two complete sets of artifact bytes for the app handoff
 and the helper import, plus the catalog's `executionScratchBytes` and a separate
-1 GiB allowance for ordinary macOS writes. The scratch budget must cover peak
-engine extraction and temporary Apple inputs, including the full IPSW, both
-encrypted system-image copies used during native decoding, decoded system
-image and paired Recovery. The current Apple lock requires at least 64 GiB;
-the full Apple download is about 18.4 GiB in addition to our OS payload.
-Qualify the peak with the exact
-engine/payload in a file-only preflight before sealing a release. Cleanroom
-catalogs without a positive budget are rejected. These bytes remain available
-to macOS during installation; they are not part of the requested Linux extent.
+1 GiB allowance for ordinary macOS writes. Execution scratch covers retained
+Apple stub inputs, decoded Recovery, and engine extraction (8 GiB in the current
+Apple lock). Before downloading from Apple, a separate 64 GiB preflight free-space
+check covers the full IPSW and native system-image decoding while macOS still
+occupies its original partition. After collecting firmware, the engine detaches
+and deletes the system image, retains a verified private stub-only archive, and
+deletes the full IPSW before entering disk preflight. Retained Apple files must
+fit the execution budget with 1 GiB left for engine and transaction files.
+These Apple inputs are temporary files on the target, never release artifacts.
 The helper still rechecks the exact approved extent against the live disk.

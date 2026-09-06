@@ -17,8 +17,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import weakref
+import zipfile
 
-from boot_inputs import BootInputError, _hex, _member, inspect_ipsw
+from boot_inputs import BootInputError, _hex, _member, inspect_ipsw, stub_members
 
 
 def apple_url(url):
@@ -53,9 +54,10 @@ def load_apple_inputs(path, profile):
         if (type(record["size_bytes"]) is not int or record["size_bytes"] <= 0
                 or not _hex(record["sha256"], 64)):
             raise BootInputError("invalid Apple input descriptor")
-    if (type(lock["execution_scratch_bytes"]) is not int
-            or lock["execution_scratch_bytes"] < 64 * 1024**3):
-        raise BootInputError("Apple input scratch budget is too small")
+    for field, minimum in (("preflight_scratch_bytes", 64 * 1024**3),
+                           ("execution_scratch_bytes", 8 * 1024**3)):
+        if type(lock.get(field)) is not int or lock[field] < minimum:
+            raise BootInputError("Apple input scratch budget is too small: " + field)
     return lock
 
 
@@ -204,3 +206,48 @@ def mounted_system_image(archive, lock, profile, workspace, decoder, *, run=subp
         source.unlink(missing_ok=True)
         decoded.unlink(missing_ok=True)
         mount.rmdir()
+
+
+def retain_stub_inputs(ipsw, profile, destination):
+    """Reduce an already authenticated download before entering disk preflight.
+
+    Preserve the validated stub closure, including framework symlink records.
+    Keep the original IPSW on any failure; delete it only after the private
+    subset has been reopened and its contents verified.
+    """
+    ipsw, destination = Path(ipsw), Path(destination)
+    with tempfile.TemporaryDirectory(prefix=".stub-inputs-", dir=destination.parent) as directory:
+        pending = Path(directory) / "restore.zip"
+        with zipfile.ZipFile(ipsw) as archive:
+            members = stub_members(archive, profile)
+            with zipfile.ZipFile(pending, "x", compression=zipfile.ZIP_STORED) as writer:
+                for name in members:
+                    original = archive.getinfo(name)
+                    item = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+                    item.create_system = 3
+                    item.external_attr = original.external_attr
+                    item.file_size = original.file_size
+                    with archive.open(original) as reader, writer.open(item, "w", force_zip64=True) as target:
+                        shutil.copyfileobj(reader, target, 1024 * 1024)
+        with zipfile.ZipFile(pending) as archive:
+            if stub_members(archive, profile) != members or archive.testzip() is not None:
+                raise BootInputError("Apple restore subset did not verify")
+        os.chmod(pending, 0o600)
+        os.link(pending, destination)
+    ipsw.unlink()
+    return destination
+
+
+def verify_retained_workspace(workspace, budget):
+    """Reserve room for engine extraction as well as retained Apple inputs."""
+    root = Path(workspace)
+    if (root / ".apple-image-mount-active").exists() or os.path.ismount(root / "apple-system"):
+        raise BootInputError("Apple image detach is unconfirmed before disk preflight")
+    retained = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+    # The catalog also covers unpacking the bundled Python engine and ordinary
+    # transaction files. Keep 1 GiB of its budget available for that work.
+    if retained + 1024**3 > budget:
+        raise BootInputError("Prepared Apple inputs exceed the retained installation scratch budget")
+    progress("Large Apple download discarded; retaining %.1f GiB for installation"
+             % (retained / 1024**3))
+    return retained

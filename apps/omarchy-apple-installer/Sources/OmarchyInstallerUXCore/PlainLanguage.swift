@@ -248,6 +248,29 @@
     ) -> FailureDisplay {
       let technical = String(describing: error)
 
+      if let allocation = error as? InstallerAllocationRecommendationError {
+        switch allocation {
+        case .insufficientSpace(let available, let required, let workspace):
+          func gib(_ bytes: UInt64) -> String {
+            String(format: "%.1f GiB", Double(bytes) / 1_073_741_824)
+          }
+          return FailureDisplay(
+            headline: "There isn’t enough space for Omarchy",
+            plainDetail:
+              "The closest available allocation has \(gib(available)); Omarchy needs at least \(gib(required)). Installation also reserves \(gib(workspace)) on macOS for working files.",
+            technicalDetail: technical,
+            remedy: "Free more space on macOS, then start over to check the disk again.")
+        case .noEligibleCandidate:
+          return FailureDisplay(
+            headline: "No suitable installation space was found",
+            plainDetail: "The disk has no eligible free extent or macOS container to resize.",
+            technicalDetail: technical,
+            remedy: "Check the disk layout before trying again.")
+        case .invalidWorkingSpace:
+          break
+        }
+      }
+
       if let failure = error as? EngineDiagnosticFailure {
         return engineFailure(failure)
       }

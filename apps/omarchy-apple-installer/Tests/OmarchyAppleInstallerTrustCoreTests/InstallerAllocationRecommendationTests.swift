@@ -111,7 +111,7 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
     ) {
       XCTAssertEqual(
         $0 as? InstallerAllocationRecommendationError,
-        .noEligibleCandidate
+        .insufficientSpace(availableBytes: 32 * gib, requiredBytes: 64 * gib, workingSpaceBytes: 0)
       )
     }
   }
@@ -183,6 +183,26 @@ final class InstallerAllocationRecommendationTests: XCTestCase {
       try PinnedAsahiPlanRequest(
         inventory: inventory([tooMuchGrowth]), candidate: tooMuchGrowth,
         requestedLengthBytes: recommendation.requestedLengthBytes))
+  }
+
+  func testApplePreparationPeakDoesNotRemainReservedAfterResize() throws {
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 245_107_195_904,
+      minimumInstall: 76_562_825_216, minimumContainer: 97_372_445_081)
+    let installer = try releaseRecord(payloadBytes: 3_750_452_703, scratchBytes: 8 * gib)
+    let workspace = try InstallerAllocationRecommendation.workingSpaceBytes(for: installer)
+    let recommendation = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: workspace)
+    XCTAssertGreaterThan(recommendation.requestedLengthBytes, 120 * gib)
+    XCTAssertLessThanOrEqual(
+      recommendation.requestedLengthBytes + workspace
+        + InstallerAllocationRecommendation.resizeHeadroomBytes,
+      resize.lengthBytes - resize.minimumContainerBytes)
+    let oldWorkspace = try InstallerAllocationRecommendation.workingSpaceBytes(
+      for: releaseRecord(payloadBytes: 3_750_452_703, scratchBytes: 64 * gib))
+    XCTAssertThrowsError(
+      try InstallerAllocationRecommendation(
+        inventory: inventory([resize]), workingSpaceBytes: oldWorkspace))
   }
 
   func testWorkingSpaceCannotConsumeMinimumInstallOrFreeExtent() throws {
