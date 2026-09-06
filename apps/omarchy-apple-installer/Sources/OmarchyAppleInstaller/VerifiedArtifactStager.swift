@@ -322,6 +322,35 @@ public struct VerifiedArtifactStager: Sendable {
     )
   }
 
+  /// Keep different signed versions of a shared basename in separate caches.
+  /// Existing flat-cache files remain reusable only when their bytes verify.
+  func stageVersioned(
+    _ artifact: PinnedInstallerArtifact,
+    in stagingDirectory: URL,
+    progress: ArtifactStagingProgressHandler? = nil
+  ) async throws -> StagedInstallerArtifact {
+    let fileManager = FileManager.default
+    try ensureSafeDirectory(stagingDirectory, fileManager: fileManager)
+    let legacy = stagingDirectory.appendingPathComponent(artifact.fileName)
+    if fileManager.fileExists(atPath: legacy.path) {
+      do {
+        try verify(artifact, at: legacy)
+        return try await stage(artifact, in: stagingDirectory, progress: progress)
+      } catch ArtifactStageError.sizeMismatch, ArtifactStageError.digestMismatch {
+        // Preserve the previous release's file; it belongs to a different pin.
+      }
+    }
+    guard let digest = SHA256Digest(rawValue: artifact.expectedDigest) else {
+      throw ArtifactStageError.invalidDigest
+    }
+    return try await stage(
+      artifact,
+      in: stagingDirectory.appendingPathComponent(
+        "sha256-" + digest.hexadecimal, isDirectory: true),
+      progress: progress
+    )
+  }
+
   private func stageParts(
     _ artifact: PinnedInstallerArtifact,
     in stagingDirectory: URL,

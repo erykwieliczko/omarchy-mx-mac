@@ -100,17 +100,17 @@
         throw InstallerAssetPreparationError.deliveryMetadataUnavailable
       }
 
-      async let engine = stager.stage(
+      async let engine = stager.stageVersioned(
         delivery.engine,
         in: request.stagingDirectory,
         progress: progress
       )
-      async let metadata = stager.stage(
+      async let metadata = stager.stageVersioned(
         delivery.metadata,
         in: request.stagingDirectory,
         progress: progress
       )
-      async let payload = stager.stage(
+      async let payload = stager.stageVersioned(
         delivery.payload,
         in: request.stagingDirectory,
         progress: progress
@@ -139,7 +139,7 @@
       guard let artifact else {
         return nil
       }
-      return try await stager.stage(
+      return try await stager.stageVersioned(
         artifact,
         in: stagingDirectory,
         progress: progress

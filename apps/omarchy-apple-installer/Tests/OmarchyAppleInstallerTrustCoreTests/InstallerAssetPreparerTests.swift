@@ -48,6 +48,40 @@
       XCTAssertEqual(maximumConcurrentDownloads, 4)
     }
 
+    func testChangedMetadataBasenameDoesNotBlockUpgradeOrRedownloadUnchangedPayload() async throws {
+      let old = try makeFixture(schemaVersion: 2)
+      let new = try makeFixture(schemaVersion: 2, metadata: Data("new metadata".utf8))
+      let directory = temporaryDirectory()
+      defer { try? FileManager.default.removeItem(at: directory) }
+      let before = try await old.preparer.prepare(old.request(stagingDirectory: directory))
+      let after = try await new.preparer.prepare(new.request(stagingDirectory: directory))
+      XCTAssertNotEqual(before.metadata.fileURL, after.metadata.fileURL)
+      XCTAssertEqual(try Data(contentsOf: before.metadata.fileURL), old.metadata)
+      XCTAssertEqual(try Data(contentsOf: after.metadata.fileURL), new.metadata)
+      XCTAssertTrue(after.engine.reusedExistingFile)
+      XCTAssertTrue(after.payload.reusedExistingFile)
+      let count = await new.downloader.downloadCount
+      XCTAssertEqual(count, 1)
+    }
+
+    func testUpgradePreservesStaleLegacyMetadataAndReusesVerifiedLegacyPayload() async throws {
+      let fixture = try makeFixture(schemaVersion: 2)
+      let directory = temporaryDirectory()
+      defer { try? FileManager.default.removeItem(at: directory) }
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      let stale = directory.appendingPathComponent("installer-data.json")
+      try Data("previous release".utf8).write(to: stale)
+      try fixture.engine.write(to: directory.appendingPathComponent("engine.tar.gz"))
+      try fixture.payload.write(to: directory.appendingPathComponent("omarchy.img.zst"))
+      let result = try await fixture.preparer.prepare(fixture.request(stagingDirectory: directory))
+      XCTAssertEqual(try Data(contentsOf: stale), Data("previous release".utf8))
+      XCTAssertNotEqual(result.metadata.fileURL, stale)
+      XCTAssertEqual(try Data(contentsOf: result.metadata.fileURL), fixture.metadata)
+      XCTAssertTrue(result.payload.reusedExistingFile)
+      let count = await fixture.downloader.downloadCount
+      XCTAssertEqual(count, 1)
+    }
+
     func testReleaseCoordinatorFetchesSignedCatalogThenStagesExactAssets()
       async throws
     {
@@ -234,10 +268,10 @@
       schemaVersion: Int,
       host: AppleSiliconHostInspection? = nil,
       invalidateSignature: Bool = false,
-      omitEngineVersion: Bool = false
+      omitEngineVersion: Bool = false,
+      metadata: Data = Data("installer metadata".utf8)
     ) throws -> AssetPreparationFixture {
       let engine = Data("engine archive".utf8)
-      let metadata = Data("installer metadata".utf8)
       let payload = Data("omarchy payload".utf8)
       let repairManifest = Data("{\"operation\":\"repair-installed-system\"}".utf8)
       var artifacts = [
