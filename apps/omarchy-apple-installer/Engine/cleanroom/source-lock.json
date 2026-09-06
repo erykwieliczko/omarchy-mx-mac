@@ -18,7 +18,7 @@
     },
     {
       "path": "cleanroom/apple_inputs.py",
-      "sha256": "91b26947a26b6baddae7a951b516cbceb814bd31147ec6190f9443cd3cc75322"
+      "sha256": "5adbfd48e690b76a0b2f74b3b50105fbc64990e3196c55029dcd70c090c9f3e9"
     },
     {
       "path": "cleanroom/assemble_engine.py",

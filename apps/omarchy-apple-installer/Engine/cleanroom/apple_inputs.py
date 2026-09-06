@@ -157,7 +157,7 @@ def download_ipsw(record, destination, *, opener=None, report=progress):
 @contextmanager
 def mounted_system_image(archive, lock, profile, workspace, decoder, *, run=subprocess.run):
     """Decode and mount only the pinned OS member, read-only and hidden."""
-    work = Path(workspace)
+    work = Path(workspace).resolve(strict=True)
     record = lock["system_image"]
     selection = inspect_ipsw(archive, profile)
     components = selection["manifest"]["BuildIdentities"][0]["Manifest"]
@@ -194,8 +194,9 @@ def mounted_system_image(archive, lock, profile, workspace, decoder, *, run=subp
                       "-owners", "off", "-mountpoint", str(mount), "-plist", str(decoded)],
                      check=True, capture_output=True)
         entities = plistlib.loads(result.stdout).get("system-entities", [])
-        if sum(entity.get("mount-point") == str(mount) for entity in entities) != 1:
-            raise BootInputError("Apple image did not mount at its private mount point")
+        reported = [entity["mount-point"] for entity in entities if entity.get("mount-point")]
+        if sum(Path(path).resolve(strict=True) == mount for path in reported) != 1:
+            raise BootInputError(f"Apple image mount mismatch: requested {mount}; reported {reported}")
         yield mount
     finally:
         if attached:

@@ -108,7 +108,10 @@ class AppleInputDownloadTests(unittest.TestCase):
 
     def test_image_is_read_only_and_detached_even_when_firmware_collection_fails(self):
         with tempfile.TemporaryDirectory() as directory:
-            work = Path(directory)
+            work = Path(directory) / "real"
+            work.mkdir()
+            alias = Path(directory) / "alias"
+            alias.symlink_to(work, target_is_directory=True)
             source = work / 'Apple.ipsw'
             member = 'System.dmg.aea'
             with zipfile.ZipFile(source, 'w') as writer:
@@ -127,7 +130,7 @@ class AppleInputDownloadTests(unittest.TestCase):
             with zipfile.ZipFile(source) as archive, patch('apple_inputs.inspect_ipsw', return_value=selection), \
                     patch('apple_inputs.progress'):
                 with self.assertRaisesRegex(ValueError, 'bad firmware'):
-                    with mounted_system_image(archive, lock, {}, work, 'decoder', run=run):
+                    with mounted_system_image(archive, lock, {}, alias, 'decoder', run=run):
                         raise ValueError('bad firmware')
             attach = next(args for args in calls if 'attach' in args)
             self.assertIn('-readonly', attach)
