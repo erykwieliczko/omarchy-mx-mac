@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "c9251a217caa4e8f2f9520c72e102112c8065ec3267e495bb83111e025d05633"
+      "sha256": "0ecd68ad0e6916890826d92d2b25f428db87059ff297b48855f7398da4293092"
     },
     {
       "path": "cleanroom/adapter.py",

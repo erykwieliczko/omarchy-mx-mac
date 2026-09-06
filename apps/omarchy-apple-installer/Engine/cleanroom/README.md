@@ -177,3 +177,11 @@ and the final partial block; small ZIP metadata reads still fetch one block.
 Release assembly accepts `--payload-source-url` to reuse an unchanged,
 already hosted HTTPS OS payload. Its local receipt, component profile, size,
 and hash must still pass validation before the new catalog is signed.
+
+For a cold-download test, close the installer and double-click
+`Packaging/clear-installer-cache.command` (it can be copied to Desktop).
+It asks for administrator access once and clears the current macOS user's
+staged downloads and the shared Apple development cache. It preserves
+installed systems, app settings, and diagnostic logs. `--check` lists the
+scope without removing files. A later dev installation will populate the
+cache again.
