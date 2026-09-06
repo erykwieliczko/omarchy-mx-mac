@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+import tarfile
 from urllib.parse import urlsplit, quote
 import ipaddress
 
@@ -52,6 +53,12 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
                        ('metadata', engine / 'installer_data.json')):
         if descriptor(path) != engine_receipt.get(role):
             raise ValueError('engine receipt mismatch: ' + role)
+    if engine_receipt.get('development_apple_cache'):
+        with tarfile.open(engine / ('installer-' + engine_receipt['version'] + '.tar.gz')) as archive:
+            archive.getmember('./cleanroom/development-apple-cache')
+        cache_bound = sum(record['size_bytes'] for record in apple['members'].values()) + 1024**3
+        if execution_scratch_bytes < apple['execution_scratch_bytes'] + cache_bound:
+            raise ValueError('development cache must remain reserved after resizing macOS')
     payload_receipt = json.loads(payload.with_suffix('.receipt.json').read_text())
     if descriptor(payload) != payload_receipt.get('payload'):
         raise ValueError('payload receipt mismatch')

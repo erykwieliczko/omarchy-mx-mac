@@ -44,7 +44,7 @@ class AppleRedirects(urllib.request.HTTPRedirectHandler):
 
 def load_apple_inputs(path, profile):
     lock = json.loads(Path(path).read_text())
-    if (lock.get("schema_version") != 1
+    if (lock.get("schema_version") != 2
             or lock.get("device_identifier") != profile["device_identifier"]
             or lock.get("product_type") != profile["product_type"]
             or lock.get("firmware_build") != profile["firmware"]["build"]):
@@ -58,6 +58,25 @@ def load_apple_inputs(path, profile):
                            ("execution_scratch_bytes", 8 * 1024**3)):
         if type(lock.get(field)) is not int or lock[field] < minimum:
             raise BootInputError("Apple input scratch budget is too small: " + field)
+    members = lock.get("members")
+    if not isinstance(members, dict) or not 1 <= len(members) <= 2048:
+        raise BootInputError("missing selected Apple member lock")
+    for name, record in members.items():
+        from boot_inputs import _path
+        _path(name.rstrip("/"))
+        if (type(record.get("size_bytes")) is not int or record["size_bytes"] < 0
+                or not _hex(record.get("sha256"), 64)
+                or type(record.get("external_attr")) is not int
+                or not 0 <= record["external_attr"] < 2**32
+                or type(record.get("compressed_size_bytes")) is not int
+                or not 0 <= record["compressed_size_bytes"] <= lock["ipsw"]["size_bytes"]
+                or record.get("compression") not in (0, 8)
+                or type(record.get("header_offset")) is not int
+                or not 0 <= record["header_offset"] < lock["ipsw"]["size_bytes"]):
+            raise BootInputError("invalid selected Apple member descriptor: " + name)
+    system = members.get(lock["system_image"]["member"], {})
+    if any(system.get(field) != lock["system_image"][field] for field in ("size_bytes", "sha256")):
+        raise BootInputError("selected Apple system image differs from decoded image lock")
     return lock
 
 
@@ -66,7 +85,7 @@ def verify_file(path, record):
     with os.fdopen(descriptor, "rb") as reader:
         status = os.fstat(reader.fileno())
         if not stat.S_ISREG(status.st_mode) or status.st_size != record["size_bytes"]:
-            raise BootInputError("Apple decoded system image size or file type mismatch")
+            raise BootInputError("Apple input size or file type mismatch")
         digest = hashlib.sha256()
         size = 0
         while chunk := reader.read(min(4 * 1024 * 1024, record["size_bytes"] - size + 1)):
@@ -75,7 +94,7 @@ def verify_file(path, record):
             if size > record["size_bytes"]:
                 break
         if size != record["size_bytes"] or digest.hexdigest() != record["sha256"]:
-            raise BootInputError("Apple decoded system image SHA-256 mismatch")
+            raise BootInputError("Apple input SHA-256 mismatch")
 
 
 def progress(message):

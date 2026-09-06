@@ -54,7 +54,7 @@ def stage_sources(checkout, destination):
         for patch in lock["patches"]:
             subprocess.run(["git", "-C", str(tree), "apply", str(engine / patch)], check=True)
         (tree / "src/main.py").rename(tree / "src/asahi_main.py")
-        for name in ("main.py", "adapter.py", "boot_inputs.py", "recovery.py", "firmware.py", "apple_inputs.py"):
+        for name in ("main.py", "adapter.py", "boot_inputs.py", "recovery.py", "firmware.py", "apple_inputs.py", "apple_ranges.py"):
             shutil.copyfile(engine / "cleanroom" / name, tree / "src" / name)
         shutil.copytree(engine / "cleanroom/profiles", tree / "src/cleanroom/profiles")
         shutil.copyfile(engine / "cleanroom/step2.sh", tree / "src/cleanroom/step2.sh")

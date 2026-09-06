@@ -22,7 +22,7 @@ def descriptor(path):
     return {'size_bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
-def assemble(checkout, inputs, destination, version, payload_name):
+def assemble(checkout, inputs, destination, version, payload_name, development_apple_cache=False):
     if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:[.-][A-Za-z0-9]+)*', version):
         raise ValueError('invalid engine version')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*\.zip', payload_name):
@@ -59,6 +59,8 @@ def assemble(checkout, inputs, destination, version, payload_name):
         with tarfile.open(runtime) as archive:
             members = [m for m in archive.getmembers() if m.name.removeprefix('./').startswith('Frameworks/')]
             archive.extractall(package, members=members, filter='data')
+        if development_apple_cache:
+            (package / 'cleanroom/development-apple-cache').write_text('Private development cache enabled explicitly at build time.\n')
         (package / 'boot').mkdir()
         shutil.copyfile(inputs / 'm1n1-stage1-base.bin', package / 'boot/m1n1.bin')
         (package / 'tools').mkdir(exist_ok=True)
@@ -87,7 +89,8 @@ def assemble(checkout, inputs, destination, version, payload_name):
                 else:
                     archive.addfile(info)
         receipt = {'engine': descriptor(artifact), 'metadata': descriptor(metadata_path),
-                   'runtime_carrier_sha256': RUNTIME_SHA256, 'version': version}
+                   'runtime_carrier_sha256': RUNTIME_SHA256, 'version': version,
+                   'development_apple_cache': development_apple_cache}
         (destination / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     return receipt
 
@@ -96,6 +99,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('checkout', 'inputs', 'destination'):
         parser.add_argument(name, type=Path)
+    parser.add_argument('--development-apple-cache', action='store_true',
+                        help='private development only: reuse verified Apple members on the build/test Mac')
     parser.add_argument('--version', required=True)
     parser.add_argument('--payload-name', required=True)
     print(json.dumps(assemble(**vars(parser.parse_args())), indent=2))

@@ -135,7 +135,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                         patch("adapter.cleanroom_spec", return_value=spec), \
                         patch("adapter.file_descriptor", return_value=spec["stage1"]), \
                         patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=free_gib * 1024**3)), \
-                        patch("adapter.download_ipsw", side_effect=BootInputError("Apple download failed")) as download, \
+                        patch("adapter.selected_archive", side_effect=BootInputError("Apple download failed")) as download, \
                         patch("adapter.AsahiStage1Adapter.preflight") as transaction:
                     try:
                         with self.assertRaisesRegex(BootInputError, message):

@@ -12,7 +12,8 @@ import tempfile
 import zipfile
 
 from asahi_firmware.multitouch import MultitouchFWCollection
-from apple_inputs import AppleWorkspace, download_ipsw, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
+from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
+from apple_ranges import selected_archive
 from firmware import collect_macos_wifi
 import osinstall
 import stub
@@ -175,7 +176,11 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         with zipfile.ZipFile(self.payload_path) as payload:
             if any(item.filename == "apple-restore.zip" for item in payload.infolist()):
                 raise BootInputError("firmware-free engine rejects bundled Apple restore inputs")
-        restore = download_ipsw(self.spec["apple_inputs"]["ipsw"], work / "Apple.ipsw")
+        cache = None
+        if (Path(__file__).parent / "cleanroom/development-apple-cache").is_file():
+            cache = Path("/var/db/com.omarchy.mx.installer-dev-cache")
+        restore = selected_archive(self.spec["apple_inputs"], self.profile, work / "Apple.ipsw",
+                                   cache_directory=cache)
         self.decoded = work / "BaseSystem.dmg"
         with zipfile.ZipFile(restore) as archive:
             stub_members(archive, self.profile)

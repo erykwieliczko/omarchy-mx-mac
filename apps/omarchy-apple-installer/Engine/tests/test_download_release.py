@@ -1,5 +1,7 @@
 """Network distribution must never accidentally include an OS in the app."""
 import json
+import io
+import tarfile
 from pathlib import Path
 import subprocess
 import sys
@@ -129,3 +131,32 @@ class DownloadReleaseTests(unittest.TestCase):
                                     execution_scratch_bytes=8 * 1024**3)
             model = json.loads((root / 'output/catalog.json').read_text())['models'][0]
             self.assertEqual(model['executionScratchBytes'], 8 * 1024**3)
+
+
+    def test_development_cache_must_stay_reserved_after_resize(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            engine, payload = self.candidate(root)
+            artifact = engine / 'installer-v-test.tar.gz'
+            with tarfile.open(artifact, 'w:gz') as archive:
+                marker = tarfile.TarInfo('./cleanroom/development-apple-cache')
+                marker.size = 3
+                archive.addfile(marker, io.BytesIO(b'dev'))
+            metadata = engine / 'installer_data.json'
+            value = json.loads(metadata.read_text())
+            value['os_list'][0]['cleanroom']['apple_inputs'] = {
+                'execution_scratch_bytes': 8 * 1024**3,
+                'members': {'boot': {'size_bytes': 100}}}
+            metadata.write_text(json.dumps(value))
+            receipt_path = engine / 'receipt.json'
+            receipt = json.loads(receipt_path.read_text())
+            receipt.update(engine=build_release.descriptor(artifact),
+                           metadata=build_release.descriptor(metadata), development_apple_cache=True)
+            receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'cache must remain reserved'):
+                build_release.build(engine, payload, root / 'output',
+                                    'https://downloads.example.test/m4', execution_scratch_bytes=8 * 1024**3)
+            self.assertFalse((root / 'output').exists())
+            with patch('builtins.print'):
+                build_release.build(engine, payload, root / 'output',
+                                    'https://downloads.example.test/m4', execution_scratch_bytes=10 * 1024**3)

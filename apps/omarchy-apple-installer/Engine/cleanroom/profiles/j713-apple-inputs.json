@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "device_identifier": "apple,j713",
   "product_type": "Mac16,12",
   "firmware_build": "25G83",
@@ -28,5 +28,1055 @@
     "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6"
   },
   "execution_scratch_bytes": 8589934592,
-  "preflight_scratch_bytes": 68719476736
+  "preflight_scratch_bytes": 68719476736,
+  "members": {
+    "022-22048-093.dmg.aea": {
+      "size_bytes": 1140850688,
+      "sha256": "4e91f4949f0614de01f44434bce2a5a45b0e0a92ca0e3b06cd55c229752a9754",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 1140850688,
+      "compression": 0,
+      "header_offset": 0
+    },
+    "094-96884-092.dmg.aea": {
+      "size_bytes": 10334765056,
+      "sha256": "c7c4412996590bb9f75256fb988bb0cf9e8b8ba645346e89443590197741e9c8",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 10334765056,
+      "compression": 0,
+      "header_offset": 1358425717
+    },
+    "BootabilityBundle/Restore/Bootability/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18222621849
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18222621937
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/BootabilityBrain": {
+      "size_bytes": 33,
+      "sha256": "18ff111bb14bf0daf635be8c775b3ddfdebaa699f53d95b3a68490de021c6b67",
+      "external_attr": 2716663808,
+      "compressed_size_bytes": 35,
+      "compression": 8,
+      "header_offset": 18222622052
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Resources": {
+      "size_bytes": 26,
+      "sha256": "59991b51b8ee15b59f07ec45942957a4ce90494257766964f5df60b7c7998e42",
+      "external_attr": 2716663808,
+      "compressed_size_bytes": 28,
+      "compression": 8,
+      "header_offset": 18222622218
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18222622370
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18222622494
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/BootabilityBrain": {
+      "size_bytes": 5696240,
+      "sha256": "5455c47d5f9b9712a03fe64870f8e6ad864688c3fd2be4655bb40a617c8ad773",
+      "external_attr": 2179792896,
+      "compressed_size_bytes": 2264994,
+      "compression": 8,
+      "header_offset": 18222622620
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/Resources/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18224887756
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/Resources/BYError.strings": {
+      "size_bytes": 2760,
+      "sha256": "0c096cac0bd731058bb38a4b13b9e3047305cbc25a2a8385079fce477b98939b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 1446,
+      "compression": 8,
+      "header_offset": 18224887892
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/Resources/Info.plist": {
+      "size_bytes": 1416,
+      "sha256": "0c2d4fcb09df5d0569e056f6cacf516478fa08190b2d391ec0c3af7b53d1da6b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 527,
+      "compression": 8,
+      "header_offset": 18224889489
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/Resources/version.plist": {
+      "size_bytes": 521,
+      "sha256": "60fbd18cd855f67341eaba52fffef765b55f16b4695997b4575d66091ce6c2d9",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 263,
+      "compression": 8,
+      "header_offset": 18224890162
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/_CodeSignature/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18224890574
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/A/_CodeSignature/CodeResources": {
+      "size_bytes": 747,
+      "sha256": "54c07b4c0c0587dc53fa4b37dec98526993eb4eae392938164f42157b4e90378",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 328,
+      "compression": 8,
+      "header_offset": 18224890715
+    },
+    "BootabilityBundle/Restore/Bootability/BootabilityBrain.framework/Versions/Current": {
+      "size_bytes": 1,
+      "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+      "external_attr": 2716663808,
+      "compressed_size_bytes": 3,
+      "compression": 8,
+      "header_offset": 18224891197
+    },
+    "BootabilityBundle/Restore/Bootability/System/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18224891331
+    },
+    "BootabilityBundle/Restore/Bootability/System/Library/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18224891426
+    },
+    "BootabilityBundle/Restore/Bootability/System/Library/CoreServices/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18224891529
+    },
+    "BootabilityBundle/Restore/Bootability/System/Library/CoreServices/RestoreVersion.plist": {
+      "size_bytes": 358,
+      "sha256": "f57101b933c16a430aea39b0e38d6a5423cf24d03b39bf30ca24d41602104698",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 218,
+      "compression": 8,
+      "header_offset": 18224891645
+    },
+    "BootabilityBundle/Restore/Firmware/Bootability.dmg.trustcache": {
+      "size_bytes": 2666,
+      "sha256": "5a91621dc82c1a88441fde62f645905f5679dbaf48ba7c7aa0881691a47b2be8",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 2441,
+      "compression": 8,
+      "header_offset": 18224893285
+    },
+    "BuildManifest.plist": {
+      "size_bytes": 26535137,
+      "sha256": "e8ff2cdd3e8ab3a668132bf9453948b70f1863b849a6185914f54a9ec25356d3",
+      "external_attr": 2166620160,
+      "compressed_size_bytes": 1357245,
+      "compression": 8,
+      "header_offset": 18224896761
+    },
+    "Firmware/022-22048-093.dmg.aea.root_hash": {
+      "size_bytes": 229,
+      "sha256": "577661fd264e5745736d4d31ff14598c5ad1f7360fad5092f79ac04b7562e8d9",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 68,
+      "compression": 8,
+      "header_offset": 18252427726
+    },
+    "Firmware/022-22048-093.dmg.aea.trustcache": {
+      "size_bytes": 25799,
+      "sha256": "763bc8fb472135c344282bcdb65c8c41f1d78d0e5055d943e7c8ac2f4c176a65",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 23494,
+      "compression": 8,
+      "header_offset": 18252427884
+    },
+    "Firmware/094-96883-093.dmg.root_hash": {
+      "size_bytes": 229,
+      "sha256": "215b0e1c1ea105426f604f922f5adc0b140cb025841af986ee6062ee606fcd96",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 69,
+      "compression": 8,
+      "header_offset": 18252755098
+    },
+    "Firmware/094-96883-093.dmg.trustcache": {
+      "size_bytes": 1415,
+      "sha256": "622a01bbbfbe1902cf90bfb4e5e61684dd013affa86ce6093d8059a159427d12",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 1350,
+      "compression": 8,
+      "header_offset": 18252755253
+    },
+    "Firmware/094-96884-092.dmg.aea.mtree": {
+      "size_bytes": 71873518,
+      "sha256": "a0b741f2f4fb5bd293095f3a1a9de9215a8da8e95af1814a14d5753aacbb3a07",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 71056037,
+      "compression": 8,
+      "header_offset": 18252756690
+    },
+    "Firmware/094-96884-092.dmg.aea.root_hash": {
+      "size_bytes": 229,
+      "sha256": "d4f4a8cffa7c6476ae06f6018dd6335a9f9449d0c928b2ed24eddb85ee25017f",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 139,
+      "compression": 8,
+      "header_offset": 18323812813
+    },
+    "Firmware/094-96884-092.dmg.aea.trustcache": {
+      "size_bytes": 364033,
+      "sha256": "62ed8f2a85eff12b799fd328ca4904a501baed75850525bb0006ffab63433624",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 327428,
+      "compression": 8,
+      "header_offset": 18323813042
+    },
+    "Firmware/094-97105-093.dmg.aea.root_hash": {
+      "size_bytes": 229,
+      "sha256": "357125bc8b4a3e00c0569a53d4bbb3f2d2fe927fac805292c525e8559c369848",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 68,
+      "compression": 8,
+      "header_offset": 18395546900
+    },
+    "Firmware/094-97105-093.dmg.aea.trustcache": {
+      "size_bytes": 3287,
+      "sha256": "3f8eb554d57114ac6e1abc0143128eff9613b4cd166b9c3ccb7c29d461ac354b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3020,
+      "compression": 8,
+      "header_offset": 18395547058
+    },
+    "Firmware/AOP/aopfw-mac16gaop.RELEASE.im4p": {
+      "size_bytes": 2134041,
+      "sha256": "290361b844a25996679ef1af4dbebaedfec3bf8bad8a84d79595b9d54f5c19e4",
+      "external_attr": 2179792896,
+      "compressed_size_bytes": 518229,
+      "compression": 8,
+      "header_offset": 18402372876
+    },
+    "Firmware/J713_InputDevice.im4p": {
+      "size_bytes": 101972,
+      "sha256": "521e6c262112f0974b861b0e15517c614410b01f9969f634cdb7e825e64e2acb",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 58489,
+      "compression": 8,
+      "header_offset": 18425094144
+    },
+    "Firmware/J713_MtpFirmware.im4p": {
+      "size_bytes": 897616,
+      "sha256": "2d060715ca577f81771e12616b755811c59cc72f15bdc9653cfeb0c67da1c7fd",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 236718,
+      "compression": 8,
+      "header_offset": 18425152713
+    },
+    "Firmware/J713_Multitouch.im4p": {
+      "size_bytes": 111535,
+      "sha256": "f27e6714b952598ec525581029e33524d235a8e3c8d361fa6a142b5984dce53f",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 67727,
+      "compression": 8,
+      "header_offset": 18425389511
+    },
+    "Firmware/Manifests/restore/macOS Customer/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18427974221
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j180dap.im4m": {
+      "size_bytes": 6131,
+      "sha256": "77c83736cee5ebece47cfd67f847aaa6d9ae7677aa15eac6b95a0f47d351aa02",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4003,
+      "compression": 8,
+      "header_offset": 18427974313
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j274ap.im4m": {
+      "size_bytes": 5449,
+      "sha256": "0b0fa5262073cf9d2314b16545401741eb65e5b520121d0b5d0a0c16eddbe416",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3694,
+      "compression": 8,
+      "header_offset": 18427978429
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j293ap.im4m": {
+      "size_bytes": 5864,
+      "sha256": "52e64fc3bc38c07ed77f17c628ecdca9e526f8f64036db7ef858c1fe3a639ef4",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3888,
+      "compression": 8,
+      "header_offset": 18427982235
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j313ap.im4m": {
+      "size_bytes": 5727,
+      "sha256": "f9e69e99a678c751a475afd8e6d08d300cdbc2b1fcc40583a20662b19b0d88f6",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3827,
+      "compression": 8,
+      "header_offset": 18427986235
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j314cap.im4m": {
+      "size_bytes": 6275,
+      "sha256": "7f56e43fd3a20482f621f1347084d446d9ca0335fdcbf98763c071ca30db70c4",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4073,
+      "compression": 8,
+      "header_offset": 18427990174
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j314sap.im4m": {
+      "size_bytes": 6001,
+      "sha256": "b5dc09d48306bc967c52fab0c2c694b301f1062daa5672581f3b67f29d2619cc",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3957,
+      "compression": 8,
+      "header_offset": 18427994360
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j316cap.im4m": {
+      "size_bytes": 6275,
+      "sha256": "faa82663a61812e9eb04fe060f916ff2d3e43a29d86008f0ea123f2df43e0c33",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4073,
+      "compression": 8,
+      "header_offset": 18427998430
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j316sap.im4m": {
+      "size_bytes": 6001,
+      "sha256": "a95d4cdaa6b49791af6530ea97bde031cc6881233792231c6b2b250ac23f3d2a",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3959,
+      "compression": 8,
+      "header_offset": 18428002616
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j375cap.im4m": {
+      "size_bytes": 5994,
+      "sha256": "7402c1099123b32a422f805606622c8d84c9763bef7fdc0e53cec5a20016076e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3941,
+      "compression": 8,
+      "header_offset": 18428006688
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j375dap.im4m": {
+      "size_bytes": 6542,
+      "sha256": "ff7219a7b9ab66e59809de84f01fc6a62237250416931da287b281dd06d6774e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4172,
+      "compression": 8,
+      "header_offset": 18428010742
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j413ap.im4m": {
+      "size_bytes": 6405,
+      "sha256": "71d1052663353995d3ec674666250ba3d9fecd34a60dcb9488a0eea14748a831",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4128,
+      "compression": 8,
+      "header_offset": 18428015027
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j414cap.im4m": {
+      "size_bytes": 6405,
+      "sha256": "a0ac9c542f66be6ad22f2f838a253f852c3b3eea31309eebeca08ce7f53700c4",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4131,
+      "compression": 8,
+      "header_offset": 18428019267
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j414sap.im4m": {
+      "size_bytes": 6405,
+      "sha256": "cdfc717625cd28db68a9dd896ff2e05ce1a3cf019c325813236476283dd7565d",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4130,
+      "compression": 8,
+      "header_offset": 18428023511
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j415ap.im4m": {
+      "size_bytes": 6406,
+      "sha256": "9a4a1cb6be45066130bcf2a413f494e2d928aec5220841c5c0e027010672fb03",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4124,
+      "compression": 8,
+      "header_offset": 18428027754
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j416cap.im4m": {
+      "size_bytes": 6405,
+      "sha256": "1700b445bba9ea2e58d425180604c79c80b2a1e897523a0fc7a6e367ba137d03",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4129,
+      "compression": 8,
+      "header_offset": 18428031990
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j416sap.im4m": {
+      "size_bytes": 6406,
+      "sha256": "0acbb164ad8ccfdf163146aeb6782c2593140fb618cf2a055af264160c44e898",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4137,
+      "compression": 8,
+      "header_offset": 18428036232
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j433ap.im4m": {
+      "size_bytes": 5875,
+      "sha256": "302ec7869abd1e6adefb9fbe8b2d786ba6a279f703eedf9d810fbbd13f9a7184",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3892,
+      "compression": 8,
+      "header_offset": 18428040482
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j434ap.im4m": {
+      "size_bytes": 5875,
+      "sha256": "a3e06c3509ec0b8c977966db7bcf409d7182b779bf0618ffe080cef90d50f7a1",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3891,
+      "compression": 8,
+      "header_offset": 18428044486
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j456ap.im4m": {
+      "size_bytes": 5584,
+      "sha256": "ef129361e6710100ea7cdb123a4baae8091c1751f2158af614c0b0c54bb7b1bc",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3749,
+      "compression": 8,
+      "header_offset": 18428048489
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j457ap.im4m": {
+      "size_bytes": 5584,
+      "sha256": "aec22c851067d0eb9440eedbbf86819c26d5807bc7d6e457266ed2c23fcdb760",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3753,
+      "compression": 8,
+      "header_offset": 18428052350
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j473ap.im4m": {
+      "size_bytes": 5857,
+      "sha256": "9d4a0c374971bde4f368745802764163e1f9b80b527153cfdccd642b32a8901d",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3880,
+      "compression": 8,
+      "header_offset": 18428056215
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j474sap.im4m": {
+      "size_bytes": 5858,
+      "sha256": "429bbde14609a8391fe34a9fce672cbbf7157ece6b6e48fbc5b92c197b24a062",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3889,
+      "compression": 8,
+      "header_offset": 18428060207
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j475cap.im4m": {
+      "size_bytes": 5858,
+      "sha256": "06ba7bcf05b2e6d9ca66e917eae059d7418be1cfff63307f72eb0212a6bad036",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3889,
+      "compression": 8,
+      "header_offset": 18428064209
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j475dap.im4m": {
+      "size_bytes": 6132,
+      "sha256": "db29f05df4b1db16eb2dd09024b7415434bab9136cc3099bf37a3e7be1506e81",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4004,
+      "compression": 8,
+      "header_offset": 18428068211
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j493ap.im4m": {
+      "size_bytes": 6405,
+      "sha256": "a00dcb5b2bde175bc15d1ace9fd291437b4f4da552790a0c397eaf39b274415e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4124,
+      "compression": 8,
+      "header_offset": 18428072328
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j504ap.im4m": {
+      "size_bytes": 6286,
+      "sha256": "ead5e495af3dda35ff1ede83f2fb6d32125700ad484a29f8ba4e4ecf3a286252",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4076,
+      "compression": 8,
+      "header_offset": 18428076564
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j514cap.im4m": {
+      "size_bytes": 6286,
+      "sha256": "0d951825ec4aa9bae0098070b83c36aa7a2e6a9bf23a47d7e0ba6c218c807db0",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4086,
+      "compression": 8,
+      "header_offset": 18428080752
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j514map.im4m": {
+      "size_bytes": 6287,
+      "sha256": "44985ca249c311fc6030a3a2cfd7b5d2cfdf80ee1afd07543b242325d8e9c510",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4088,
+      "compression": 8,
+      "header_offset": 18428084951
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j514sap.im4m": {
+      "size_bytes": 6286,
+      "sha256": "79a4fbd9466c94a55df0c8789f8139e3ca885caddda34ea9ab085b95cf54cbaf",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4086,
+      "compression": 8,
+      "header_offset": 18428089152
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j516cap.im4m": {
+      "size_bytes": 6286,
+      "sha256": "5cedabbdc359f1779aa76c46b47f3b939a7bf42e347181165808bf178e55f0ec",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4087,
+      "compression": 8,
+      "header_offset": 18428093351
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j516map.im4m": {
+      "size_bytes": 6287,
+      "sha256": "e8448d9218751ce1d2d1b4edf00b1d01183a9a2320a51d818633213b5ed96181",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4091,
+      "compression": 8,
+      "header_offset": 18428097551
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j516sap.im4m": {
+      "size_bytes": 6286,
+      "sha256": "c0b20496deaf6a75e66b86cefa56f19cfc4ae6e7d0e08108256c143330270f30",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4081,
+      "compression": 8,
+      "header_offset": 18428101755
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j575cap.im4m": {
+      "size_bytes": 5875,
+      "sha256": "bcea25e516eb1f47107810ba5d953b59ff260d24f690aab179476f81ea7b4997",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3890,
+      "compression": 8,
+      "header_offset": 18428105949
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j575dap.im4m": {
+      "size_bytes": 6013,
+      "sha256": "67e0dd8ae8b7646cf3138dd71221c7a9463b480c602ebd8d4dbcdb28100e8a76",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3963,
+      "compression": 8,
+      "header_offset": 18428109952
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j604ap.im4m": {
+      "size_bytes": 6423,
+      "sha256": "5f8d3c3834c5ca45bdd522059bf56c1d899268c142904efe9ba45c9ee9501285",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4135,
+      "compression": 8,
+      "header_offset": 18428114028
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j613ap.im4m": {
+      "size_bytes": 6287,
+      "sha256": "5c7bf9f8c2a0e1868c8b64e33a0acf1a2bd2499d525f4af57e97216dc49b8c7d",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4076,
+      "compression": 8,
+      "header_offset": 18428118275
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j614cap.im4m": {
+      "size_bytes": 6423,
+      "sha256": "82030ba7450bdc21329437b191c91c9d8675edd94b67803b1567260711013f67",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4140,
+      "compression": 8,
+      "header_offset": 18428122463
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j614sap.im4m": {
+      "size_bytes": 6412,
+      "sha256": "1a650f117a9e38cbf4857ade67f9b1c7c342b0d77faacb63d883797d38330b24",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4130,
+      "compression": 8,
+      "header_offset": 18428126716
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j615ap.im4m": {
+      "size_bytes": 6287,
+      "sha256": "ebdde33d2e702c7d474bafd366f7400a0f5407ab29dff2d7a4ffaadbab51c93c",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4081,
+      "compression": 8,
+      "header_offset": 18428130959
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j616cap.im4m": {
+      "size_bytes": 6423,
+      "sha256": "36a4021f2606aca7eda9425ac6eb7d2201075902bf28e851fe36d2cc2a49cf5c",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4139,
+      "compression": 8,
+      "header_offset": 18428135152
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j616sap.im4m": {
+      "size_bytes": 6412,
+      "sha256": "2e99e7025d05a52a7423b4b6ea055243e5fe43f138bd0a742a28279eabdf26b1",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4128,
+      "compression": 8,
+      "header_offset": 18428139404
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j623ap.im4m": {
+      "size_bytes": 6012,
+      "sha256": "ab5c8e13471183be43c89329797ef502fd1577adcc7b90ca0869e0b48f47d5d6",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3950,
+      "compression": 8,
+      "header_offset": 18428143645
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j624ap.im4m": {
+      "size_bytes": 6012,
+      "sha256": "f37e3dee57a535634bf11e745e8305abaca4f435341a2062f23770b145bc5e8f",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3944,
+      "compression": 8,
+      "header_offset": 18428147707
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j700ap.im4m": {
+      "size_bytes": 7382,
+      "sha256": "ec0a109363162627ae4bda1d4907cb15fd9ac7a4c10c7a5cc92f5edb0afa0c33",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4543,
+      "compression": 8,
+      "header_offset": 18428151763
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j704ap.im4m": {
+      "size_bytes": 8059,
+      "sha256": "337896b33b5161dfdd87b23ddb5d8fc255e5b6c5f2d9e5b4af950c6ae236be20",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4841,
+      "compression": 8,
+      "header_offset": 18428156418
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j713ap.im4m": {
+      "size_bytes": 6424,
+      "sha256": "7cb16e4ef8020abadfb478d91b2b8d373329eac0f9984587e2193588a45d44fb",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4135,
+      "compression": 8,
+      "header_offset": 18428161371
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j714cap.im4m": {
+      "size_bytes": 7930,
+      "sha256": "cf26b78df98cf0f3ad8d2e1fbe85cbb75852621c7da2bfdca7b0cc538c1f618d",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4793,
+      "compression": 8,
+      "header_offset": 18428165618
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j714sap.im4m": {
+      "size_bytes": 7930,
+      "sha256": "9a6787441236d2e2564372eb680eb1fd1a48c2e716c28aa35baefdc7ec05bd66",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4793,
+      "compression": 8,
+      "header_offset": 18428170524
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j715ap.im4m": {
+      "size_bytes": 6424,
+      "sha256": "c250a7e1758a5d1de9f229f0fd097ba9af723e97f439d939841d2d58bb6e55ff",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4136,
+      "compression": 8,
+      "header_offset": 18428175430
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j716cap.im4m": {
+      "size_bytes": 7930,
+      "sha256": "5477ac919053f0ea0eb6f9c36ed2fd1316594d4a1406b8704e738ca7855e184b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4795,
+      "compression": 8,
+      "header_offset": 18428179678
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j716sap.im4m": {
+      "size_bytes": 7930,
+      "sha256": "b16581ea6fab7acd00b9c3d7736f199307e97f4c20b6b6fab4e247bdef3e2648",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4796,
+      "compression": 8,
+      "header_offset": 18428184586
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j773gap.im4m": {
+      "size_bytes": 5878,
+      "sha256": "6b4428031302706f164bcdd0de29dce0a680731e2a0210c64da0d2eccf0b7ae5",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3895,
+      "compression": 8,
+      "header_offset": 18428189495
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j773sap.im4m": {
+      "size_bytes": 5865,
+      "sha256": "fa78403d74a6550afce00058128bc156900b967c4f22ab841fd176b7436ec745",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3888,
+      "compression": 8,
+      "header_offset": 18428193503
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j813ap.im4m": {
+      "size_bytes": 7922,
+      "sha256": "51ccc9209ced423ba8c1a093a380371cf7db6d042c4c37b652f5681776f27bdf",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4775,
+      "compression": 8,
+      "header_offset": 18428197504
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.j815ap.im4m": {
+      "size_bytes": 7922,
+      "sha256": "51f5953ce9a89806dafd95c06b45ed77cf6c94e3ed7a93336aaccdd320dcd768",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4775,
+      "compression": 8,
+      "header_offset": 18428202391
+    },
+    "Firmware/Manifests/restore/macOS Customer/apticket.vma2macosap.im4m": {
+      "size_bytes": 4229,
+      "sha256": "46ac11f9c50df39c9d057353b6933096527e8054106d257664b22e7c3559fc2e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 3172,
+      "compression": 8,
+      "header_offset": 18428207278
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/": {
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "external_attr": 1106051088,
+      "compressed_size_bytes": 0,
+      "compression": 0,
+      "header_offset": 18428210567
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714cap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "2150eb79f0ac628a8d4e273a72f203f50e0380127dec63f81fdafc9df967f24a",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4269,
+      "compression": 8,
+      "header_offset": 18428210668
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714cap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "e5d04da2ac7461e0cdc87f0c260b4228f772648f2ba70fcc6c4ac92b9f938198",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4260,
+      "compression": 8,
+      "header_offset": 18428215063
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714cap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "eccc94138c191673d92017b5bb6997b1823d773e9dc2a837141513bcc2b35600",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4269,
+      "compression": 8,
+      "header_offset": 18428219445
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714sap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "1134c279ed16420ea83a5e59dce901e9a87655d760e25c5098484d7e305f3823",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4269,
+      "compression": 8,
+      "header_offset": 18428223845
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714sap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "e5e77ab1985b60ff929c077ecb9c8b91d4fd20b8fc618df445df678ac97cd59e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4268,
+      "compression": 8,
+      "header_offset": 18428228240
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j714sap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "171aa61608847d7d7641ccb46eb96dec9dd1820854e515094755ae3cc925c36b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4272,
+      "compression": 8,
+      "header_offset": 18428232630
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716cap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "1a9305dba828e87751554358b345e4ded1713ef52e51bad98296ac5c8aca4381",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4267,
+      "compression": 8,
+      "header_offset": 18428237033
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716cap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "cbe186c9d7e127d322b9ef17f90a4ed1be4f2ebacfd55bc098ef93376ab5aa59",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4268,
+      "compression": 8,
+      "header_offset": 18428241426
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716cap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "02ae8d57db42fc8e8587c96596ae6bb35fa5536a9560741e123e32b44bd6c7c8",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4270,
+      "compression": 8,
+      "header_offset": 18428245816
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716sap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "0bf81a5dad35897173d5ca3c86b2f05f718412e6ed61073f288b1e249be7b33a",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4269,
+      "compression": 8,
+      "header_offset": 18428250217
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716sap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "0ed748fc71c9fae3a7381d19270edacb8dc534cc137be83af08c0116d5c028b9",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4267,
+      "compression": 8,
+      "header_offset": 18428254612
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j716sap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "deb97dddcf14657872c8de7470031f3c15b8abf49e5710e0d4c696d4014e95fe",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4267,
+      "compression": 8,
+      "header_offset": 18428259001
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j813ap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "0c78a5d73483415ac0da7f4343a19458553f237f09990ca5bb7a52e4c1c6cb2e",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4266,
+      "compression": 8,
+      "header_offset": 18428263399
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j813ap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "de01f1f8ee384e7c47f482002cf38bf6f32f6a34687a7bb6cb4653912fb52582",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4266,
+      "compression": 8,
+      "header_offset": 18428267790
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j813ap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "81519961deceb2616287ade7cd9076994d9b3a4a95fa98f8ca701d14c8a46e01",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4272,
+      "compression": 8,
+      "header_offset": 18428272177
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j815ap.dev.im4m": {
+      "size_bytes": 7771,
+      "sha256": "270ed49f3b2644e5787b5d9161835bd0a7772a77fa3fa1f94004ff439aa9b64c",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4267,
+      "compression": 8,
+      "header_offset": 18428276579
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j815ap.im4m": {
+      "size_bytes": 7771,
+      "sha256": "f042b0a4a2927a50e386d849d767c4b8bb421e9525d3708ee2c6e399df6d59a0",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4270,
+      "compression": 8,
+      "header_offset": 18428280971
+    },
+    "Firmware/Manifests/restore/macOS Customer/centauri/centauri.j815ap.insecure.im4m": {
+      "size_bytes": 7771,
+      "sha256": "94c15e7a31084e1af197000a3b632aba52e8adcf4aa7af82b560af740cdcd2fd",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4273,
+      "compression": 8,
+      "header_offset": 18428285362
+    },
+    "Firmware/SmartIOFirmware_ASCv7.im4p": {
+      "size_bytes": 1152885,
+      "sha256": "d8f10d46c0b414c378aa0fcb7182d008906a98855b9ce1781625fb7d66cb0c3b",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 71318,
+      "compression": 8,
+      "header_offset": 18478245976
+    },
+    "Firmware/agx/armfw_g16g.im4p": {
+      "size_bytes": 3422345,
+      "sha256": "d900e6db6cd08f1e138a24239b90396b1bd686dd265a9881041fc7e6a90ee9b2",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 410233,
+      "compression": 8,
+      "header_offset": 18484532422
+    },
+    "Firmware/all_flash/DeviceTree.j713ap.im4p": {
+      "size_bytes": 51666,
+      "sha256": "d64dbb52744e7b61461a3290cfe40e059bdcebdd23129cceed60c8219854badc",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 51485,
+      "compression": 8,
+      "header_offset": 18489426572
+    },
+    "Firmware/all_flash/applelogo@2x~mac-USBc.im4p": {
+      "size_bytes": 8472,
+      "sha256": "8067e7de0002884f17fdaa51de09d64570b9ab4a8a261c0a651684786f7a195f",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 7254,
+      "compression": 8,
+      "header_offset": 18557131774
+    },
+    "Firmware/all_flash/iBoot.j713.RELEASE.im4p": {
+      "size_bytes": 1141145,
+      "sha256": "b596d4f75be1cbe5cdc67298e9dfd3e740895afffcff669a0ece1ad3cf0a67ce",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 1132406,
+      "compression": 8,
+      "header_offset": 18600362832
+    },
+    "Firmware/all_flash/iBootData.j713.RELEASE.im4p": {
+      "size_bytes": 127,
+      "sha256": "08ee74a248ff4bb545f77a6a81a11411b4d8d518b1d7d90c6380726a66b8ec02",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 109,
+      "compression": 8,
+      "header_offset": 18614609326
+    },
+    "Firmware/ane/h16_ane_fw_leto_j7x.im4p": {
+      "size_bytes": 1572889,
+      "sha256": "a7eead440099d8b6ef615225fd32785ef7154c67c56f2c1fd650ff353f54d4b0",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 326751,
+      "compression": 8,
+      "header_offset": 18937360913
+    },
+    "Firmware/ave/AppleAVE2FW_H16G.im4p": {
+      "size_bytes": 2678961,
+      "sha256": "aa05040b60416a56da0d987061cf49dbf8f43775809f54d378de712f04bb1a9d",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 651070,
+      "compression": 8,
+      "header_offset": 18965905761
+    },
+    "Firmware/dcp/t8132dcp.im4p": {
+      "size_bytes": 4051980,
+      "sha256": "c487d63174c3c606b2394532c46e0f165e2ef07f515fbb954c1eabb67ff963b8",
+      "external_attr": 2179792896,
+      "compressed_size_bytes": 4050805,
+      "compression": 8,
+      "header_offset": 19037829378
+    },
+    "Firmware/dcp/t8132dcp_restore.im4p": {
+      "size_bytes": 4052521,
+      "sha256": "a6e42b7b524fdba8d45f0acca4adda3bd67efb6c4161024fcbc944ab89939dcb",
+      "external_attr": 2179792896,
+      "compressed_size_bytes": 4051365,
+      "compression": 8,
+      "header_offset": 19041880259
+    },
+    "Firmware/isp_bni/adc-eris-j129.im4p": {
+      "size_bytes": 17645595,
+      "sha256": "71b95c62fa93b3af6a6b0605f15147de8ea296bd02de63c8d27bb48def44f221",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 4872968,
+      "compression": 8,
+      "header_offset": 19288878125
+    },
+    "Firmware/pmc/t8132pmcfw.im4p": {
+      "size_bytes": 24647,
+      "sha256": "1829dfa2d2724c589920549cee8141d1c66613c74934411e511b05ff9bbf173f",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 14935,
+      "compression": 8,
+      "header_offset": 19335507745
+    },
+    "Firmware/pmp/t8132pmp.im4p": {
+      "size_bytes": 675865,
+      "sha256": "e54fbeffce2c66694d64aabab7ff80063bba1e81eacf18570a72fcf86d2a7cb2",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 154794,
+      "compression": 8,
+      "header_offset": 19337147793
+    },
+    "Firmware/sptm.t8132.release.im4p": {
+      "size_bytes": 196342,
+      "sha256": "91f6288dfda27dc319717d98c3dcfa9249bb1a2d4e5ed5c1d7c3705105a5bbf7",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 195674,
+      "compression": 8,
+      "header_offset": 19356251647
+    },
+    "Firmware/txm.macosx.release.im4p": {
+      "size_bytes": 168666,
+      "sha256": "fdcd8324fcdab7976a3ed4e319f7100120d18f23502ffa74cd74899e92a4a9ba",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 168635,
+      "compression": 8,
+      "header_offset": 19371410027
+    },
+    "PlatformSupport.plist": {
+      "size_bytes": 790,
+      "sha256": "06ffc188ff2bccd233b594e3e43ba4e6a9b57a168e27489839b7a3b0d2f28107",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 356,
+      "compression": 8,
+      "header_offset": 19372015952
+    },
+    "RestoreVersion.plist": {
+      "size_bytes": 358,
+      "sha256": "f57101b933c16a430aea39b0e38d6a5423cf24d03b39bf30ca24d41602104698",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 218,
+      "compression": 8,
+      "header_offset": 19372017989
+    },
+    "SystemVersion.plist": {
+      "size_bytes": 603,
+      "sha256": "6151cb883e5b48d43a33d4d41956405a1cd502e0c8622319388d943e2cb804a1",
+      "external_attr": 2166620160,
+      "compressed_size_bytes": 299,
+      "compression": 8,
+      "header_offset": 19372018277
+    },
+    "kernelcache.release.mac16g": {
+      "size_bytes": 32061360,
+      "sha256": "d3539ca9402caad227bb1624b6f531c1db1baf8c590099c8768dd61e0928de39",
+      "external_attr": 2179203072,
+      "compressed_size_bytes": 32022390,
+      "compression": 8,
+      "header_offset": 19593206614
+    },
+    "usr/standalone/bootcaches.plist": {
+      "size_bytes": 22196,
+      "sha256": "a45beaac9bf43f9636b4140cf74c2a2f704513269e0e6d60e9df33ccc5430d39",
+      "external_attr": 2175008768,
+      "compressed_size_bytes": 1979,
+      "compression": 8,
+      "header_offset": 19772072176
+    }
+  }
 }

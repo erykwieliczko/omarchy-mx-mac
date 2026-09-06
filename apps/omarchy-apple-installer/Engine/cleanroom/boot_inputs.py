@@ -126,8 +126,8 @@ def _member(archive, name, maximum_size=None):
 def inspect_ipsw(archive, profile):
     """Select one exact identity and preserve its Recovery authentication set.
 
-    The caller must first authenticate the enclosing IPSW against its admitted
-    artifact descriptor. This checks structure/coherence, not Apple's signature.
+    The caller must first authenticate either the enclosing IPSW against its
+    admitted artifact descriptor or every selected member against signed pins. This checks structure/coherence, not Apple's signature.
     Encrypted BaseSystem input is reported explicitly, never renamed to a DMG.
     """
     try:

@@ -114,10 +114,37 @@ and the helper import, plus the catalog's `executionScratchBytes` and a separate
 1 GiB allowance for ordinary macOS writes. Execution scratch covers retained
 Apple stub inputs, decoded Recovery, and engine extraction (8 GiB in the current
 Apple lock). Before downloading from Apple, a separate 64 GiB preflight free-space
-check covers the full IPSW and native system-image decoding while macOS still
+check covers the selected Apple ZIP and native system-image decoding while macOS still
 occupies its original partition. After collecting firmware, the engine detaches
 and deletes the system image, retains a verified private stub-only archive, and
-deletes the full IPSW before entering disk preflight. Retained Apple files must
+deletes the large selected ZIP before entering disk preflight. Retained Apple files must
 fit the execution budget with 1 GiB left for engine and transaction files.
 These Apple inputs are temporary files on the target, never release artifacts.
 The helper still rechecks the exact approved extent against the live disk.
+
+### Selective Apple ZIP downloads and development cache
+
+The bundled `j713-apple-inputs.json` pins every selected ZIP member's name,
+size, SHA-256, attributes, compression and original header offset. Generate
+those records from the authenticated full IPSW with `pin_apple_members.py`.
+The engine uses bounded HTTP Range reads, requires exact HTTP 206 responses,
+and verifies every selected member before admitting its private subset ZIP.
+It does not download unrelated IPSW members. For 25G83/J713, the selected
+compressed members total 11,600,027,926 bytes, rather than the full
+19,772,231,540-byte IPSW. Recovery lacks the J713 garden Wi-Fi payload, so the
+pinned system-image member is still required.
+
+`assemble_engine.py --development-apple-cache` explicitly adds a private
+build marker enabling `/var/db/com.omarchy.mx.installer-dev-cache`. Normal
+builds omit it and always fetch from Apple. The dev cache stores only verified
+selected ZIP members, keyed by the selected-member lock. Every hit is cloned
+into private scratch and revalidated against the signed per-member hashes.
+Successful acquisition survives subsequent preparation failure. Development
+catalogs reserve the cache as well as execution workspace (20 GiB total for the
+current selection); normal catalogs reserve 8 GiB. Release assembly rejects a
+development cache without this extra retained-space allowance. The cache is
+local development state and is never included in release assets.
+
+Mount admission resolves filesystem aliases such as `/var` and `/private/var`
+before comparing the requested directory with hdiutil's reported mount path.
+Qualification must exercise the helper's `/var/db` path, not just `/Users/Shared`.
