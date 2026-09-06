@@ -64,6 +64,36 @@ class AppleRangeTests(unittest.TestCase):
                 self.assertEqual(archive.read("boot"), b"admitted boot code")
             self.assertLess(self.transferred, len(self.data) // 2)
 
+    def test_unaligned_bulk_reads_keep_bounded_read_ahead(self):
+        # ZIP member bodies rarely start on a 1 MiB boundary. A cached prefix
+        # must not turn the rest of every bulk read into a separate request.
+        block = 1024**2
+        total = 130 * block + 517
+        for offset in (0, 123, block - 1):
+            requests = []
+            def fetch(request, **kwargs):
+                start, end = map(int, request.get_header("Range")[6:].split("-"))
+                requests.append((start, end))
+                self.assertLessEqual(end - start + 1, 32 * block)
+                self.assertLess(end, total)
+                data = b"".join(bytes([index % 251]) * min(block, total - index * block)
+                                for index in range(start // block, end // block + 1))
+                return Response(data, start, end, total)
+            with self.subTest(offset=offset), AppleRangeReader(
+                    {"url": URL, "size_bytes": total}, opener=SimpleNamespace(open=fetch)) as reader:
+                reader.seek(offset)
+                for index in range(128):
+                    data = reader.read(block)
+                    start_block, within = divmod(offset + index * block, block)
+                    expected = (bytes([start_block % 251]) * (block - within)
+                                + bytes([(start_block + 1) % 251]) * within)
+                    self.assertEqual(data, expected)
+                self.assertLessEqual(len(requests), 5)
+                self.assertLessEqual(len(reader.blocks), 32)
+                reader.seek(total - 517)
+                self.assertEqual(reader.read(block), bytes([130 % 251]) * 517)
+                self.assertEqual(reader.read(1), b"")
+
     def test_range_protocol_must_match_exact_request(self):
         variants = [("status", 200), ("Content-Range", "bytes 0-2/3"),
                     ("Content-Length", "0"), ("Content-Encoding", "gzip")]

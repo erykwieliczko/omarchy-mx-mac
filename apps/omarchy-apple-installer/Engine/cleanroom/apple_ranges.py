@@ -59,7 +59,9 @@ class AppleRangeReader(io.RawIOBase):
         while len(result) < size:
             index, offset = divmod(self.position, self.block_size)
             if index not in self.blocks:
-                count = self.cache_blocks if size - len(result) >= self.block_size else 1
+                # A cached partial block must not downgrade a bulk read into
+                # single-block requests for the rest of an unaligned ZIP member.
+                count = self.cache_blocks if size >= self.block_size else 1
                 start = index * self.block_size
                 end = min(start + count * self.block_size, self.size) - 1
                 request = urllib.request.Request(self.url, headers={

@@ -165,3 +165,11 @@ actual Mac. Boot mode, macOS baseline, signed artifacts, firmware validation,
 live disk layout, existing-install refusal, and owner authorization still
 apply. Selecting a profile does not supply drivers or Apple restore support
 for other hardware. The app opts out of macOS relaunch at login on startup.
+
+### Range transport throughput
+
+Bulk ZIP reads use bounded 32 MiB read-ahead even when a member begins inside
+an already cached block. Choosing the window from the remaining bytes after
+that cached prefix causes repeated 1 MiB requests and connection overhead.
+The regression exercises unaligned reads, byte correctness, cache bounds,
+and the final partial block; small ZIP metadata reads still fetch one block.
