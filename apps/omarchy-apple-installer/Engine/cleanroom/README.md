@@ -49,15 +49,35 @@ omarchy-restore-image INPUT_AEA INPUT_SHA256 OUTPUT_DMG
 
 `stage_sources.py` applies the locked transaction library and isolated factory
 patches. `assemble_engine.py` adds admitted Python runtime bytes, raw stage one,
-the native restore decoder, and exact OS metadata. `build_restore_package.py`
-retains the complete selected Apple stub closure; `build_payload.py` seals the
-verified disposable filesystem images and the embedded disk-boot bundle.
-`firmware.py` reads the six generic Broadcom files from the full macOS system
+the native restore decoder, and exact OS metadata. `build_payload.py` seals
+verified firmware-free filesystem images and the disk-boot bundle. The older
+`build_restore_package.py` remains a private build-time inspection utility;
+its Apple archive is not an input to the distributable payload or engine.
+`profiles/j713-apple-inputs.json` records Apple's official restore URL, full
+IPSW SHA-256 and length, selected system-image member, and seven converted
+firmware hashes. Engine metadata authenticates the same complete lock.
+`apple_inputs.py` downloads that exact build over HTTPS directly from Apple,
+validates it while streaming, and decodes and mounts the system image read-only
+in private scratch space. It rejects redirects outside the admitted Apple CDN.
+`firmware.py` reads the six generic Broadcom files from this downloaded system
 volume at the exact admitted version/build. Recovery carries incomplete links
 for this chipset. The model profile defines their source/output mapping; no
 machine calibration or installed Linux archive is used. The touchpad blob is
 converted from the selected Apple IPSW's Multitouch component. All seven output
-hashes must match both the root image and early initramfs.
+hashes must match the lock before any partition changes. There is no fallback
+to firmware from the installed macOS. Network, decode, mount or hash failures
+stop during preflight. Scratch cleanup preserves files when image detach is
+unconfirmed, rather than recursively traversing a mounted image.
+
+The installer writes the converted firmware to the new ESP as `firmware.cpio`
+and `firmware.tar`. U-Boot loads GRUB from the ESP selected by m1n1's generated
+partition UUID; GRUB derives its device from `$cmdpath`, loads the firmware CPIO
+after its firmware-free embedded initramfs, and passes
+`firmware_class.path=/vendorfw`. The existing first-boot service imports the
+same firmware into the installed root filesystem. The distributed root, boot,
+initramfs and factory snapshot contain no vendor firmware blobs. The image
+recipe removes generic `linux-firmware` packages and package caches, then copies
+only live files into fresh filesystems to discard deleted firmware blocks.
 `build_release.py` requires an explicit HTTPS artifact base URL and a qualified
 `--execution-scratch-bytes` budget, signs a private catalog and includes only the inspection engine by default. Metadata and the
 OS payload use the normal verified downloader. Offline payload bundling needs
@@ -76,8 +96,8 @@ Assign each candidate its own engine version and payload basename when assemblin
 
 ```sh
 python3 Engine/cleanroom/assemble_engine.py /path/to/transaction-checkout \
-  /path/to/inputs /path/to/new-engine --version v0.1.0-cleanroom.2 \
-  --payload-name omarchy-j713-private-0.8.0.zip
+  /path/to/inputs /path/to/new-engine --version v0.2.0-cleanroom.1 \
+  --payload-name omarchy-j713-private-0.9.0.zip
 ```
 
 The payload sealer checks the exact root/initramfs verification and boot receipts
@@ -92,8 +112,11 @@ tuple. A source build and read-only preflight are not physical install proof.
 Resize planning reserves two complete sets of artifact bytes for the app handoff
 and the helper import, plus the catalog's `executionScratchBytes` and a separate
 1 GiB allowance for ordinary macOS writes. The scratch budget must cover peak
-engine extraction and temporary Recovery files, including the restore ZIP,
-both encrypted Recovery copies, and the decoded image. Qualify it with the exact
+engine extraction and temporary Apple inputs, including the full IPSW, both
+encrypted system-image copies used during native decoding, decoded system
+image and paired Recovery. The current Apple lock requires at least 64 GiB;
+the full Apple download is about 18.4 GiB in addition to our OS payload.
+Qualify the peak with the exact
 engine/payload in a file-only preflight before sealing a release. Cleanroom
 catalogs without a positive budget are rejected. These bytes remain available
 to macOS during installation; they are not part of the requested Linux extent.

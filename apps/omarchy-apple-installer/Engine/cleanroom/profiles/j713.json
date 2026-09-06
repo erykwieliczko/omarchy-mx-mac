@@ -11,7 +11,7 @@
     "variant": "macOS Customer",
     "restore_behavior": "Erase"
   },
-  "boot_format": "m1n1-uboot-grub-embedded-v1",
+  "boot_format": "m1n1-uboot-grub-apple-download-v2",
   "sources": {
     "m1n1": "a091e6f0855f8870be2381a5c004e90c972431b1",
     "u_boot": "7af6b444d69a291ea697f6f80591f75eec5ef7ff",

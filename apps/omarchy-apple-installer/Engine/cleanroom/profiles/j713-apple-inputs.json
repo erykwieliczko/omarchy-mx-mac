@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "device_identifier": "apple,j713",
+  "product_type": "Mac16,12",
+  "firmware_build": "25G83",
+  "catalog_url": "https://mesu.apple.com/assets/macos/com_apple_macOSIPSW/com_apple_macOSIPSW.xml",
+  "ipsw": {
+    "url": "https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-75212/A2A24B94-1FC1-45A3-93F7-C51B02AF1F4D/UniversalMac_26.6.2_25G83_Restore.ipsw",
+    "size_bytes": 19772231540,
+    "sha256": "885503b7f4b06609e9a512f2befd40f59730640a3f1233e3892d60affdd51c95"
+  },
+  "system_image": {
+    "member": "094-96884-092.dmg.aea",
+    "size_bytes": 10334765056,
+    "sha256": "c7c4412996590bb9f75256fb988bb0cf9e8b8ba645346e89443590197741e9c8",
+    "decoded": {
+      "size_bytes": 13142851584,
+      "sha256": "ae2ad529b9f51152e14f636ccabf93d5c8fc06ed3fba8d84e57736758f87e66f"
+    }
+  },
+  "linux_firmware": {
+    "apple/tpmtfw-j713.bin": "9fcbef0cff6a3b7733a4df626c9eba859b66c8e5053557924b8020a67ef48b17",
+    "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-a.txt": "a3cf85bdd68083f40e47e9a029e77a4e14b32047bb9251a46e6b04e2232591f6",
+    "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-u.txt": "68acd4eca6ae81340bcc27bc093c554010c087756dfd0bd2f754f3f667f76b35",
+    "brcm/brcmfmac4388c2-pcie.apple,garden.bin": "8b18acb6116622c6161de80ef510dfa9afc47dd963440f090770e57d14b3e928",
+    "brcm/brcmfmac4388c2-pcie.apple,garden.clm_blob": "28e31d6caaa1eaf6e6adddefa2e83fb544714972c2cbecb9d23b625e1f03a0a1",
+    "brcm/brcmfmac4388c2-pcie.apple,garden.sig": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710",
+    "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6"
+  },
+  "execution_scratch_bytes": 68719476736
+}

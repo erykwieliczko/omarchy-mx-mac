@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Seal a verified disposable J713 image set into an offline OS package."""
+"""Seal verified firmware-free J713 images into a downloadable OS package."""
 import argparse
 import hashlib
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 import stat
 import zipfile
 
-from boot_inputs import load_profile, stub_members
+from boot_inputs import load_profile
 
 
 def write_directories(archive, names):
@@ -52,15 +52,16 @@ def verified_descriptors(images, boot, verification):
 def build(inputs, images, boot, verification, destination):
     verified = verified_descriptors(images, boot, verification)
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
-    with zipfile.ZipFile(inputs / 'apple-restore.zip') as archive:
-        stub_members(archive, profile)
+    evidence = json.loads((verification / 'firmware-free.json').read_text())
+    if evidence != {'schema_version': 1, 'fresh_filesystems': True,
+                    'vendor_firmware_files': [], 'vendor_firmware_packages': []}:
+        raise ValueError('firmware-free image verification is required')
     files = {
         'root.img': images / 'root.img',
         'boot.img': images / 'boot.img',
         'omarchy-volume.icns': images / 'omarchy-volume.icns',
         'esp/m1n1/boot.bin': boot / 'boot.bin',
         'esp/EFI/BOOT/BOOTAA64.EFI': boot / 'BOOTAA64.EFI',
-        'apple-restore.zip': inputs / 'apple-restore.zip',
     }
     if files['root.img'].stat().st_size != 34359738368 or files['boot.img'].stat().st_size != 2147483648:
         raise ValueError('unexpected partition image sizes')

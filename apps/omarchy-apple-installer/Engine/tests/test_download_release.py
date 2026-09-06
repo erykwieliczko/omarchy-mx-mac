@@ -105,3 +105,21 @@ class DownloadReleaseTests(unittest.TestCase):
                                         'https://downloads.example.test/m4',
                                         execution_scratch_bytes=budget)
                 self.assertFalse((root / 'output').exists())
+
+    def test_apple_download_budget_cannot_be_replaced_with_old_offline_budget(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            engine, payload = self.candidate(root)
+            metadata = engine / 'installer_data.json'
+            value = json.loads(metadata.read_text())
+            value['os_list'][0]['cleanroom']['apple_inputs'] = {'execution_scratch_bytes': 64 * 1024**3}
+            metadata.write_text(json.dumps(value))
+            receipt_path = engine / 'receipt.json'
+            receipt = json.loads(receipt_path.read_text())
+            receipt['metadata'] = build_release.descriptor(metadata)
+            receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'Apple input preparation'):
+                build_release.build(engine, payload, root / 'output',
+                                    'https://downloads.example.test/m4',
+                                    execution_scratch_bytes=8 * 1024**3)
+            self.assertFalse((root / 'output').exists())

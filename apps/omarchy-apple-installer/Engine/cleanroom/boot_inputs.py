@@ -67,7 +67,7 @@ def load_profile(path):
         _require(firmware["variant"] == "macOS Customer"
                  and firmware["restore_behavior"] == "Erase",
                  "unsupported restore variant")
-        _require(profile["boot_format"] == "m1n1-uboot-grub-embedded-v1",
+        _require(profile["boot_format"] == "m1n1-uboot-grub-apple-download-v2",
                  "unsupported boot format")
         sources = profile["sources"]
         _require(set(sources) == {"m1n1", "u_boot", "grub", "linux", "enablement"},

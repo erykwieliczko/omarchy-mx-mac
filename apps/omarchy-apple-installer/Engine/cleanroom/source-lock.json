@@ -10,27 +10,31 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "dc220f0f74883cfec24066007b67f0827578bb8fcbbd7ebe3e34c2799f7bfd9e"
+      "sha256": "e0cf184cb7c5b0e5050edc6fe62d66a1a87ed613965ac1dc5f19a1d2916d08ca"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "4e3f720be34b834f13d3244fcb07068bd6bc02d9e4c8f4695070e453e6d58500"
+      "sha256": "36f278849e9198b3ce6d2096dccd6d2650d054dcbac1875b66fbea361ab42293"
+    },
+    {
+      "path": "cleanroom/apple_inputs.py",
+      "sha256": "61fbfac07a62194bba5c5d5af61bf284fe6af251f3ea5f4313802dd119f5024b"
     },
     {
       "path": "cleanroom/assemble_engine.py",
-      "sha256": "7fe9543bb30d97bfc46949684d66813d11170bf69a21d4d47f4d119e7b76bfdc"
+      "sha256": "2c8ffa94878cc545854871cff9cc7e5b6aa06548c2d8365008595197db1b8670"
     },
     {
       "path": "cleanroom/boot_inputs.py",
-      "sha256": "553faadea09b05f4a60bc35aa7332ba23d4237bf35a8bc09ab7d43c1f60fe0e4"
+      "sha256": "91d05d303e7d143917cb31c1a1e1fa8b703ac567054c351b379fbabd6abfc914"
     },
     {
       "path": "cleanroom/build_payload.py",
-      "sha256": "bc82a8a4488e7f2bd36f26206470b44ea02f031a4b393140f81c6642bffee7fd"
+      "sha256": "af57f97bfc95379625ef793004f43ead69e8b2be04732a030f4651a231084d7c"
     },
     {
       "path": "cleanroom/build_release.py",
-      "sha256": "36d34e34c9d742aba74d95dc08447ae254c4b9614e9f56ac76eed58c3947d994"
+      "sha256": "8bbbc086cb7eed462689a537267e21ce79915fd29de851506148308f134fb51f"
     },
     {
       "path": "cleanroom/build_restore_package.py",
@@ -38,7 +42,7 @@
     },
     {
       "path": "cleanroom/firmware.py",
-      "sha256": "310606020e200bbdf5d2276fca3354f1dce99bd14c3705d4bd938b308ea7e96c"
+      "sha256": "ee38fa0b76da26e63a5d3e5e6a5325c7c45f0cd5b5200df4969bdc1a2aa8c889"
     },
     {
       "path": "cleanroom/main.py",
@@ -57,8 +61,12 @@
       "sha256": "67f323af0489a8a8f92a8748acce866d845e7891933482c2022f9bf3498b3766"
     },
     {
+      "path": "cleanroom/profiles/j713-apple-inputs.json",
+      "sha256": "08bfdc26c105dbaa0aeae5c48545c6fc741e47dd6586357a522ea3af4ba036c0"
+    },
+    {
       "path": "cleanroom/profiles/j713.json",
-      "sha256": "1c275b704e2951c493456c1d6b82a56f1ef57eb550675423e85e652db952a51e"
+      "sha256": "62372d32c449602228d4b8ebb48fe8d129256998e27e7c5358eb81b1e7f792ed"
     },
     {
       "path": "cleanroom/recovery.py",
@@ -78,7 +86,7 @@
     },
     {
       "path": "cleanroom/stage_sources.py",
-      "sha256": "cf855ab741fe0b6a2b016ed4286b0cf7dc7e142eee24b64d7871c42883aaf71d"
+      "sha256": "7800731e426fea0bafb72a2dc5e71c4152793c1ccd2f49296ef5f70ca7870660"
     },
     {
       "path": "cleanroom/step2.sh",
@@ -86,7 +94,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "f61eebccf0bb1f2044bfe38a5c38c65feceb50334dc4b1f57cc3f917b5677d4c"
+      "sha256": "9850238ff1aeea586b8e33c4147e67e86990d8dc0b883a87502d8acb9d36e394"
     },
     {
       "path": "installer_data.json",

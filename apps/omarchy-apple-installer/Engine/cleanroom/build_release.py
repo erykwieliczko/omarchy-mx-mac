@@ -42,6 +42,9 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     templates = json.loads((engine / 'installer_data.json').read_text()).get('os_list', [])
     if len(templates) != 1 or templates[0].get('package') != payload.name:
         raise ValueError("metadata package does not match payload filename")
+    apple = templates[0].get('cleanroom', {}).get('apple_inputs')
+    if apple is not None and execution_scratch_bytes < apple['execution_scratch_bytes']:
+        raise ValueError('execution scratch budget does not cover Apple input preparation')
     profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
     now = datetime.now(timezone.utc).replace(microsecond=0)
     engine_receipt = json.loads((engine / 'receipt.json').read_text())

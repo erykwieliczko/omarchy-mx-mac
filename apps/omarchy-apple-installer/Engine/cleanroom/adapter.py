@@ -12,6 +12,7 @@ import tempfile
 import zipfile
 
 from asahi_firmware.multitouch import MultitouchFWCollection
+from apple_inputs import AppleWorkspace, download_ipsw, load_apple_inputs, mounted_system_image, progress
 from firmware import collect_macos_wifi
 import osinstall
 import stub
@@ -64,15 +65,20 @@ def cleanroom_spec(metadata, profile):
     spec = templates[0].get("cleanroom")
     if not isinstance(spec, dict) or set(spec) != {
         "schema_version", "device_identifier", "firmware_build", "sources",
-        "restore_package", "stage1", "linux_firmware",
+        "apple_inputs", "stage1", "linux_firmware",
     }:
         raise BootInputError("invalid cleanroom metadata")
-    if (type(spec["schema_version"]) is not int or spec["schema_version"] != 1
+    if (type(spec["schema_version"]) is not int or spec["schema_version"] != 2
             or spec["device_identifier"] != profile["device_identifier"]
             or spec["firmware_build"] != profile["firmware"]["build"]
             or spec["sources"] != profile["sources"]):
         raise BootInputError("cleanroom metadata differs from engine profile")
-    for role in ("restore_package", "stage1"):
+    expected_apple = load_apple_inputs(
+        Path(__file__).parent / "cleanroom/profiles/j713-apple-inputs.json", profile)
+    if (spec["apple_inputs"] != expected_apple
+            or spec["linux_firmware"] != expected_apple["linux_firmware"]):
+        raise BootInputError("Apple inputs differ from the bundled source lock")
+    for role in ("stage1",):
         descriptor = spec[role]
         if (not isinstance(descriptor, dict)
                 or set(descriptor) != {"size_bytes", "sha256"}
@@ -160,18 +166,16 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         self.verifier_path = Path("tools/omarchy-restore-image").resolve()
         if file_descriptor(self.stage1_path) != self.spec["stage1"]:
             raise BootInputError("engine stage-1 artifact differs from metadata")
-        self.workspace = tempfile.TemporaryDirectory(prefix="omarchy-cleanroom-")
+        self.workspace = AppleWorkspace()
         work = Path(self.workspace.name)
-        restore = work / "apple-restore.zip"
+        if shutil.disk_usage(work).free < self.spec["apple_inputs"]["execution_scratch_bytes"]:
+            raise BootInputError("Apple firmware preparation needs 64 GiB of temporary free space")
+        # Our OS package contains no Apple archive. Fetch the signed metadata's
+        # exact Apple build before Recovery preparation or partition allocation.
         with zipfile.ZipFile(self.payload_path) as payload:
-            matches = [item for item in payload.infolist()
-                       if item.filename == "apple-restore.zip"]
-            if len(matches) != 1 or matches[0].file_size != self.spec["restore_package"]["size_bytes"]:
-                raise BootInputError("missing or ambiguous Apple restore package")
-            with payload.open(matches[0]) as reader, restore.open("xb") as writer:
-                shutil.copyfileobj(reader, writer)
-        if file_descriptor(restore) != self.spec["restore_package"]:
-            raise BootInputError("Apple restore package digest mismatch")
+            if any(item.filename == "apple-restore.zip" for item in payload.infolist()):
+                raise BootInputError("firmware-free engine rejects bundled Apple restore inputs")
+        restore = download_ipsw(self.spec["apple_inputs"]["ipsw"], work / "Apple.ipsw")
         self.decoded = work / "BaseSystem.dmg"
         with zipfile.ZipFile(restore) as archive:
             stub_members(archive, self.profile)
@@ -179,18 +183,21 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             restore_layout(archive, self.profile)
             self.recovery_receipt = prepare_recovery(
                 archive, self.profile, self.decoded, self.verifier_path)
-            self.firmware = self._collect_linux_firmware(archive, work)
+            with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
+                                      work, self.verifier_path) as system_root:
+                self.firmware = self._collect_linux_firmware(archive, work, system_root)
+        progress("Recovery, Wi-Fi and touchpad firmware verified; preparation complete")
         self.installer.cleanroom_restore_path = restore
         super().preflight(plan)
 
-    def _collect_linux_firmware(self, archive, work):
+    def _collect_linux_firmware(self, archive, work, system_root):
         fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
         fud.mkdir(parents=True)
         path = self.selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
         with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
             shutil.copyfileobj(reader, writer)
         firmware = list(MultitouchFWCollection(str(fud.parent)).files())
-        firmware.extend(collect_macos_wifi(self.profile))
+        firmware.extend(collect_macos_wifi(self.profile, system_root))
         selected = [(name, value) for name, value in firmware if name in self.spec["linux_firmware"]]
         observed = {name: hashlib.sha256(value.data).hexdigest() for name, value in selected}
         if len(observed) != len(selected) or observed != self.spec["linux_firmware"]:
@@ -282,10 +289,19 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         manifest = restore / "BuildManifest.plist"
         if manifest.read_bytes() != plistlib.dumps(self.selection["manifest"]):
             raise BootInputError("installed Apple build identity changed")
+        esp = Path(self.installer.dutil.mount(self.osins.efi_part.name))
+        vendor_firmware = {}
+        for name in ("firmware.cpio", "firmware.tar", "manifest.txt"):
+            actual = file_descriptor(esp / "vendorfw" / name)
+            expected = file_descriptor(Path(self.osins.firmware_package.path) / name)
+            if actual != expected:
+                raise BootInputError("installed vendor firmware changed: " + name)
+            vendor_firmware[name] = actual
         return {"cleanroom_boot_inputs": {
             "stage1": file_descriptor(installed.boot_obj_path),
             "step2": file_descriptor(installed.step2_sh),
             "verifier": verifier_descriptor,
             "recovery": decoded, "authentication": authentication,
             "manifest": file_descriptor(manifest),
+            "vendor_firmware": vendor_firmware,
         }}

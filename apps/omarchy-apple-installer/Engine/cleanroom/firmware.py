@@ -32,13 +32,16 @@ def normalize_nvram(data):
     return ''.join(lines).encode('ascii')
 
 
-def collect_macos_wifi(profile, system_root=Path('/')):
+def collect_macos_wifi(profile, system_root):
+    system_root = Path(system_root).resolve(strict=True)
     version = plistlib.loads(regular_bytes(
         system_root / 'System/Library/CoreServices/SystemVersion.plist', 65536))
     if (version.get('ProductVersion') != profile['firmware']['version']
             or version.get('ProductBuildVersion') != profile['firmware']['build']):
         raise BootInputError('full macOS firmware baseline differs from profile')
     source = (system_root / profile['wifi']['source_directory']).resolve(strict=True)
+    if not source.is_relative_to(system_root):
+        raise BootInputError('macOS firmware directory escapes the downloaded system image')
     result = []
     for destination, name in profile['wifi']['files'].items():
         path = (source / name).resolve(strict=True)

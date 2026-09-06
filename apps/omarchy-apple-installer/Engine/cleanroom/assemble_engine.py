@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 
 from boot_inputs import load_profile
+from apple_inputs import load_apple_inputs
 from stage_sources import stage_sources
 
 RUNTIME_SHA256 = '063fd0765fb2057384d9653f7bf547b0471af31fc764e039d578d4fef6dce4d5'
@@ -36,13 +37,12 @@ def assemble(checkout, inputs, destination, version, payload_name):
     template = metadata['os_list'][0]
     template['package'] = payload_name
     template['supported_fw'] = [profile['firmware']['version']]
-    firmware = {p.relative_to(inputs / 'firmware').as_posix(): descriptor(p)['sha256']
-                for folder in ('apple', 'brcm') for p in (inputs / 'firmware' / folder).glob('*') if p.is_file()}
+    apple = load_apple_inputs(Path(__file__).parent / 'profiles/j713-apple-inputs.json', profile)
     template['cleanroom'] = {
-        'schema_version': 1, 'device_identifier': profile['device_identifier'],
+        'schema_version': 2, 'device_identifier': profile['device_identifier'],
         'firmware_build': profile['firmware']['build'], 'sources': profile['sources'],
-        'restore_package': descriptor(inputs / 'apple-restore.zip'),
-        'stage1': descriptor(inputs / 'm1n1-stage1-base.bin'), 'linux_firmware': firmware,
+        'apple_inputs': apple,
+        'stage1': descriptor(inputs / 'm1n1-stage1-base.bin'), 'linux_firmware': apple['linux_firmware'],
     }
     metadata_path = destination / 'installer_data.json'
     metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')

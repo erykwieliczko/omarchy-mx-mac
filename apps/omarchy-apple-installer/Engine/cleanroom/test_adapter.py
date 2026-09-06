@@ -81,19 +81,22 @@ class CleanroomAdapterTests(unittest.TestCase):
                 collect_macos_wifi(self.profile, root)
 
     def test_metadata_requires_exact_firmware_and_source_graph(self):
-        spec = {"schema_version": 1, "device_identifier": "apple,j713",
+        apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
+        spec = {"schema_version": 2, "device_identifier": "apple,j713",
                 "firmware_build": "25G83", "sources": self.profile["sources"],
-                "restore_package": {"size_bytes": 10, "sha256": "a" * 64},
+                "apple_inputs": apple,
                 "stage1": {"size_bytes": 4096, "sha256": "b" * 64},
-                "linux_firmware": {name: "c" * 64 for name in FIRMWARE_NAMES}}
-        self.assertEqual(cleanroom_spec({"os_list": [{"cleanroom": spec}]}, self.profile), spec)
-        for mutation in (lambda s: s["linux_firmware"].pop("apple/tpmtfw-j713.bin"),
-                         lambda s: s["sources"].update(linux="a" * 40),
-                         lambda s: s["stage1"].update(size_bytes=True)):
-            modified = copy.deepcopy(spec)
-            mutation(modified)
-            with self.assertRaises(BootInputError):
-                cleanroom_spec({"os_list": [{"cleanroom": modified}]}, self.profile)
+                "linux_firmware": apple["linux_firmware"]}
+        with patch("adapter.load_apple_inputs", return_value=copy.deepcopy(apple)):
+            self.assertEqual(cleanroom_spec({"os_list": [{"cleanroom": spec}]}, self.profile), spec)
+            for mutation in (lambda s: s["linux_firmware"].pop("apple/tpmtfw-j713.bin"),
+                             lambda s: s["sources"].update(linux="a" * 40),
+                             lambda s: s["apple_inputs"]["ipsw"].update(url="https://example.org/input.ipsw"),
+                             lambda s: s["stage1"].update(size_bytes=True)):
+                modified = copy.deepcopy(spec)
+                mutation(modified)
+                with self.assertRaises(BootInputError):
+                    cleanroom_spec({"os_list": [{"cleanroom": modified}]}, self.profile)
 
     def test_unknown_restore_layout_fails_before_stub_allocation(self):
         for bless, accepted in (({"Version": 1, "SupportsPairedRecovery": True}, True),
@@ -111,6 +114,35 @@ class CleanroomAdapterTests(unittest.TestCase):
                 else:
                     with self.assertRaises(BootInputError):
                         restore_layout(archive, self.profile)
+
+    def test_failed_apple_download_never_enters_partition_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            payload = Path(directory) / "os.zip"
+            with zipfile.ZipFile(payload, "w"):
+                pass
+            adapter = object.__new__(CleanroomStage1Adapter)
+            adapter.profile = self.profile
+            adapter.preflight_complete = False
+            adapter.payload_path = payload
+            adapter.metadata_path = Path(directory) / "metadata.json"
+            adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
+                key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}))
+            apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
+            spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
+            plan = SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713")
+            with patch("adapter.load_metadata", return_value={}), \
+                    patch("adapter.cleanroom_spec", return_value=spec), \
+                    patch("adapter.file_descriptor", return_value=spec["stage1"]), \
+                    patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=128 * 1024**3)), \
+                    patch("adapter.download_ipsw", side_effect=BootInputError("Apple download failed")), \
+                    patch("adapter.AsahiStage1Adapter.preflight") as transaction:
+                try:
+                    with self.assertRaisesRegex(BootInputError, "Apple download failed"):
+                        adapter.preflight(plan)
+                    transaction.assert_not_called()
+                    self.assertFalse(adapter.preflight_complete)
+                finally:
+                    adapter.workspace.cleanup()
 
     def test_engine_cannot_enter_interactive_or_repair_mode(self):
         with self.assertRaisesRegex(ValueError, "authenticated engine mode"):
@@ -147,8 +179,16 @@ class CleanroomAdapterTests(unittest.TestCase):
                                    osi=SimpleNamespace(recovery=root / "recovery", vgid=VGID))
             adapter = object.__new__(CleanroomStage1Adapter)
             adapter.profile = self.profile
-            adapter.installer = SimpleNamespace(ins=stub)
-            adapter.osins = SimpleNamespace(efi_part=SimpleNamespace(uuid=ESP))
+            esp = root / "esp"
+            (esp / "vendorfw").mkdir(parents=True)
+            package = root / "firmware-package"
+            package.mkdir()
+            for name in ("firmware.cpio", "firmware.tar", "manifest.txt"):
+                (package / name).write_bytes(b"verified " + name.encode())
+                (esp / "vendorfw" / name).write_bytes((package / name).read_bytes())
+            adapter.installer = SimpleNamespace(ins=stub, dutil=SimpleNamespace(mount=lambda name: esp))
+            adapter.osins = SimpleNamespace(efi_part=SimpleNamespace(uuid=ESP, name="disk-test"),
+                                           firmware_package=SimpleNamespace(path=package))
             adapter.stage1_path = raw
             adapter.verifier_path = root / "verifier"
             adapter.verifier_path.write_bytes(b"admitted native verifier")
@@ -164,7 +204,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                 stub.step2_sh.write_text("bound script\n")
                 self.assertIn("cleanroom_boot_inputs", adapter.boot_input_evidence())
                 for path in (stage1, recovery, companion, stub.step2_sh, verifier,
-                             restore / "BuildManifest.plist"):
+                             restore / "BuildManifest.plist", esp / "vendorfw/firmware.cpio"):
                     original = path.read_bytes()
                     path.write_bytes(original + b"changed")
                     with self.subTest(path=path.name), self.assertRaises((ValueError, plistlib.InvalidFileException)):
