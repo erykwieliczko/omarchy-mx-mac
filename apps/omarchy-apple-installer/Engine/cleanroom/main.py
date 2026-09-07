@@ -74,7 +74,8 @@ class CleanroomInstaller(InstallerMain):
                 return False
         # Normal admission requires the qualified host baseline. An explicit
         # developer profile override also admits a different host macOS version;
-        # the selected Apple restore build and its hashes remain unchanged.
+        # a compatible Apple boot build is selected from authenticated inputs
+        # during preflight, independently of the Linux firmware baseline.
         # Recovery execution is exclusively the separately reviewed step2.
         # bputil requires root on current macOS. A non-privileged inventory
         # may report its model capability without pretending to know boot
@@ -87,7 +88,7 @@ class CleanroomInstaller(InstallerMain):
         baseline = self.cleanroom_profile["firmware"]["version"]
         if overridden:
             logging.info("Developer override: profile %s, host %s on macOS %s; "
-                         "Apple restore inputs remain pinned to %s",
+                         "Linux firmware baseline %s; Apple boot build will be selected using SFR",
                          self.cleanroom_profile["device_identifier"], host.product_type,
                          host.macos_ver, baseline)
             return True
@@ -104,7 +105,10 @@ class CleanroomInstaller(InstallerMain):
         restore = getattr(self, "cleanroom_restore_path", None)
         if not isinstance(restore, Path) or not restore.is_file():
             raise BootInputError("Apple restore input has not passed preflight")
-        return SimpleNamespace(version=firmware["version"], url=str(restore))
+        boot = getattr(self, "cleanroom_boot_profile", None)
+        if not isinstance(boot, dict):
+            raise BootInputError("Apple boot version has not passed preflight")
+        return SimpleNamespace(version=boot["firmware"]["version"], url=str(restore))
 
 
 def main():

@@ -13,6 +13,7 @@ import tempfile
 
 from boot_inputs import load_profile
 from apple_inputs import load_apple_inputs
+from boot_builds import load_boot_builds
 from stage_sources import stage_sources
 
 RUNTIME_SHA256 = '063fd0765fb2057384d9653f7bf547b0471af31fc764e039d578d4fef6dce4d5'
@@ -38,10 +39,11 @@ def assemble(checkout, inputs, destination, version, payload_name, development_a
     template['package'] = payload_name
     template['supported_fw'] = [profile['firmware']['version']]
     apple = load_apple_inputs(Path(__file__).parent / 'profiles/j713-apple-inputs.json', profile)
+    boot_catalog, _ = load_boot_builds(Path(__file__).parent / 'profiles', apple, profile)
     template['cleanroom'] = {
         'schema_version': 2, 'device_identifier': profile['device_identifier'],
         'firmware_build': profile['firmware']['build'], 'sources': profile['sources'],
-        'apple_inputs': apple,
+        'apple_inputs': apple, 'apple_boot_builds': boot_catalog,
         'stage1': descriptor(inputs / 'm1n1-stage1-base.bin'), 'linux_firmware': apple['linux_firmware'],
     }
     metadata_path = destination / 'installer_data.json'

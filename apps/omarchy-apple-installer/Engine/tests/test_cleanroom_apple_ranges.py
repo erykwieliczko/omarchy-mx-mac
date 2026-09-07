@@ -12,7 +12,7 @@ from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cleanroom"))
-from apple_ranges import AppleRangeReader, selected_archive
+from apple_ranges import AppleRangeReader, selected_archive, selected_files
 from boot_inputs import BootInputError
 
 URL = "https://updates.cdn-apple.com/build/Restore.ipsw"
@@ -137,6 +137,33 @@ class AppleRangeTests(unittest.TestCase):
                 reader.seek(total - 517)
                 self.assertEqual(reader.read(block), bytes([130 % 251]) * 517)
                 self.assertEqual(reader.read(1), b"")
+
+    def test_boot_only_lock_has_no_full_system_fallback(self):
+        host = {"product_type": "Mac99,1", "device_class": "j999ap", "board_id": 1, "chip_id": 2}
+        self.lock.update(supported_products=["Mac99,1"], boot_identities=[
+            dict(device_class="j999ap", board_id=1, chip_id=2, members=["boot"])])
+        with tempfile.TemporaryDirectory() as directory, patch("apple_ranges.stub_members", return_value=["boot"]):
+            path = selected_archive(self.lock, host, Path(directory) / "boot.zip", include_system=False,
+                                    opener=SimpleNamespace(open=self.open))
+            with zipfile.ZipFile(path) as archive:
+                self.assertEqual(archive.read("boot"), b"admitted boot code")
+            with self.assertRaisesRegex(BootInputError, "no system image"):
+                selected_archive(self.lock, host, Path(directory) / "full.zip", include_system=True,
+                                 opener=SimpleNamespace(open=self.open))
+
+    def test_additional_component_selection_keeps_hash_admission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = selected_files(self.lock, ["boot"], root / "component.zip", opener=SimpleNamespace(open=self.open))
+            with zipfile.ZipFile(path) as archive:
+                self.assertEqual(archive.read("boot"), b"admitted boot code")
+            self.assertLess(self.transferred, len(self.data) // 2)
+            with self.assertRaisesRegex(BootInputError, "unadmitted"):
+                selected_files(self.lock, ["unneeded"], root / "bad.zip", opener=SimpleNamespace(open=self.open))
+            self.lock["members"]["boot"]["sha256"] = "0" * 64
+            with self.assertRaisesRegex(BootInputError, "SHA-256"):
+                selected_files(self.lock, ["boot"], root / "bad.zip", opener=SimpleNamespace(open=self.open))
+            self.assertFalse((root / "bad.zip").exists())
 
     def test_range_protocol_must_match_exact_request(self):
         variants = [("status", 200), ("Content-Range", "bytes 0-2/3"),

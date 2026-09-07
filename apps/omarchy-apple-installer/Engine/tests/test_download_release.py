@@ -179,12 +179,8 @@ class DownloadReleaseTests(unittest.TestCase):
                 archive.addfile(marker, io.BytesIO(b'dev'))
             metadata = engine / 'installer_data.json'
             value = json.loads(metadata.read_text())
-            value['os_list'][0]['cleanroom']['apple_inputs'] = {
-                'execution_scratch_bytes': 8 * 1024**3,
-                'members': {'boot': {'size_bytes': 100}},
-                'system_image': {'member': 'boot'}, 'supported_products': ['Mac16,12'],
-                'boot_identities': [{'device_class': 'j713ap', 'board_id': 44, 'chip_id': 0x8132,
-                                     'members': ['boot']}]}
+            value['os_list'][0]['cleanroom']['apple_inputs'] = json.loads(
+                (CLEANROOM / 'profiles/j713-apple-inputs.json').read_text())
             metadata.write_text(json.dumps(value))
             receipt_path = engine / 'receipt.json'
             receipt = json.loads(receipt_path.read_text())
@@ -197,4 +193,4 @@ class DownloadReleaseTests(unittest.TestCase):
             self.assertFalse((root / 'output').exists())
             with patch('builtins.print'):
                 build_release.build(engine, payload, root / 'output',
-                                    'https://downloads.example.test/m4', execution_scratch_bytes=10 * 1024**3)
+                                    'https://downloads.example.test/m4', execution_scratch_bytes=20 * 1024**3)

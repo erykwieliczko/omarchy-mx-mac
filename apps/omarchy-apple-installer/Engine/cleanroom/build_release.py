@@ -15,6 +15,7 @@ import ipaddress
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from boot_inputs import load_profile, maximum_apple_selection_bytes
+from boot_builds import load_boot_builds, maximum_boot_selection_bytes
 from build_payload import descriptor
 
 
@@ -61,7 +62,13 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     if engine_receipt.get('development_apple_cache'):
         with tarfile.open(engine / ('installer-' + engine_receipt['version'] + '.tar.gz')) as archive:
             archive.getmember('./cleanroom/development-apple-cache')
-        cache_bound = maximum_apple_selection_bytes(apple, profile) + 1024**3
+        _, builds = load_boot_builds(Path(__file__).parent / 'profiles', apple, profile)
+        # YOLO may pair older boot inputs with tiny Linux component selections
+        # from the native baseline. Full-system fallback remains native-only.
+        linux_components = sum(apple['members'][name]['size_bytes']
+                               for name in apple['linux_firmware_members'].values())
+        cache_bound = max(maximum_apple_selection_bytes(apple, profile),
+                          maximum_boot_selection_bytes(builds) + linux_components) + 1024**3
         if execution_scratch_bytes < apple['execution_scratch_bytes'] + cache_bound:
             raise ValueError('development cache must remain reserved after resizing macOS')
     payload_receipt = json.loads(payload.with_suffix('.receipt.json').read_text())

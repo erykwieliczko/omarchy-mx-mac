@@ -13,13 +13,14 @@ import zipfile
 
 from asahi_firmware.multitouch import MultitouchFWCollection
 from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
-from apple_ranges import selected_archive
+from apple_ranges import selected_archive, selected_files
+from boot_builds import load_boot_builds, select_boot_build, verify_boot_version
 from firmware import collect_macos_wifi
 from firmware_ranges import extract_wifi, FirmwareRangeFallback, FirmwareRangeExecutionError
 import osinstall
 import stub
 
-from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, validate_host, select_apple_boot_profile
+from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, validate_host
 from recovery import prepare_recovery
 from omarchy_asahi import AsahiStage1Adapter, load_metadata
 from boot_inputs import _member, _path, stub_members
@@ -40,7 +41,7 @@ def restore_layout(archive, profile):
     info = _member(archive, "usr/standalone/bootcaches.plist", 1024 * 1024)
     bootcaches = plistlib.loads(archive.read(info))
     bless = bootcaches.get("bless2", {})
-    if (profile["firmware"]["build"] != "25G83"
+    if (profile["firmware"]["build"] not in ("25G83", "25F84")
             or bless.get("Version") != 1
             or bless.get("SupportsPairedRecovery") is not True
             or "RestoreBundlePath" in bless):
@@ -67,7 +68,7 @@ def cleanroom_spec(metadata, profile):
     spec = templates[0].get("cleanroom")
     if not isinstance(spec, dict) or set(spec) != {
         "schema_version", "device_identifier", "firmware_build", "sources",
-        "apple_inputs", "stage1", "linux_firmware",
+        "apple_inputs", "apple_boot_builds", "stage1", "linux_firmware",
     }:
         raise BootInputError("invalid cleanroom metadata")
     if (type(spec["schema_version"]) is not int or spec["schema_version"] != 2
@@ -80,6 +81,9 @@ def cleanroom_spec(metadata, profile):
     if (spec["apple_inputs"] != expected_apple
             or spec["linux_firmware"] != expected_apple["linux_firmware"]):
         raise BootInputError("Apple inputs differ from the bundled source lock")
+    catalog, _ = load_boot_builds(Path(__file__).parent / "cleanroom/profiles", expected_apple, profile)
+    if spec["apple_boot_builds"] != catalog:
+        raise BootInputError("Apple boot builds differ from the bundled catalog")
     for role in ("stage1",):
         descriptor = spec[role]
         if (not isinstance(descriptor, dict)
@@ -170,9 +174,13 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                           device_class=host.device_class, board_id=host.board_id,
                           chip_id=host.chip_id)
         self.spec = cleanroom_spec(load_metadata(self.metadata_path), self.profile)
-        self.boot_profile = select_apple_boot_profile(self.profile, self.spec["apple_inputs"], host)
-        progress("Apple boot identity: %s (%s); Linux profile: %s" % (
+        _, builds = load_boot_builds(Path(__file__).parent / "cleanroom/profiles",
+                                    self.spec["apple_inputs"], self.profile)
+        self.boot_entry, self.boot_inputs, self.boot_profile = select_boot_build(
+            builds, self.profile, host, allow_fallback=self.developer_override_enabled)
+        progress("Apple boot identity: %s (%s), build %s; SFR: %s; Linux profile: %s" % (
             self.boot_profile["device_class"], self.boot_profile["product_type"],
+            self.boot_profile["firmware"]["build"], host.sfr_full_ver,
             self.profile["device_identifier"]))
         self.stage1_path = Path("boot/m1n1.bin")
         self.verifier_path = Path("tools/omarchy-restore-image").resolve()
@@ -212,15 +220,17 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                     progress("Falling back to the fully verified Apple system image; this downloads about 10.3 GB more")
                 else:
                     raise
-        restore = selected_archive(self.spec["apple_inputs"], self.boot_profile, work / "Apple.ipsw",
+        same_build = self.boot_profile["firmware"] == self.profile["firmware"]
+        restore = selected_archive(self.boot_inputs, self.boot_profile, work / "Apple.ipsw",
                                    cache_directory=cache, include_system=wifi is None,
                                    linux_profile=self.boot_profile if self.developer_override_enabled else self.profile)
         self.decoded = work / "BaseSystem.dmg"
         with zipfile.ZipFile(restore) as archive:
             stub_members(archive, self.boot_profile)
+            verify_boot_version(archive, self.boot_entry, host)
             self.selection = inspect_ipsw(archive, self.boot_profile)
-            self.linux_selection = (inspect_ipsw(archive, self.profile) if native_firmware
-                                    or not self.developer_override_enabled else None)
+            self.linux_selection = (inspect_ipsw(archive, self.profile) if same_build and (
+                native_firmware or not self.developer_override_enabled) else None)
             restore_layout(archive, self.boot_profile)
             self.recovery_receipt = prepare_recovery(
                 archive, self.boot_profile, self.decoded, self.verifier_path)
@@ -228,20 +238,40 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                 with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
                                           work, self.verifier_path) as system_root:
                     wifi = collect_macos_wifi(self.profile, system_root)
-            self.firmware = self._collect_linux_firmware(archive, work, wifi)
+            if native_firmware and not same_build:
+                self.firmware = self._collect_separate_linux_firmware(work, wifi, cache)
+            else:
+                self.firmware = self._collect_linux_firmware(archive, work, wifi)
         restore = retain_stub_inputs(restore, self.boot_profile, work / "apple-restore.zip")
         verify_retained_workspace(work, self.spec["apple_inputs"]["execution_scratch_bytes"])
         progress("Apple boot inputs verified; %d optional Linux firmware files prepared" % len(self.firmware))
         self.installer.cleanroom_restore_path = restore
+        self.installer.cleanroom_boot_profile = self.boot_profile
         super().preflight(plan)
 
-    def _collect_linux_firmware(self, archive, work, wifi):
+    def _collect_separate_linux_firmware(self, work, wifi, cache):
+        # A compatible older Recovery must not change the Linux firmware pins.
+        path = self.spec["apple_inputs"]["linux_firmware_members"]["Multitouch"]
+        try:
+            archive_path = selected_files(self.spec["apple_inputs"], [path], work / "linux-touchpad.zip",
+                                          cache_directory=cache)
+        except (BootInputError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError) as error:
+            if isinstance(error, subprocess.CalledProcessError) and error.returncode < 0:
+                raise
+            if not self.developer_override_enabled:
+                raise
+            progress("YOLO: optional touchpad firmware download unavailable; skipping: " + str(error))
+            return self._collect_linux_firmware(None, work, wifi)
+        with zipfile.ZipFile(archive_path) as archive:
+            return self._collect_linux_firmware(archive, work, wifi, touchpad_path=path)
+
+    def _collect_linux_firmware(self, archive, work, wifi, *, touchpad_path=None):
         firmware = list(wifi)
-        if self.linux_selection is not None:
+        if self.linux_selection is not None or touchpad_path is not None:
             try:
                 fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
                 fud.mkdir(parents=True)
-                path = self.linux_selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
+                path = touchpad_path or self.linux_selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
                 with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
                     shutil.copyfileobj(reader, writer)
                 firmware.extend(MultitouchFWCollection(str(fud.parent)).files())

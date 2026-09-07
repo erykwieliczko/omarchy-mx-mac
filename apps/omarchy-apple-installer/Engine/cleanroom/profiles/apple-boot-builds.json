@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "builds": [
+    {
+      "file": "j713-apple-inputs.json",
+      "sha256": "69dbca136146517f4b546d94ac5cf06aa749a3c2934684c5a7da1144f9606545",
+      "firmware": {
+        "version": "26.6.2",
+        "build": "25G83",
+        "variant": "macOS Customer",
+        "restore_behavior": "Erase"
+      },
+      "restore_version": "25.7.83.0.0,0"
+    },
+    {
+      "file": "apple-boot-25F84.json",
+      "sha256": "4eeb5708adca159720bf3312cb62f2abafc73dac52f93486057218e0b6fabb05",
+      "firmware": {
+        "version": "26.5.2",
+        "build": "25F84",
+        "variant": "macOS Customer",
+        "restore_behavior": "Erase"
+      },
+      "restore_version": "25.6.84.0.0,0"
+    }
+  ]
+}

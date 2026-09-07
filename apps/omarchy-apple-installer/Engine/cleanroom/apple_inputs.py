@@ -59,6 +59,27 @@ def load_apple_inputs(path, profile):
                            ("execution_scratch_bytes", 8 * 1024**3)):
         if type(lock.get(field)) is not int or lock[field] < minimum:
             raise BootInputError("Apple input scratch budget is too small: " + field)
+    validate_member_lock(lock)
+    members = lock["members"]
+    system = members.get(lock["system_image"]["member"], {})
+    if any(system.get(field) != lock["system_image"][field] for field in ("size_bytes", "sha256")):
+        raise BootInputError("selected Apple system image differs from decoded image lock")
+    from types import SimpleNamespace
+    sources = lock.get("linux_firmware_members")
+    native = apple_boot_identity(lock, SimpleNamespace(**profile))
+    if (not isinstance(sources, dict) or set(sources) != {"Multitouch"}
+            or sources["Multitouch"] not in native["members"]):
+        raise BootInputError("Linux touchpad source is not pinned to the native Apple identity")
+    if "firmware_ranges" in lock:
+        from firmware_ranges import load_recipe
+        load_recipe(lock, profile, Path(path).parent)
+    return lock
+
+
+def validate_member_lock(lock):
+    apple_url(lock["ipsw"]["url"])
+    if type(lock["ipsw"]["size_bytes"]) is not int or not 0 < lock["ipsw"]["size_bytes"] < 128 * 1024**3:
+        raise BootInputError("invalid Apple range source size")
     members = lock.get("members")
     if not isinstance(members, dict) or not 1 <= len(members) <= 2048:
         raise BootInputError("missing selected Apple member lock")
@@ -75,13 +96,6 @@ def load_apple_inputs(path, profile):
                 or type(record.get("header_offset")) is not int
                 or not 0 <= record["header_offset"] < lock["ipsw"]["size_bytes"]):
             raise BootInputError("invalid selected Apple member descriptor: " + name)
-    system = members.get(lock["system_image"]["member"], {})
-    if any(system.get(field) != lock["system_image"][field] for field in ("size_bytes", "sha256")):
-        raise BootInputError("selected Apple system image differs from decoded image lock")
-    if "firmware_ranges" in lock:
-        from firmware_ranges import load_recipe
-        load_recipe(lock, profile, Path(path).parent)
-    return lock
 
 
 def verify_file(path, record):

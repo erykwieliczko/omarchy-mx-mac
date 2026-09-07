@@ -140,9 +140,12 @@ def selected_archive(lock, profile, destination, *, cache_directory=None, opener
         for choice in (profile, linux_profile or profile):
             identity = apple_boot_identity(lock, SimpleNamespace(**choice))
             selected.update(identity["members"])
-        selected.add(lock["system_image"]["member"])
+        if "system_image" in lock:
+            selected.add(lock["system_image"]["member"])
+        elif include_system:
+            raise BootInputError("boot-only Apple inputs have no system image fallback")
         lock = {**lock, "members": {name: lock["members"][name] for name in sorted(selected)}}
-    if not include_system:
+    if not include_system and "system_image" in lock:
         system = lock["system_image"]["member"]
         if system not in lock["members"]:
             raise BootInputError("signed system image selection is missing")
@@ -150,6 +153,19 @@ def selected_archive(lock, profile, destination, *, cache_directory=None, opener
         # effective member set also separates full/stub development caches.
         lock = {**lock, "members": {name: record for name, record in lock["members"].items()
                                    if name != system}}
+    return _download_selection(lock, destination, cache_directory=cache_directory,
+                               opener=opener, verify_profile=profile)
+
+
+def selected_files(lock, names, destination, *, cache_directory=None, opener=None):
+    """Fetch additional explicitly pinned components without downloading Recovery again."""
+    if not names or any(name not in lock["members"] for name in names):
+        raise BootInputError("unadmitted Apple component selection")
+    selected = {**lock, "members": {name: lock["members"][name] for name in sorted(set(names))}}
+    return _download_selection(selected, destination, cache_directory=cache_directory, opener=opener)
+
+
+def _download_selection(lock, destination, *, cache_directory=None, opener=None, verify_profile=None):
     destination = Path(destination)
     cache = None
     if cache_directory is not None:
@@ -176,7 +192,8 @@ def selected_archive(lock, profile, destination, *, cache_directory=None, opener
                     if set(archive.namelist()) != set(lock["members"]):
                         raise BootInputError("development cache has an unexpected Apple selection")
                     validate_members(archive, lock, verify_contents=True)
-                    stub_members(archive, profile)
+                    if verify_profile is not None:
+                        stub_members(archive, verify_profile)
             except Exception:
                 destination.unlink(missing_ok=True)
                 raise
@@ -199,8 +216,9 @@ def selected_archive(lock, profile, destination, *, cache_directory=None, opener
                     with archive.open(name) as reader, writer.open(item, "w", force_zip64=True) as target:
                         copy_verified(reader, target, record, name)
         progress("Selected Apple inputs verified (%.1f GiB transferred)" % (source.network_bytes / 1024**3))
-        with zipfile.ZipFile(pending) as archive:
-            stub_members(archive, profile)
+        if verify_profile is not None:
+            with zipfile.ZipFile(pending) as archive:
+                stub_members(archive, verify_profile)
         os.chmod(pending, 0o600)
         if cache is not None:
             os.link(pending, cache)

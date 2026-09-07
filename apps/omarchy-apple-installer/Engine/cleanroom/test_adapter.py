@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import plistlib
+import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -151,6 +152,7 @@ class CleanroomAdapterTests(unittest.TestCase):
         spec = {"schema_version": 2, "device_identifier": "apple,j713",
                 "firmware_build": "25G83", "sources": self.profile["sources"],
                 "apple_inputs": apple,
+                "apple_boot_builds": json.loads(PROFILE_PATH.with_name("apple-boot-builds.json").read_text()),
                 "stage1": {"size_bytes": 4096, "sha256": "b" * 64},
                 "linux_firmware": apple["linux_firmware"]}
         with patch("adapter.load_apple_inputs", return_value=copy.deepcopy(apple)):
@@ -192,7 +194,7 @@ class CleanroomAdapterTests(unittest.TestCase):
             adapter.payload_path = payload
             adapter.metadata_path = Path(directory) / "metadata.json"
             adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
-                key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}))
+                key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}, sfr_full_ver="25.7.83.0.0,0"))
             apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
             spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
             plan = SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713")
@@ -232,9 +234,11 @@ class CleanroomAdapterTests(unittest.TestCase):
         from unittest.mock import MagicMock
         apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
         spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
-        for fallback, host_device, yolo in ((False, "j713ap", False), (True, "j713ap", False),
-                                            (False, "j700ap", True), (True, "j700ap", True),
-                                            (True, "j713ap", True)):
+        for fallback, host_device, yolo, sfr in (
+                (False, "j713ap", False, "25.7.83.0.0,0"), (True, "j713ap", False, "25.7.83.0.0,0"),
+                (False, "j700ap", True, "25.7.83.0.0,0"), (True, "j700ap", True, "25.7.83.0.0,0"),
+                (True, "j713ap", True, "25.7.83.0.0,0"), (False, "j700ap", True, "25.6.84.0.0,0"),
+                (False, "j713ap", True, "25.6.84.0.0,0")):
             with self.subTest(fallback=fallback), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
                 payload = Path(directory) / "os.zip"
                 with zipfile.ZipFile(payload, "w"):
@@ -245,16 +249,17 @@ class CleanroomAdapterTests(unittest.TestCase):
                 adapter.payload_path = payload
                 adapter.metadata_path = Path(directory) / "metadata.json"
                 adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
-                    key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}))
+                    key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}, sfr_full_ver="25.7.83.0.0,0"))
                 if host_device == "j700ap":
                     adapter.installer.sysinfo = SimpleNamespace(product_type="Mac17,5", device_class="j700ap",
-                                                                board_id=100, chip_id=0x8140)
+                                                                board_id=100, chip_id=0x8140, sfr_full_ver="25.7.83.0.0,0")
                 if yolo:
                     adapter.installer.engine_runtime = SimpleNamespace(developer_model_override="apple,j713")
+                adapter.installer.sysinfo.sfr_full_ver = sfr
                 mocks = {}
                 values = {"load_metadata": {}, "cleanroom_spec": spec,
                           "file_descriptor": spec["stage1"], "selected_archive": payload,
-                          "stub_members": [], "inspect_ipsw": {}, "restore_layout": {},
+                          "stub_members": [], "inspect_ipsw": {}, "restore_layout": {}, "verify_boot_version": None,
                           "prepare_recovery": {}, "collect_macos_wifi": [],
                           "retain_stub_inputs": payload, "verify_retained_workspace": None}
                 for name, value in values.items():
@@ -265,6 +270,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                     extraction.side_effect = FirmwareRangeFallback("unavailable")
                 mount = stack.enter_context(patch("adapter.mounted_system_image", return_value=MagicMock()))
                 stack.enter_context(patch.object(adapter, "_collect_linux_firmware", return_value=[]))
+                separate = stack.enter_context(patch.object(adapter, "_collect_separate_linux_firmware", return_value=[]))
                 transaction = stack.enter_context(patch("adapter.AsahiStage1Adapter.preflight"))
                 try:
                     adapter.preflight(SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713"))
@@ -277,7 +283,11 @@ class CleanroomAdapterTests(unittest.TestCase):
                     self.assertEqual(mocks["prepare_recovery"].call_args.args[1]["device_class"], host_device)
                     self.assertEqual(mocks["retain_stub_inputs"].call_args.args[1]["device_class"], host_device)
                     self.assertEqual([call.args[1]["device_class"] for call in mocks["inspect_ipsw"].call_args_list],
-                                     [host_device, "j713ap"] if host_device == "j713ap" else [host_device])
+                                     [host_device, "j713ap"] if host_device == "j713ap" and sfr == "25.7.83.0.0,0"
+                                     else [host_device])
+                    self.assertEqual(separate.call_count, int(host_device == "j713ap" and sfr == "25.6.84.0.0,0"))
+                    self.assertEqual(adapter.installer.cleanroom_boot_profile["firmware"]["build"],
+                                     "25F84" if sfr == "25.6.84.0.0,0" else "25G83")
                     if needs_fallback:
                         self.assertEqual(mount.call_args.args[2]["device_class"], "j713ap")
                     self.assertEqual(mount.call_count, int(needs_fallback))
@@ -285,6 +295,60 @@ class CleanroomAdapterTests(unittest.TestCase):
                     transaction.assert_called_once()
                 finally:
                     adapter.workspace.cleanup()
+
+    def test_sfr_failure_precedes_workspace_download_and_partition_operations(self):
+        adapter = object.__new__(CleanroomStage1Adapter)
+        adapter.profile = self.profile
+        adapter.preflight_complete = False
+        adapter.metadata_path = Path("metadata.json")
+        host = SimpleNamespace(product_type="Mac17,5", device_class="j700ap", board_id=100, chip_id=0x8140)
+        adapter.installer = SimpleNamespace(sysinfo=host,
+            engine_runtime=SimpleNamespace(developer_model_override="apple,j713"))
+        apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
+        for value in (None, "25.6.83.0.0,0"):
+            host.sfr_full_ver = value
+            with patch("adapter.load_metadata", return_value={}), \
+                    patch("adapter.cleanroom_spec", return_value={"apple_inputs": apple}), \
+                    patch("adapter.AppleWorkspace") as workspace, \
+                    patch("adapter.selected_archive") as download, \
+                    patch("adapter.AsahiStage1Adapter.preflight") as transaction:
+                with self.assertRaises(BootInputError):
+                    adapter.preflight(SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713"))
+                workspace.assert_not_called()
+                download.assert_not_called()
+                transaction.assert_not_called()
+
+    def test_choose_ipsw_uses_preflight_boot_version_and_retains_linux_metadata_gate(self):
+        installer = object.__new__(CleanroomInstaller)
+        installer.cleanroom_profile = self.profile
+        with tempfile.TemporaryDirectory() as directory:
+            installer.cleanroom_restore_path = Path(directory) / "boot.zip"
+            installer.cleanroom_restore_path.touch()
+            with self.assertRaisesRegex(BootInputError, "boot version"):
+                installer.choose_ipsw(["26.6.2"])
+            installer.cleanroom_boot_profile = {**self.profile, "firmware": {**self.profile["firmware"],
+                                                                          "version": "26.5.2", "build": "25F84"}}
+            self.assertEqual(installer.choose_ipsw(["26.6.2"]).version, "26.5.2")
+            with self.assertRaisesRegex(BootInputError, "baseline"):
+                installer.choose_ipsw(["26.5.2"])
+
+    def test_optional_touchpad_failure_skips_but_cancellation_propagates(self):
+        adapter = object.__new__(CleanroomStage1Adapter)
+        adapter.profile = self.profile
+        adapter.installer = SimpleNamespace(engine_runtime=SimpleNamespace(developer_model_override="apple,j713"))
+        adapter.spec = {"apple_inputs": json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())}
+        with tempfile.TemporaryDirectory() as directory:
+            for error in (zipfile.BadZipFile("bad optional cache"), subprocess.CalledProcessError(1, "cp"),
+                          subprocess.CalledProcessError(-15, "cp")):
+                with patch("adapter.selected_files", side_effect=error), \
+                        patch.object(adapter, "_collect_linux_firmware", return_value=[]) as collect:
+                    if isinstance(error, subprocess.CalledProcessError) and error.returncode < 0:
+                        with self.assertRaises(subprocess.CalledProcessError):
+                            adapter._collect_separate_linux_firmware(Path(directory), [], None)
+                        collect.assert_not_called()
+                    else:
+                        self.assertEqual(adapter._collect_separate_linux_firmware(Path(directory), [], None), [])
+                        collect.assert_called_once()
 
     def test_yolo_optional_firmware_skips_missing_and_invalid_files(self):
         from asahi_firmware.core import FWFile, FWPackage

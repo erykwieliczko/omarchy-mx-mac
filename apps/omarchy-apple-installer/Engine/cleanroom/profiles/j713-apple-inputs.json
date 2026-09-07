@@ -12012,5 +12012,8 @@
         "usr/standalone/bootcaches.plist"
       ]
     }
-  ]
+  ],
+  "linux_firmware_members": {
+    "Multitouch": "Firmware/J713_Multitouch.im4p"
+  }
 }
