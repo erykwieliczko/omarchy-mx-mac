@@ -23,6 +23,10 @@
 
     public static let existingInstallHeadline = "Omarchy is already installed on this Mac."
     public static let closeInstaller = "Close"
+    public static let uninstallOmarchy = "Uninstall Omarchy"
+    public static let uninstallDetail =
+      "Uninstall removes Omarchy and its data, then gives the space back to macOS."
+    public static let uninstallOpenFailed = "Could not open the uninstaller"
 
     // MARK: Screen B — Plan
 

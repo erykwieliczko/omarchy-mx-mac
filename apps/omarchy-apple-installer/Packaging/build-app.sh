@@ -208,6 +208,7 @@ mkdir -p \
 
 install -m 0755 "$app_binary" "$contents/MacOS/$app_executable_name"
 install -m 0755 "$helper_binary" "$resources/$helper_executable_name"
+install -m 0755 "$script_directory/uninstall-omarchy.command" "$resources/uninstall-omarchy.command"
 install -m 0444 "$release_descriptor" "$resources/Release/release.json"
 install -m 0444 "$trust_root" "$resources/Release/trust-root.ed25519.pub"
 if [[ $sealed_catalog_available == "true" ]]; then

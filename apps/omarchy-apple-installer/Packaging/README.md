@@ -11,6 +11,7 @@ The generated `Omarchy MX Mac Installer.app` contains:
 
 - the SwiftUI application in `Contents/MacOS`;
 - the root helper in `Contents/Resources`;
+- the executable `uninstall-omarchy.command` in `Contents/Resources`;
 - its `SMAppService` launch-daemon property list in
   `Contents/Library/LaunchDaemons`;
 - the immutable release descriptor and Ed25519 trust root in
@@ -20,6 +21,17 @@ The generated `Omarchy MX Mac Installer.app` contains:
 The helper and application use reciprocal code-signing requirements. The helper
 also authenticates each XPC client before accepting a request. A release
 descriptor whose helper identity does not match the compiled product is rejected.
+
+The welcome, unsupported-host and existing-install screens offer **Uninstall
+Omarchy**. This opens the bundled reset script explicitly in Terminal, then
+closes the installer. Terminal owns the worker independently of the installer
+processes it stops. The reset script asks for the administrator password once,
+checks its supported host and exact partition layout, removes Omarchy's
+partitions, and returns their space to macOS. Logs stay in
+`~/Library/Logs/Omarchy-Uninstall`. No destructive action runs merely by opening
+the installer, and the button is unavailable during planning or installation.
+The standalone Desktop script remains usable; both entry points ship identical
+reset logic and retain its current J713/J700 host restriction.
 
 ## Build
 

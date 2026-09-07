@@ -7,6 +7,44 @@
 
   @MainActor
   final class InstallerSessionTests: XCTestCase {
+    func testUninstallerIsAvailableOnlyBeforePlanningOrExecution() async throws {
+      let environment = MockInstallerEnvironment()
+      let session = InstallerSession(environment: environment)
+      XCTAssertFalse(session.canOpenUninstaller)
+      await session.inspect()
+      XCTAssertTrue(session.canOpenUninstaller)
+      await session.continueToPlan()
+      XCTAssertFalse(session.canOpenUninstaller)
+      session.continueToPlanReview()
+      XCTAssertFalse(session.canOpenUninstaller)
+      session.setAcknowledged(true)
+      session.approve()
+      XCTAssertFalse(session.canOpenUninstaller)
+      session.presentInstallCredentials()
+      await session.submit(try authorization())
+      XCTAssertTrue(session.hasExecutionStarted)
+      XCTAssertFalse(session.canOpenUninstaller)
+    }
+
+    func testUninstallerIsAvailableForUnsupportedAndExistingInstallScreens() async {
+      let blocked = MockInstallerEnvironment()
+      blocked.installationBlocked = true
+      blocked.host = MockInstallerEnvironment.blockedHost
+      let blockedSession = InstallerSession(environment: blocked)
+      await blockedSession.inspect()
+      XCTAssertTrue(blockedSession.canOpenUninstaller)
+
+      let existing = MockInstallerEnvironment()
+      existing.host = HostDisplay(
+        chipAndSpace: "Apple M4", supported: true,
+        existingInstalls: [
+          ExistingInstallDisplay(sourceIdentifier: "disk0s3", sizeDescription: "50 GB")
+        ])
+      let existingSession = InstallerSession(environment: existing)
+      await existingSession.inspect()
+      XCTAssertTrue(existingSession.canOpenUninstaller)
+    }
+
     func testUnappliedSizeCannotApprovePreviousPlan() async throws {
       let environment = MockInstallerEnvironment()
       let session = InstallerSession(environment: environment)

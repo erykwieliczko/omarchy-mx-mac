@@ -8,7 +8,7 @@
     case unsupported(FailureDisplay)
     case welcome(HostDisplay)
     /// Omarchy is already on this Mac. The installer never replaces or adds
-    /// to an existing install; this is a terminal page with a Close button.
+    /// to an existing install; the page offers Close or the separate uninstaller.
     case existingInstallRefused(host: HostDisplay)
     case preparingPlan(AssetProgressUpdate)
     /// Everything is downloaded and verified; the plan waits for the person to
@@ -126,6 +126,16 @@
       case .welcome, .unsupported, .existingInstallRefused, .planReview, .awaitingInstall:
         return true
       default: return false
+      }
+    }
+
+    public var canOpenUninstaller: Bool {
+      guard !isBusy, !hasExecutionStarted else { return false }
+      switch phase {
+      case .welcome, .unsupported, .existingInstallRefused:
+        return true
+      default:
+        return false
       }
     }
 

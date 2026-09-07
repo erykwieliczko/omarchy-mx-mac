@@ -13,6 +13,8 @@ struct OnePageInstallerView: View {
   @State private var session: InstallerSession
   @State private var showsShutdownConfirmation = false
   @State private var showsRecoveryRetryConfirmation = false
+  @State private var isOpeningUninstaller = false
+  @State private var uninstallError: String?
   /// The last host and plan seen, so the header and the disk split stay on
   /// the page through the phases that no longer carry them.
   @State private var host: HostDisplay?
@@ -49,8 +51,22 @@ struct OnePageInstallerView: View {
 
       Spacer(minLength: 16)
 
-      HStack(spacing: 16) {
-        actions
+      VStack(spacing: 12) {
+        HStack(spacing: 16) {
+          if session.canOpenUninstaller {
+            Button(PlainLanguage.uninstallOmarchy, systemImage: "trash") {
+              openUninstaller()
+            }
+            .omarchySecondaryButton()
+          }
+          actions
+        }
+        if session.canOpenUninstaller {
+          Text(PlainLanguage.uninstallDetail)
+            .font(OmarchyTheme.caption)
+            .foregroundStyle(OmarchyTheme.secondaryText)
+            .multilineTextAlignment(.center)
+        }
       }
       .padding(.bottom, 28)
     }
@@ -68,6 +84,18 @@ struct OnePageInstallerView: View {
     .foregroundStyle(OmarchyTheme.text)
     .background(OmarchyTheme.window)
     .focusEffectDisabled()
+    .disabled(isOpeningUninstaller)
+    .alert(
+      PlainLanguage.uninstallOpenFailed,
+      isPresented: Binding(
+        get: { uninstallError != nil },
+        set: { if !$0 { uninstallError = nil } }
+      )
+    ) {
+      Button("OK", role: .cancel) { uninstallError = nil }
+    } message: {
+      Text(uninstallError ?? "")
+    }
     .task {
       await session.inspect()
     }
@@ -458,6 +486,20 @@ struct OnePageInstallerView: View {
   }
 
   // MARK: Plumbing
+
+  private func openUninstaller() {
+    guard session.canOpenUninstaller, !isOpeningUninstaller else { return }
+    isOpeningUninstaller = true
+    Task {
+      do {
+        try await InstallerUninstaller.open()
+        NSApplication.shared.terminate(nil)
+      } catch {
+        uninstallError = error.localizedDescription
+        isOpeningUninstaller = false
+      }
+    }
+  }
 
   private var credentialSheetBinding: Binding<Bool> {
     Binding(
