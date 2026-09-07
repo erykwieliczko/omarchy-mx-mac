@@ -1,5 +1,5 @@
 #!/bin/bash
-# Private J713 fresh-install reset. --check only inspects the current layout.
+# Private J713/J700 Linux reset. --check only inspects the current layout.
 set -euo pipefail
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 umask 077
@@ -69,7 +69,8 @@ def make_plan(root, store, records, containers):
     clean = ['Apple_APFS_ISC', 'Apple_APFS', 'Apple_APFS_Recovery']
     installed = clean[:2] + ['Apple_APFS', 'EFI', 'Linux Filesystem',
                              'Linux Filesystem'] + clean[2:]
-    require(kinds in (clean, installed),
+    legacy = clean[:2] + ['Apple_APFS', 'EFI', 'Linux Filesystem'] + clean[2:]
+    require(kinds in (clean, installed, legacy),
             'Unrecognized partition layout; nothing will be erased.')
     require(records[1]['DeviceIdentifier'] == store,
             'The macOS partition is not in the expected position.')
@@ -80,10 +81,14 @@ def make_plan(root, store, records, containers):
         gap = right['PartitionMapPartitionOffset'] - (
             left['PartitionMapPartitionOffset'] + left['IOKitSize'])
         require(gap >= 0, 'Overlapping partition boundaries.')
-        if kinds == installed:
-            require(gap <= 1024 * 1024, 'Unexpected gap between installed partitions.')
-    if kinds == installed:
-        stub, esp, boot, linux = records[2:6]
+        if kinds != clean:
+            # diskutil can leave a 128 MiB reserve before System Recovery.
+            maximum_gap = 128 * 1024**2 if (kinds == legacy
+                and right['Content'] == 'Apple_APFS_Recovery') else 1024**2
+            require(gap <= maximum_gap, 'Unexpected gap between installed partitions.')
+    if kinds != clean:
+        stub, esp, linux = records[2], records[3], records[-2]
+        stub_name = 'Omarchy' if kinds == installed else 'm1n1 J700'
         matching = [c for c in containers if any(
             s['DeviceIdentifier'] == stub['DeviceIdentifier'] for s in c['PhysicalStores'])]
         require(len(matching) == 1 and len(matching[0]['PhysicalStores']) == 1,
@@ -91,17 +96,26 @@ def make_plan(root, store, records, containers):
         volumes = matching[0]['Volumes']
         role_names = {(tuple(v['Roles']), v['Name']) for v in volumes}
         require(len(volumes) == 4 and role_names == {
-            (('System',), 'Omarchy'), (('Data',), 'Omarchy - Data'),
+            (('System',), stub_name), (('Data',), stub_name + ' - Data'),
             (('Preboot',), 'Preboot'), (('Recovery',), 'Recovery')},
             'The neighboring APFS container is not the expected Omarchy stub.')
         require(matching[0]['ContainerReference'] != root['APFSContainerReference'],
                 'Refusing to erase the running macOS container.')
-        require(2 * 1024**3 <= stub['IOKitSize'] <= 4 * 1024**3,
-                'Unexpected Omarchy stub size.')
-        require(esp.get('VolumeName') == 'EFI - OMARC' and esp['IOKitSize'] == 524288000,
-                'The EFI partition is not the Omarchy installer ESP.')
-        require(boot['IOKitSize'] == 2147483648 and linux['IOKitSize'] >= 34359738368,
-                'Unexpected Omarchy Linux partition sizes.')
+        if kinds == installed:
+            require(2 * 1024**3 <= stub['IOKitSize'] <= 4 * 1024**3,
+                    'Unexpected Omarchy stub size.')
+            require(esp.get('VolumeName') == 'EFI - OMARC' and esp['IOKitSize'] == 524288000,
+                    'The EFI partition is not the Omarchy installer ESP.')
+            require(records[4]['IOKitSize'] == 2147483648 and linux['IOKitSize'] >= 34359738368,
+                    'Unexpected Omarchy Linux partition sizes.')
+        else:
+            require(stub['IOKitSize'] == 8000000000,
+                    'Unexpected J700 m1n1 stub size.')
+            require(esp.get('VolumeName') == 'EFI-M1N1'
+                    and 1000000000 - 4096 <= esp['IOKitSize'] <= 1000000000,
+                    'The EFI partition is not the J700 m1n1 ESP.')
+            require(linux['IOKitSize'] >= 8 * 1024**3,
+                    'Unexpected J700 Linux partition size.')
     return {'macos_group': root['APFSVolumeGroupID'], 'partitions': parts,
             'remove': parts[2:-1], 'macos': parts[1],
             'maximum_macos_bytes': parts[-1]['PartitionMapPartitionOffset']
@@ -280,8 +294,8 @@ def main():
     authorized = sys.argv[1:] == ['--authorized']
     require(check_only or authorized or not sys.argv[1:], 'Unknown argument.')
     require(sys.platform == 'darwin', 'This script requires macOS.')
-    require(subprocess.check_output(['/usr/sbin/sysctl', '-n', 'hw.model']).strip() == b'Mac16,12',
-            'This private uninstaller supports the J713 MacBook Air M4 only.')
+    require(subprocess.check_output(['/usr/sbin/sysctl', '-n', 'hw.model']).strip() in (b'Mac16,12', b'Mac17,5'),
+            'This private uninstaller supports J713 and J700 Macs only.')
     if not check_only and not authorized:
         print('This permanently removes Omarchy and expands macOS.\n'
               'Any running Omarchy installation will be stopped immediately.', flush=True)
@@ -320,7 +334,10 @@ def main():
 
 def show_plan(plan):
     print('Omarchy partition reset\n', flush=True)
-    for record, label in zip(plan['remove'], ('Omarchy APFS stub', 'Omarchy EFI', 'Linux boot', 'Linux root')):
+    labels = ('Omarchy APFS stub', 'Omarchy EFI', 'Linux boot', 'Linux root')
+    if len(plan['remove']) == 3:
+        labels = ('m1n1 APFS stub', 'm1n1 EFI', 'Linux root')
+    for record, label in zip(plan['remove'], labels):
         print('Remove: %-20s %8.2f GB  %s' % (label, record['IOKitSize'] / 1e9, record['DiskUUID']), flush=True)
     print('Expand macOS to approximately %.2f GB.' % (plan['maximum_macos_bytes'] / 1e9), flush=True)
     print('Preserve: running macOS, Apple ISC and System Recovery.', flush=True)

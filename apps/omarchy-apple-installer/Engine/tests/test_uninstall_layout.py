@@ -37,12 +37,53 @@ def fixture():
     return root, 'disk9s2', records, containers
 
 
+def j700_fixture():
+    root, store, records, containers = fixture()
+    records.pop(4)
+    records[2]['IOKitSize'] = 8000000000
+    records[3]['IOKitSize'] = 999997440
+    records[3]['VolumeName'] = 'EFI-M1N1'
+    offset = 24576
+    for record in records:
+        record['PartitionMapPartitionOffset'] = offset
+        offset += record['IOKitSize']
+    records[-1]['PartitionMapPartitionOffset'] += 128 * 1024**2
+    containers[0]['Volumes'][0]['Name'] = 'm1n1 J700'
+    containers[0]['Volumes'][1]['Name'] = 'm1n1 J700 - Data'
+    return root, store, records, containers
+
+
 class UninstallTests(unittest.TestCase):
     def test_plan_discovers_all_four_partitions_without_pinned_device_numbers(self):
         plan = worker.make_plan(*fixture())
         self.assertEqual([p['DiskUUID'] for p in plan['remove']],
                          ['partition-3', 'partition-4', 'partition-5', 'partition-6'])
         self.assertNotIn('DeviceIdentifier', plan['macos'])
+
+    def test_j700_plan_removes_three_linux_partitions(self):
+        plan = worker.make_plan(*j700_fixture())
+        self.assertEqual([p['Content'] for p in plan['remove']],
+                         ['Apple_APFS', 'EFI', 'Linux Filesystem'])
+        with redirect_stdout(io.StringIO()) as output:
+            worker.show_plan(plan)
+        self.assertIn('Linux root', output.getvalue())
+        self.assertNotIn('Linux boot', output.getvalue())
+
+    def test_j700_rejects_another_stub_efi_or_changed_geometry(self):
+        for case in ('name', 'efi', 'size', 'extra-volume', 'gap'):
+            root, store, records, containers = j700_fixture()
+            if case == 'name':
+                containers[0]['Volumes'][0]['Name'] = 'Another macOS'
+            elif case == 'efi':
+                records[3]['VolumeName'] = 'EFI - FEDORA'
+            elif case == 'size':
+                records[2]['IOKitSize'] -= 4096
+            elif case == 'extra-volume':
+                containers[0]['Volumes'].append({'Roles': [], 'Name': 'Important data'})
+            else:
+                records[-1]['PartitionMapPartitionOffset'] += 2 * 1024**2
+            with self.subTest(case=case), self.assertRaises(RuntimeError):
+                worker.make_plan(root, store, records, containers)
 
     def test_unknown_or_ambiguous_layouts_are_rejected(self):
         for case in ('extra', 'booted-stub', 'external', 'wrong-label', 'wrong-size',
