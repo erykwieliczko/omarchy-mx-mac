@@ -6,6 +6,24 @@ import XCTest
 final class InstallerAllocationRecommendationTests: XCTestCase {
   private let gib: UInt64 = 1_073_741_824
 
+  func testImageFitsOnSmallDiskBelowRecommendedSize() throws {
+    let resize = candidate(
+      kind: "resize", source: "disk0s2", length: 245_054_767_104,
+      minimumInstall: 39_531_315_200, minimumContainer: 161_512_161_280)
+    let recommendation = try InstallerAllocationRecommendation(
+      inventory: inventory([resize]), workingSpaceBytes: 29_022_805_100,
+      targetBytes: 45_000_000_000)
+    XCTAssertEqual(recommendation.minimumLengthBytes, 39_531_315_200)
+    XCTAssertGreaterThan(recommendation.maximumLengthBytes, 53_000_000_000)
+    XCTAssertLessThan(recommendation.maximumLengthBytes, 54_000_000_000)
+    XCTAssertLessThanOrEqual(recommendation.requestedLengthBytes, 45_000_000_000)
+    XCTAssertGreaterThan(recommendation.requestedLengthBytes, 44_999_000_000)
+    XCTAssertNoThrow(
+      try PinnedAsahiPlanRequest(
+        inventory: inventory([resize]), candidate: resize,
+        requestedLengthBytes: recommendation.requestedLengthBytes))
+  }
+
   func testPrefersFreeExtentAndBalancedTarget() throws {
     let resize = candidate(
       kind: "resize",

@@ -11,7 +11,8 @@ import unittest
 
 class FakeOSInstaller:
     def __init__(self, dutil, data, template):
-        self.min_recommended_size = template["minimum_size"]
+        self.min_size = template["minimum_size"]
+        self.min_recommended_size = self.min_size * 2
         self.name = template.get("default_os_name", "Omarchy")
 
 

@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "8f7f46c3dd8e573261bc04a1f241fde08e795b2f7a784c60306c9433fb3a4617"
+      "sha256": "c55adbb717b8464f8b6acd560361e43ab63b4ea4b35794e5ba86895687954d42"
     },
     {
       "path": "cleanroom/adapter.py",
@@ -114,7 +114,7 @@
     },
     {
       "path": "overlay/src/omarchy_asahi.py",
-      "sha256": "5828d81c0ecd13bfc8e6c24638c6554e7f820cfea6227ca0835b0b3ea97613ae"
+      "sha256": "a499d8a27a7a5d85f551b11c1010f3b978f1913095555cdbef4319de135d6a59"
     },
     {
       "path": "overlay/src/omarchy_contract.py",
@@ -126,7 +126,7 @@
     },
     {
       "path": "overlay/src/omarchy_planner.py",
-      "sha256": "8df1e31a9a64f09f2483aa11594e9b30bfe737a117328d46cfdd9ac57567ffbf"
+      "sha256": "249e905039d1f3a160f0dde8a0d968b5d944777b798978e324c2e16f52f611e0"
     },
     {
       "path": "overlay/src/omarchy_repair.py",
@@ -142,7 +142,7 @@
     },
     {
       "path": "overlay/tests/test_omarchy_asahi.py",
-      "sha256": "57fba1d33b5e32e506329bebceeba3702adf469630e509b7b97a99dc87431222"
+      "sha256": "cbf526cf048c9b6e0b59709416ad697a420d73096cca29d14d89e9a1f1ee23ec"
     },
     {
       "path": "overlay/tests/test_omarchy_contract.py",
@@ -154,7 +154,7 @@
     },
     {
       "path": "overlay/tests/test_omarchy_planner.py",
-      "sha256": "f569f256ccd8ebd519d138b80c0e3ad2c44f23939ff57bd7aafeecb53324eb07"
+      "sha256": "8d7f27b74b1036d6d4a9deef8f19d6c2038b15b5d42ad2aa47546b8c672a0475"
     },
     {
       "path": "overlay/tests/test_omarchy_repair.py",
@@ -162,7 +162,7 @@
     },
     {
       "path": "overlay/tests/test_omarchy_replace.py",
-      "sha256": "6e7e5aab3a4dff832031f47378db660775d4b81d379273815ecb325e672ae504"
+      "sha256": "83ae0645a78e2ad8ca036a1560f4015ca0f5912f2e2e120d6b27884418346107"
     },
     {
       "path": "overlay/tests/test_omarchy_runtime.py",
@@ -178,7 +178,7 @@
     },
     {
       "path": "source-lock.json",
-      "sha256": "567d07a606bb4fc839a86ecf4946b2d8c9070417c16e9c3c661622255995ad1a"
+      "sha256": "213fcbd8473ea7c6c2e4267e798326a0d3be15a008279fd0da8808b130fa90fa"
     },
     {
       "path": "cleanroom/apple_ranges.py",

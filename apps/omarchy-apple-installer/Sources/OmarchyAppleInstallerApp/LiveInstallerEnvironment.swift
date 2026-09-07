@@ -214,7 +214,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       releaseConfiguration = configuration
     }
 
-    return .plan(Self.planDisplay(review: prepared.review, host: host))
+    return .plan(Self.planDisplay(review: prepared.review, host: host, allocation: recommendation))
   }
 
   // MARK: Approval
@@ -386,16 +386,22 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
 
   static func planDisplay(
     review: InstallerPlanReview,
-    host: AppleSiliconHostInspection
+    host: AppleSiliconHostInspection,
+    allocation: InstallerAllocationRecommendation? = nil
   ) -> PlanDisplay {
     let length = review.plan.lengthBytes
-    let total = max(host.storage.containerSizeBytes, length)
+    let freeExtent = allocation?.candidate.kind == "free" ? allocation!.candidate.lengthBytes : 0
+    let (combined, overflow) = host.storage.containerSizeBytes.addingReportingOverflow(freeExtent)
+    let total = max(overflow ? host.storage.containerSizeBytes : combined, length)
 
     return PlanDisplay(
       diskTotalBytes: total,
       omarchyBytes: length,
       bindingDigest: review.identity.bindingDigest,
-      isResizable: review.plan.candidateKind != "replace"
+      isResizable: review.plan.candidateKind != "replace",
+      minimumOmarchyBytes: allocation?.minimumLengthBytes,
+      maximumOmarchyBytes: allocation?.maximumLengthBytes,
+      remainingSpaceLabel: freeExtent > 0 ? "MacOS + unused" : "MacOS"
     )
   }
 

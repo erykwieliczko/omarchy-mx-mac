@@ -88,11 +88,19 @@
     /// Preserved verbatim from `canStartInstallation`: every conjunct still has
     /// to hold, even though the phase machine already makes some of them
     /// structurally impossible to violate.
+    public private(set) var hasPendingSizeChange = false
+
+    public func setSizeEditing(_ pending: Bool) {
+      guard case .planReview = phase else { return }
+      hasPendingSizeChange = pending
+    }
+
     public var canStartInstallation: Bool {
       guard case .awaitingInstall(_, let helper, _) = phase else {
         return false
       }
       return !environment.installationBlocked
+        && !hasPendingSizeChange
         && !isExecuting
         && !hasExecutionStarted
         && environment.engineSupported
@@ -299,7 +307,7 @@
 
     public func approve() {
       guard case .planReview(let plan, let acknowledged) = phase,
-        acknowledged
+        acknowledged, !hasPendingSizeChange, !isBusy
       else {
         return
       }
@@ -563,6 +571,7 @@
     /// Mirrors the field resets of `inspectThisMac()`: no approval, plan,
     /// progress, latch, or credential state may survive a re-inspection.
     private func resetForInspection() {
+      hasPendingSizeChange = false
       environment.discardApproval()
       stagingProgress = [:]
       journal.reset()
@@ -575,6 +584,7 @@
 
     /// Mirrors the field resets of `prepareSignedPlan()`.
     private func resetForPlanPreparation() {
+      hasPendingSizeChange = false
       environment.discardApproval()
       stagingProgress = [:]
       journal.reset()

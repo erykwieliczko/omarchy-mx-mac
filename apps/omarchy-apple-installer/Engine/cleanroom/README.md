@@ -223,3 +223,12 @@ include the exact selected ZIP member set, separating normal Recovery-only
 selection from a full fallback selection. The standalone prototype under
 `Experiments/firmware-ranges` prepares recipes from an authenticated full
 baseline and supports additional files through a JSON file list.
+
+## Installation allocation
+
+The hard allocation minimum is the APFS stub plus the image partition minimum
+(`OSInstaller.min_size`), not the larger recommended allocation. The current
+image needs 39,531,315,200 bytes including boot partitions. The UI exposes the
+planner’s aligned minimum and maximum through a slider and a GB entry field;
+macOS resize limits and temporary download/workspace reserves still apply.
+Changing the size requires a new bound plan before installation can start.

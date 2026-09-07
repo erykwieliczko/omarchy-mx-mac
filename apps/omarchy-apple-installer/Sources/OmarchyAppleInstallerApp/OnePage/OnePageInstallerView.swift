@@ -234,7 +234,8 @@ struct OnePageInstallerView: View {
         plan: plan,
         editable: plan.isResizable,
         isBusy: session.isBusy,
-        onSizeChosen: { bytes in Task { await session.replan(omarchyBytes: bytes) } }
+        onSizeChosen: { bytes in Task { await session.replan(omarchyBytes: bytes) } },
+        onSizeEditing: { session.setSizeEditing($0) }
       )
       acknowledgement(acknowledged)
 
@@ -301,7 +302,7 @@ struct OnePageInstallerView: View {
         }
       }
       .omarchyPrimaryButton()
-      .disabled(!acknowledged || session.isBusy)
+      .disabled(!acknowledged || session.isBusy || session.hasPendingSizeChange)
       .keyboardShortcut(.defaultAction)
 
     case .awaitingInstall:
@@ -562,18 +563,24 @@ private struct DiskSplitPanel: View {
   let editable: Bool
   let isBusy: Bool
   let onSizeChosen: (UInt64) -> Void
+  var onSizeEditing: (Bool) -> Void = { _ in }
 
   @State private var exploredOmarchyGB: Double?
 
-  private static let minimumOmarchyGB: Double = 30
+  private var minimumOmarchyGB: Double { Double(plan.minimumOmarchyBytes) / 1_000_000_000 }
+  private var maximumOmarchyGB: Double { Double(plan.maximumOmarchyBytes) / 1_000_000_000 }
+  private var canAdjust: Bool { editable && plan.maximumOmarchyBytes > plan.minimumOmarchyBytes }
 
   var body: some View {
     Panel {
       VStack(alignment: .leading, spacing: 10) {
         HStack(alignment: .firstTextBaseline) {
-          Text("MacOS " + PlainLanguage.bytes(plan.diskTotalBytes - displayedOmarchyBytes))
-            .font(.system(size: 13.5, weight: .semibold).monospacedDigit())
-            .foregroundStyle(OmarchyTheme.accent)
+          Text(
+            plan.remainingSpaceLabel + " "
+              + PlainLanguage.bytes(plan.diskTotalBytes - displayedOmarchyBytes)
+          )
+          .font(.system(size: 13.5, weight: .semibold).monospacedDigit())
+          .foregroundStyle(OmarchyTheme.accent)
           Spacer(minLength: 8)
           Text("Omarchy " + PlainLanguage.bytes(displayedOmarchyBytes))
             .font(.system(size: 13.5, weight: .semibold).monospacedDigit())
@@ -582,8 +589,8 @@ private struct DiskSplitPanel: View {
         DiskBar(
           macOSBytes: plan.diskTotalBytes - displayedOmarchyBytes,
           omarchyBytes: displayedOmarchyBytes,
-          onAdjustOmarchyFraction: editable ? { adjust($0) } : nil,
-          onCommitOmarchyFraction: editable ? { commit($0) } : nil,
+          onAdjustOmarchyFraction: canAdjust ? { adjust($0) } : nil,
+          onCommitOmarchyFraction: canAdjust ? { commit($0) } : nil,
           isFrozen: isBusy
         )
         .transaction { $0.animation = nil }
@@ -597,9 +604,43 @@ private struct DiskSplitPanel: View {
               .font(OmarchyTheme.caption)
               .foregroundStyle(OmarchyTheme.secondaryText)
           }
-        } else if editable {
+        } else if canAdjust {
+          HStack {
+            Text("Omarchy size")
+              .font(OmarchyTheme.caption)
+            TextField(
+              "GB",
+              value: Binding(
+                get: { exploredOmarchyGB ?? Double(plan.omarchyBytes) / 1_000_000_000 },
+                set: {
+                  exploredOmarchyGB = $0
+                  onSizeEditing(true)
+                }),
+              format: .number.precision(.fractionLength(1))
+            )
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 80)
+            .onSubmit { commitSelection() }
+            Text("GB")
+              .font(OmarchyTheme.caption)
+            Button("Apply") { commitSelection() }
+              .disabled(exploredOmarchyGB == nil)
+          }
+          Slider(
+            value: Binding(
+              get: { Double(displayedOmarchyBytes) / 1_000_000_000 },
+              set: {
+                exploredOmarchyGB = $0
+                onSizeEditing(true)
+              }),
+            in: minimumOmarchyGB...maximumOmarchyGB,
+            onEditingChanged: { editing in
+              if !editing { commitSelection() }
+            }
+          )
+          .accessibilityLabel("Omarchy size in GB")
           Text(
-            "Drag the divider to choose how much space Omarchy gets (minimum \(Int(Self.minimumOmarchyGB)) GB)"
+            "Available range: \(minimumOmarchyGB, specifier: "%.1f")–\(maximumOmarchyGB, specifier: "%.1f") GB. Includes Linux and boot partitions."
           )
           .font(OmarchyTheme.caption)
           .foregroundStyle(OmarchyTheme.secondaryText)
@@ -607,8 +648,9 @@ private struct DiskSplitPanel: View {
       }
       .padding(.vertical, 4)
     }
-    .onChange(of: plan.omarchyBytes) { _, _ in
+    .onChange(of: plan) { _, _ in
       exploredOmarchyGB = nil
+      onSizeEditing(false)
     }
   }
 
@@ -616,27 +658,27 @@ private struct DiskSplitPanel: View {
     guard let exploredOmarchyGB else {
       return plan.omarchyBytes
     }
-    return UInt64(exploredOmarchyGB * 1_000_000_000)
-  }
-
-  private var maximumOmarchyGB: Double {
-    let totalGB = Double(plan.diskTotalBytes) / 1_000_000_000
-    return max(Self.minimumOmarchyGB + 10, min(800, (totalGB - 120) / 10 * 10).rounded(.down))
+    return plan.clampedOmarchyBytes(gigabytes: exploredOmarchyGB)
   }
 
   private func adjust(_ fraction: Double) {
     let totalGB = Double(plan.diskTotalBytes) / 1_000_000_000
-    let steppedGB = ((totalGB * fraction) / 10).rounded() * 10
-    exploredOmarchyGB = min(maximumOmarchyGB, max(Self.minimumOmarchyGB, steppedGB))
+    exploredOmarchyGB = min(maximumOmarchyGB, max(minimumOmarchyGB, (totalGB * fraction).rounded()))
+    onSizeEditing(true)
   }
 
   private func commit(_ fraction: Double) {
     adjust(fraction)
+    commitSelection()
+  }
+
+  private func commitSelection() {
     let chosen = displayedOmarchyBytes
     if chosen != plan.omarchyBytes {
       onSizeChosen(chosen)
     } else {
       exploredOmarchyGB = nil
+      onSizeEditing(false)
     }
   }
 }

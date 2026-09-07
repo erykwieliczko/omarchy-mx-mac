@@ -65,7 +65,7 @@ def collect_inventory(
         installer.data,
         templates[0],
     )
-    minimum_install = stub_size + os_installer.min_recommended_size
+    minimum_install = stub_size + os_installer.min_size
     candidates = []
     for part in free_parts:
         length = align_down(part.size, part_align)

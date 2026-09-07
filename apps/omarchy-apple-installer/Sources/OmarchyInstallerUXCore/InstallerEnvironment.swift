@@ -67,6 +67,9 @@
   public struct PlanDisplay: Equatable, Sendable {
     public let diskTotalBytes: UInt64
     public let omarchyBytes: UInt64
+    public let remainingSpaceLabel: String
+    public let minimumOmarchyBytes: UInt64
+    public let maximumOmarchyBytes: UInt64
     public let bindingDigest: String
     /// Whether the user may choose Omarchy's size. A replace plan removes an
     /// existing install and reuses its exact extent, so there is nothing to
@@ -77,12 +80,31 @@
       diskTotalBytes: UInt64,
       omarchyBytes: UInt64,
       bindingDigest: String,
-      isResizable: Bool = true
+      isResizable: Bool = true,
+      minimumOmarchyBytes: UInt64? = nil,
+      maximumOmarchyBytes: UInt64? = nil,
+      remainingSpaceLabel: String = "MacOS"
     ) {
-      self.diskTotalBytes = diskTotalBytes
+      self.diskTotalBytes = max(diskTotalBytes, omarchyBytes, maximumOmarchyBytes ?? omarchyBytes)
+      self.remainingSpaceLabel = remainingSpaceLabel
       self.omarchyBytes = omarchyBytes
+      self.minimumOmarchyBytes = minimumOmarchyBytes ?? omarchyBytes
+      self.maximumOmarchyBytes = maximumOmarchyBytes ?? omarchyBytes
       self.bindingDigest = bindingDigest
       self.isResizable = isResizable
+    }
+
+    /// Match the planner's allocation unit, keeping both endpoints reachable.
+    public func clampedOmarchyBytes(gigabytes: Double) -> UInt64 {
+      guard gigabytes.isFinite else { return omarchyBytes }
+      let minimum = Double(minimumOmarchyBytes)
+      let maximum = Double(maximumOmarchyBytes)
+      if gigabytes * 1_000_000_000 <= minimum { return minimumOmarchyBytes }
+      if gigabytes * 1_000_000_000 >= maximum { return maximumOmarchyBytes }
+      let bounded = gigabytes * 1_000_000_000
+      let unit = PinnedAsahiPlanRequest.allocationUnitBytes
+      let bytes = UInt64(bounded)
+      return min(maximumOmarchyBytes, max(minimumOmarchyBytes, bytes - bytes % unit))
     }
   }
 

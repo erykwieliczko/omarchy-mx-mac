@@ -14,7 +14,8 @@ import zipfile
 
 class FakeOSInstaller:
     def __init__(self, dutil, data, template):
-        self.min_recommended_size = template.get("minimum_size", 64 * GIB)
+        self.min_size = template.get("minimum_size", 64 * GIB)
+        self.min_recommended_size = self.min_size * 2
         self.name = template.get("default_os_name", "Omarchy")
         self.needs_firmware = False
         self.idata_targets = []

@@ -313,7 +313,7 @@ class AsahiStage1Adapter:
         )
         if (
             plan.length_bytes
-            < self.stub_size + self.osins.min_recommended_size
+            < self.stub_size + self.osins.min_size
         ):
             raise AsahiAdapterError(
                 "approved extent is smaller than Asahi minimum"

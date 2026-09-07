@@ -115,7 +115,9 @@
       PlanDisplay(
         diskTotalBytes: total,
         omarchyBytes: length,
-        bindingDigest: "sha256:" + String(repeating: "b", count: 64)
+        bindingDigest: "sha256:" + String(repeating: "b", count: 64),
+        minimumOmarchyBytes: 30_000_000_000,
+        maximumOmarchyBytes: total - 120_000_000_000
       )
     }
 

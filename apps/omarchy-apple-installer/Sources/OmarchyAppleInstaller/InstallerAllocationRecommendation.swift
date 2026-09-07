@@ -18,6 +18,8 @@ public struct InstallerAllocationRecommendation:
 
   public let candidate: ValidatedEngineCandidate
   public let requestedLengthBytes: UInt64
+  public let minimumLengthBytes: UInt64
+  public let maximumLengthBytes: UInt64
 
   public init(
     inventory: ValidatedEngineInventory,
@@ -78,6 +80,8 @@ public struct InstallerAllocationRecommendation:
     }
     let alignedTarget = targetBytes - (targetBytes % unit)
     candidate = selected.candidate
+    minimumLengthBytes = selected.minimum
+    maximumLengthBytes = selected.maximum
     requestedLengthBytes = min(
       selected.maximum,
       max(selected.minimum, alignedTarget)

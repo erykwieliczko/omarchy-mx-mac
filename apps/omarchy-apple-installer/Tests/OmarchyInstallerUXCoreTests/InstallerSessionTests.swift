@@ -7,6 +7,23 @@
 
   @MainActor
   final class InstallerSessionTests: XCTestCase {
+    func testUnappliedSizeCannotApprovePreviousPlan() async throws {
+      let environment = MockInstallerEnvironment()
+      let session = InstallerSession(environment: environment)
+      await session.inspect()
+      await session.continueToPlan()
+      session.continueToPlanReview()
+      session.setAcknowledged(true)
+      session.setSizeEditing(true)
+      session.approve()
+      XCTAssertFalse(environment.hasApprovedPlan)
+      XCTAssertFalse(session.canStartInstallation)
+      await session.replan(omarchyBytes: 45_000_000_000)
+      XCTAssertFalse(session.hasPendingSizeChange)
+      session.approve()
+      XCTAssertTrue(session.canStartInstallation)
+    }
+
     func testChangingModelDiscardsApprovalAndRequiresNewPlan() async throws {
       let environment = MockInstallerEnvironment()
       let session = InstallerSession(environment: environment)
