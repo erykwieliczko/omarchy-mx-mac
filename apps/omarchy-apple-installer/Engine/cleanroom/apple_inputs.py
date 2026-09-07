@@ -77,6 +77,9 @@ def load_apple_inputs(path, profile):
     system = members.get(lock["system_image"]["member"], {})
     if any(system.get(field) != lock["system_image"][field] for field in ("size_bytes", "sha256")):
         raise BootInputError("selected Apple system image differs from decoded image lock")
+    if "firmware_ranges" in lock:
+        from firmware_ranges import load_recipe
+        load_recipe(lock, profile, Path(path).parent)
     return lock
 
 

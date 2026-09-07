@@ -64,6 +64,29 @@ class AppleRangeTests(unittest.TestCase):
                 self.assertEqual(archive.read("boot"), b"admitted boot code")
             self.assertLess(self.transferred, len(self.data) // 2)
 
+    def test_stub_selection_omits_system_and_uses_a_distinct_cache_key(self):
+        import copy
+        with zipfile.ZipFile(io.BytesIO(self.data)) as archive:
+            item = archive.getinfo("unneeded")
+            self.lock["members"]["unneeded"] = {
+                "size_bytes": item.file_size, "external_attr": item.external_attr,
+                "sha256": hashlib.sha256(archive.read(item)).hexdigest(),
+                "compressed_size_bytes": item.compress_size, "compression": item.compress_type,
+                "header_offset": item.header_offset}
+        self.lock["system_image"] = {"member": "unneeded"}
+        original = copy.deepcopy(self.lock)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch("apple_ranges.stub_members", return_value=["boot"]), patch("apple_ranges.progress"):
+                for include in (True, False):
+                    path = selected_archive(self.lock, {}, root / f"{include}.zip",
+                                            cache_directory=root / "cache", include_system=include,
+                                            opener=SimpleNamespace(open=self.open))
+                    with zipfile.ZipFile(path) as archive:
+                        self.assertEqual(set(archive.namelist()), {"boot", "unneeded"} if include else {"boot"})
+            self.assertEqual(len(list((root / "cache").glob("*.zip"))), 2)
+        self.assertEqual(self.lock, original)
+
     def test_unaligned_bulk_reads_keep_bounded_read_ahead(self):
         # ZIP member bodies rarely start on a 1 MiB boundary. A cached prefix
         # must not turn the rest of every bulk read into a separate request.

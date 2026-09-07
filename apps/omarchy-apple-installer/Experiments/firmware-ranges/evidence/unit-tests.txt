@@ -1,0 +1,12 @@
+test_corrupt_range_stops_before_key_or_output (test_prototype.RangePrototypeTests.test_corrupt_range_stops_before_key_or_output) ... ok
+test_fragmented_storage_deduplicates_already_selected_segments (test_prototype.RangePrototypeTests.test_fragmented_storage_deduplicates_already_selected_segments) ... ok
+test_normalization_matches_existing_nvram_conversion (test_prototype.RangePrototypeTests.test_normalization_matches_existing_nvram_conversion) ... ok
+test_selected_cluster_skips_previous_ciphertext_and_handles_partial_final_segment (test_prototype.RangePrototypeTests.test_selected_cluster_skips_previous_ciphertext_and_handles_partial_final_segment) ... ok
+test_server_ignoring_ranges_is_rejected_before_reading_body (test_prototype.RangePrototypeTests.test_server_ignoring_ranges_is_rejected_before_reading_body) ... ok
+test_tampered_root_cluster_and_ciphertext_are_rejected (test_prototype.RangePrototypeTests.test_tampered_root_cluster_and_ciphertext_are_rejected) ... ok
+test_wrong_recipe_stops_before_network_and_creates_no_output (test_prototype.RangePrototypeTests.test_wrong_recipe_stops_before_network_and_creates_no_output) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.123s
+
+OK

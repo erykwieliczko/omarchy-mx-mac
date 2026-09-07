@@ -10,15 +10,15 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "0ecd68ad0e6916890826d92d2b25f428db87059ff297b48855f7398da4293092"
+      "sha256": "5aba416893e808ee4c9aea3c7f48cee9fbadd5e1e41063c930146c227cb0dc64"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "ec6758ab7c4ef4cf02edbc1991167ac20ecdf83430345d2ca0e81e1fd4a5d342"
+      "sha256": "644f7f9517f5d6237b4942b1d8b69b6f7713435f710b0a9b8f13b1d4202711fb"
     },
     {
       "path": "cleanroom/apple_inputs.py",
-      "sha256": "dd78c676f5eff131e9dc2e59bc1d0993ff2e49f52b8677ebec76d19d6660d9b7"
+      "sha256": "0fd8878ca89fe265ef389184670493b9f33c937076ee8db2f568261f4e925770"
     },
     {
       "path": "cleanroom/assemble_engine.py",
@@ -50,7 +50,7 @@
     },
     {
       "path": "cleanroom/native-artifacts.json",
-      "sha256": "046ce6633058be328a0e90f0b221cb9790b2d32408ecb575697ee4ab85ea45b0"
+      "sha256": "61924062d14c641bdd6f329a0e1abcd5b69ee81a63f9b5887aff6bb0304d7869"
     },
     {
       "path": "cleanroom/patches/0001-boot-factories.patch",
@@ -62,7 +62,7 @@
     },
     {
       "path": "cleanroom/profiles/j713-apple-inputs.json",
-      "sha256": "da5b28b28821da40749931b517dd04b9ebb9e2767c2b80814a710ea98322c7ff"
+      "sha256": "6a6ae5ccc17c7d626a68ed0692f1623d103976001999c22324d8ae95487e7b9f"
     },
     {
       "path": "cleanroom/profiles/j713.json",
@@ -74,11 +74,11 @@
     },
     {
       "path": "cleanroom/restore-image/go.mod",
-      "sha256": "196ef11c961d3b4becc35c107ab5a057e4e7100485dab7e79f12c0cb4e2e5e88"
+      "sha256": "c800db76e4310b6bd509ff9536619942b9304527367c80df7ff78e85c6d63ca0"
     },
     {
       "path": "cleanroom/restore-image/main.go",
-      "sha256": "00fd2b1a5b27557eb8b0256f92a5ab4d205d52fd28c5359fb8d396a991f86861"
+      "sha256": "456f9b9b01dfff6bbeef7170e33bf7d64eb7900a4a2807bc280620567bba9611"
     },
     {
       "path": "cleanroom/restore-image/main_test.go",
@@ -86,7 +86,7 @@
     },
     {
       "path": "cleanroom/stage_sources.py",
-      "sha256": "7ba2956f9cc9f858b91cd2f51b3d266a16622cbd7951a1ab5334d42594926e0d"
+      "sha256": "628748f5b2e2b8a3dffaaa9a53e2671bbf7e651b89083ed32df64b404f8b7cda"
     },
     {
       "path": "cleanroom/step2.sh",
@@ -94,7 +94,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "f4f8c55884c27bf6f84141bfdc7c219e43bf74e7865e6c5f6a80a36cb479cdd1"
+      "sha256": "4f1a7560a95d90dda75eefa87ba04c5dd86bc339a6cb8a25ffcc4592d2e36d70"
     },
     {
       "path": "installer_data.json",
@@ -182,11 +182,35 @@
     },
     {
       "path": "cleanroom/apple_ranges.py",
-      "sha256": "c8e777c2b6d4243413ca375a3583301eb2ba7e02bce71fc0054114d682d6dbf6"
+      "sha256": "896f92bdf6f567099d6dd47432809e10fb28f7278d9122b1391ed03e404988da"
     },
     {
       "path": "cleanroom/pin_apple_members.py",
       "sha256": "309693ae20e7cc270f6363e1d4b387135673a2d0bfe433946081f3bb1c905ce5"
+    },
+    {
+      "path": "cleanroom/firmware_ranges.py",
+      "sha256": "f00342b91651f26cc741aa9a4c495b12e1dd3dd537adc4c72290c839464ec8d8"
+    },
+    {
+      "path": "cleanroom/profiles/j713-25G83-ranges.json",
+      "sha256": "50acce0a4b6244cea0ffcb305cc66ed095663990db379be5d812c1971138fa60"
+    },
+    {
+      "path": "cleanroom/restore-image/ranges.go",
+      "sha256": "dc860e03d73c608f037aefbcde7eb6781a26e547000edb56cd7fde8cfadc67e8"
+    },
+    {
+      "path": "cleanroom/restore-image/ranges_test.go",
+      "sha256": "5697dfdb8fbe7f7f2d15b544d483fd612db4f9932d4c05d97451cc61a55abc8d"
+    },
+    {
+      "path": "cleanroom/restore-image/go.sum",
+      "sha256": "f013f2c889dd415bb48f1cce818aa30187d227cf81f3976375ddcfedd41698e8"
+    },
+    {
+      "path": "cleanroom/THIRD_PARTY_NOTICES.txt",
+      "sha256": "3b4ad4dd2666fb8e02d34aca0f1af5689a031841d3546e0203472fc9d8faf0a1"
     }
   ]
 }

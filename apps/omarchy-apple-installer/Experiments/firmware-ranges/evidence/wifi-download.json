@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "recipe_sha256": "94ae751fc30c4c31a4a99b4bb5d398b577e259e11f18da866ec3fbef31e7add3",
+  "network_bytes": 2865066,
+  "range_requests": 8,
+  "selected_segments": 4,
+  "network_and_aea_seconds": 1.862,
+  "elapsed_seconds": 1.916,
+  "full_image_used": false,
+  "outputs": [
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.bin",
+      "size": 1804429,
+      "sha256": "8b18acb6116622c6161de80ef510dfa9afc47dd963440f090770e57d14b3e928"
+    },
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.sig",
+      "size": 204,
+      "sha256": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710"
+    },
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.clm_blob",
+      "size": 79547,
+      "sha256": "28e31d6caaa1eaf6e6adddefa2e83fb544714972c2cbecb9d23b625e1f03a0a1"
+    },
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob",
+      "size": 1371,
+      "sha256": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6"
+    },
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-u.txt",
+      "size": 24913,
+      "sha256": "68acd4eca6ae81340bcc27bc093c554010c087756dfd0bd2f754f3f667f76b35"
+    },
+    {
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-a.txt",
+      "size": 24870,
+      "sha256": "a3cf85bdd68083f40e47e9a029e77a4e14b32047bb9251a46e6b04e2232591f6"
+    }
+  ]
+}

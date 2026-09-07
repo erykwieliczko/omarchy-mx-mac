@@ -1,0 +1,22 @@
+// Calls the existing production metadata, Apple HTTPS and HPKE functions.
+// The build script supplies these from restore-image/main.go unchanged.
+package main
+
+import (
+  "context"
+  "fmt"
+  "os"
+  "time"
+)
+
+func main() {
+  md, err := metadata(os.Stdin)
+  if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+  ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+  defer cancel()
+  release, err := fetchKey(ctx, string(md["com.apple.wkms.fcs-key-url"]))
+  if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+  key, err := unwrap(md, release)
+  if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+  if _, err := os.Stdout.Write(key); err != nil { os.Exit(1) }
+}

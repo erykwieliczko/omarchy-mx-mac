@@ -54,10 +54,11 @@ def stage_sources(checkout, destination):
         for patch in lock["patches"]:
             subprocess.run(["git", "-C", str(tree), "apply", str(engine / patch)], check=True)
         (tree / "src/main.py").rename(tree / "src/asahi_main.py")
-        for name in ("main.py", "adapter.py", "boot_inputs.py", "recovery.py", "firmware.py", "apple_inputs.py", "apple_ranges.py"):
+        for name in ("main.py", "adapter.py", "boot_inputs.py", "recovery.py", "firmware.py", "firmware_ranges.py", "apple_inputs.py", "apple_ranges.py"):
             shutil.copyfile(engine / "cleanroom" / name, tree / "src" / name)
         shutil.copytree(engine / "cleanroom/profiles", tree / "src/cleanroom/profiles")
         shutil.copyfile(engine / "cleanroom/step2.sh", tree / "src/cleanroom/step2.sh")
+        shutil.copyfile(engine / "cleanroom/THIRD_PARTY_NOTICES.txt", tree / "src/cleanroom/THIRD_PARTY_NOTICES.txt")
         (tree / "cleanroom-source-lock.json").write_text(json.dumps(lock, indent=2) + "\n")
         tree.rename(destination)
     return destination

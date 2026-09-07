@@ -16,7 +16,7 @@ and assembles an admitted raw stage 1 with the new ESP UUID and complete-object
 CHAINLOADING=1` build provenance. Manifest reference validation alone is not
 Apple signature or decoded Recovery authentication.
 
-`restore-image` is a dependency-free Go command using the standard library's
+`restore-image` is a Go command using the standard library's
 HPKE support and macOS `/usr/bin/aea`. It validates the input SHA-256, stages
 private bytes, obtains the public release key from Apple's HTTPS FCS service,
 authenticates the wrapped archive key, and asks Apple's utility to authenticate
@@ -185,3 +185,37 @@ staged downloads and the shared Apple development cache. It preserves
 installed systems, app settings, and diagnostic logs. `--check` lists the
 scope without removing files. A later dev installation will populate the
 cache again.
+
+### Firmware ranges (0.9.5)
+
+The normal path reads a catalog-pinned range recipe, downloads only its AEA
+prefix, cluster headers and compressed segments directly from Apple, obtains
+the release key from Apple's FCS service, and authenticates/decrypts each
+selected segment. It reconstructs the required APFS storage spans and converts
+NVRAM using the same output hashes as the full-image collector. No Apple
+firmware or release keys are embedded in the recipe or installer.
+
+`firmware_ranges.py` binds the recipe digest, Apple build, model source mapping
+and final hashes to the complete signed Apple input lock. The native
+`restore-image/ranges.go` reader verifies exact HTTP 206 extents and ciphertext
+SHA-256, AEA root/cluster/segment authentication, plaintext checksums, compressed
+storage hashes, original-file hashes, and final output hashes. The recipe pins
+selected cluster MACs to the authenticated baseline; this is not a claim that
+a partial download verifies the whole IPSW digest. The LZFSE/LZVN dependency is
+pinned in go.mod/go.sum with its license in THIRD_PARTY_NOTICES.txt.
+
+For J713 build 25G83, six Wi-Fi files need 2,865,066 response-body bytes across
+eight ranges, plus the small FCS key request. Selected Recovery and boot ZIP
+members bring the Apple component total to 1,268,127,936 bytes (about 1.27 GB),
+excluding ZIP read-ahead and transport overhead. The existing Omarchy OS image
+is a separate download. Both collectors still verify the complete seven-file
+Wi-Fi/touchpad inventory before partition preflight.
+
+An unavailable remote range path is logged and may fall back to the existing
+fully pinned system-image path. Local recipe/output errors, cancellation and
+deadline expiry stop. The conservative 64 GiB preparation space check remains
+because fallback still needs the full system image. Development cache keys
+include the exact selected ZIP member set, separating normal Recovery-only
+selection from a full fallback selection. The standalone prototype under
+`Experiments/firmware-ranges` prepares recipes from an authenticated full
+baseline and supports additional files through a JSON file list.

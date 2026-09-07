@@ -15,6 +15,7 @@ from asahi_firmware.multitouch import MultitouchFWCollection
 from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
 from apple_ranges import selected_archive
 from firmware import collect_macos_wifi
+from firmware_ranges import extract_wifi, FirmwareRangeFallback
 import osinstall
 import stub
 
@@ -185,8 +186,16 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         cache = None
         if (Path(__file__).parent / "cleanroom/development-apple-cache").is_file():
             cache = Path("/var/db/com.omarchy.mx.installer-dev-cache")
+        wifi = None
+        try:
+            wifi = extract_wifi(self.spec["apple_inputs"], self.profile,
+                                Path(__file__).parent / "cleanroom/profiles",
+                                self.verifier_path, work / "range-firmware")
+        except FirmwareRangeFallback as error:
+            progress("Firmware range download failed: " + str(error))
+            progress("Falling back to the fully verified Apple system image; this downloads about 10.3 GB more")
         restore = selected_archive(self.spec["apple_inputs"], self.profile, work / "Apple.ipsw",
-                                   cache_directory=cache)
+                                   cache_directory=cache, include_system=wifi is None)
         self.decoded = work / "BaseSystem.dmg"
         with zipfile.ZipFile(restore) as archive:
             stub_members(archive, self.profile)
@@ -194,23 +203,25 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             restore_layout(archive, self.profile)
             self.recovery_receipt = prepare_recovery(
                 archive, self.profile, self.decoded, self.verifier_path)
-            with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
-                                      work, self.verifier_path) as system_root:
-                self.firmware = self._collect_linux_firmware(archive, work, system_root)
+            if wifi is None:
+                with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
+                                          work, self.verifier_path) as system_root:
+                    wifi = collect_macos_wifi(self.profile, system_root)
+            self.firmware = self._collect_linux_firmware(archive, work, wifi)
         restore = retain_stub_inputs(restore, self.profile, work / "apple-restore.zip")
         verify_retained_workspace(work, self.spec["apple_inputs"]["execution_scratch_bytes"])
         progress("Recovery, Wi-Fi and touchpad firmware verified; preparation complete")
         self.installer.cleanroom_restore_path = restore
         super().preflight(plan)
 
-    def _collect_linux_firmware(self, archive, work, system_root):
+    def _collect_linux_firmware(self, archive, work, wifi):
         fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
         fud.mkdir(parents=True)
         path = self.selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
         with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
             shutil.copyfileobj(reader, writer)
         firmware = list(MultitouchFWCollection(str(fud.parent)).files())
-        firmware.extend(collect_macos_wifi(self.profile, system_root))
+        firmware.extend(wifi)
         selected = [(name, value) for name, value in firmware if name in self.spec["linux_firmware"]]
         observed = {name: hashlib.sha256(value.data).hexdigest() for name, value in selected}
         if len(observed) != len(selected) or observed != self.spec["linux_firmware"]:

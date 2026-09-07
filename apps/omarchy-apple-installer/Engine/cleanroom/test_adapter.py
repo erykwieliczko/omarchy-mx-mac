@@ -17,6 +17,7 @@ from adapter import CleanroomStage1Adapter, FIRMWARE_NAMES, cleanroom_spec, rest
 from boot_inputs import BootInputError, assemble_stage1, load_profile
 from main import CleanroomInstaller, CleanroomRuntime
 from firmware import collect_macos_wifi, normalize_nvram
+from firmware_ranges import FirmwareRangeFallback
 
 
 PROFILE_PATH = Path(__file__).resolve().parent / "profiles/j713.json"
@@ -185,6 +186,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                         patch("adapter.cleanroom_spec", return_value=spec), \
                         patch("adapter.file_descriptor", return_value=spec["stage1"]), \
                         patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=free_gib * 1024**3)), \
+                        patch("adapter.extract_wifi", return_value=[]), \
                         patch("adapter.selected_archive", side_effect=BootInputError("Apple download failed")) as download, \
                         patch("adapter.AsahiStage1Adapter.preflight") as transaction:
                     try:
@@ -196,6 +198,47 @@ class CleanroomAdapterTests(unittest.TestCase):
                         self.assertFalse(adapter.preflight_complete)
                     finally:
                         adapter.workspace.cleanup()
+
+    def test_range_success_skips_system_mount_and_fallback_restores_it(self):
+        from contextlib import ExitStack
+        from unittest.mock import MagicMock
+        apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
+        spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
+        for fallback in (False, True):
+            with self.subTest(fallback=fallback), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+                payload = Path(directory) / "os.zip"
+                with zipfile.ZipFile(payload, "w"):
+                    pass
+                adapter = object.__new__(CleanroomStage1Adapter)
+                adapter.profile = self.profile
+                adapter.preflight_complete = False
+                adapter.payload_path = payload
+                adapter.metadata_path = Path(directory) / "metadata.json"
+                adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
+                    key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}))
+                mocks = {}
+                values = {"load_metadata": {}, "cleanroom_spec": spec,
+                          "file_descriptor": spec["stage1"], "selected_archive": payload,
+                          "stub_members": [], "inspect_ipsw": {}, "restore_layout": {},
+                          "prepare_recovery": {}, "collect_macos_wifi": [],
+                          "retain_stub_inputs": payload, "verify_retained_workspace": None}
+                for name, value in values.items():
+                    mocks[name] = stack.enter_context(patch("adapter." + name, return_value=value))
+                stack.enter_context(patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=128 * 1024**3)))
+                extraction = stack.enter_context(patch("adapter.extract_wifi", return_value=[]))
+                if fallback:
+                    extraction.side_effect = FirmwareRangeFallback("unavailable")
+                mount = stack.enter_context(patch("adapter.mounted_system_image", return_value=MagicMock()))
+                stack.enter_context(patch.object(adapter, "_collect_linux_firmware", return_value=[]))
+                transaction = stack.enter_context(patch("adapter.AsahiStage1Adapter.preflight"))
+                try:
+                    adapter.preflight(SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713"))
+                    self.assertEqual(mocks["selected_archive"].call_args.kwargs["include_system"], fallback)
+                    self.assertEqual(mount.call_count, int(fallback))
+                    self.assertEqual(mocks["collect_macos_wifi"].call_count, int(fallback))
+                    transaction.assert_called_once()
+                finally:
+                    adapter.workspace.cleanup()
 
     def test_engine_cannot_enter_interactive_or_repair_mode(self):
         with self.assertRaisesRegex(ValueError, "authenticated engine mode"):

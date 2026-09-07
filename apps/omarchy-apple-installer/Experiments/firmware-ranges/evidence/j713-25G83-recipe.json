@@ -1,0 +1,277 @@
+{
+  "schema": 1,
+  "source": {
+    "url": "https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-75212/A2A24B94-1FC1-45A3-93F7-C51B02AF1F4D/UniversalMac_26.6.2_25G83_Restore.ipsw",
+    "size_bytes": 19772231540,
+    "sha256": "885503b7f4b06609e9a512f2befd40f59730640a3f1233e3892d60affdd51c95"
+  },
+  "system_image": {
+    "member": "094-96884-092.dmg.aea",
+    "size_bytes": 10334765056,
+    "sha256": "c7c4412996590bb9f75256fb988bb0cf9e8b8ba645346e89443590197741e9c8",
+    "decoded": {
+      "size_bytes": 13142851584,
+      "sha256": "ae2ad529b9f51152e14f636ccabf93d5c8fc06ed3fba8d84e57736758f87e66f"
+    }
+  },
+  "member_offset": 1358425788,
+  "zip_header": {
+    "offset": 1358425717,
+    "size": 71,
+    "sha256": "a4daf7a1262a5a9d0240bf8fdf4b9b389f278c93017b703921c04844ac04311f"
+  },
+  "prefix": {
+    "offset": 0,
+    "size": 2724,
+    "sha256": "a947a7ab231798e738bee6202884f0d0afdc082f2ccef181fe55bb65ee6a67ae"
+  },
+  "headers": [
+    {
+      "offset": 74117120,
+      "size": 18464,
+      "sha256": "85cc0eceb392c594fc62e191791bd06e8fb1ca6083a5663e9ff90b99f8f8e50c",
+      "cluster": 1,
+      "expected_mac": "d1451259b0631b47747b2f49796a3f2d967e13947c758a1dc569a67bf0b53d99"
+    },
+    {
+      "offset": 2085446819,
+      "size": 18464,
+      "sha256": "d1deccd4a3e97c041fd8e3565248548b3a270d0fd37b12b9c6ad1f7bb5cd3bfe",
+      "cluster": 13,
+      "expected_mac": "42d69c8e78b79e47ccd4f5b229d1fd0204b81897649dca1303813b813ce9b116"
+    },
+    {
+      "offset": 3091705542,
+      "size": 18464,
+      "sha256": "978b4b3dbabc78b69c5c37aba2671644be50ba5701b5b9f0d207bdfefd0d3710",
+      "cluster": 17,
+      "expected_mac": "5ff4a4ecaa4b61319f9862b9af0d1c38e505e969f4228bb21b597214a5d1e667"
+    }
+  ],
+  "segments": {
+    "425": {
+      "offset": 83551429,
+      "size": 183552,
+      "sha256": "75238e91e99068834b4c56b01bc0f4d2d34cd01d8b65652ecefed48a65358a9f"
+    },
+    "3474": {
+      "offset": 2219834020,
+      "size": 755983,
+      "sha256": "24ecfa14d237d5dc086c33abec10f92aab5a4539c5f9b7169f7c36b3a507423d"
+    },
+    "4514": {
+      "offset": 3242457937,
+      "size": 816758,
+      "sha256": "30b1bf6ec3d4d7f0a000a22a99ad6db433543c19898c5ca0c79995fcf3a6a135"
+    },
+    "4515": {
+      "offset": 3243274695,
+      "size": 948277,
+      "sha256": "22e3a7a073f5ee48175ca7a2e356d1ef5a8e83ae5af9478f738efcee65e3825f"
+    },
+    "4516": {
+      "offset": 3244222972,
+      "size": 876756,
+      "sha256": "a7f4cf61ae76ace1102b3cc537c1c6c7bc7041243dba698e8a8b13cde3e38d4a"
+    }
+  },
+  "files": [
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.trx",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.bin",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "8b18acb6116622c6161de80ef510dfa9afc47dd963440f090770e57d14b3e928",
+      "sha256": "8b18acb6116622c6161de80ef510dfa9afc47dd963440f090770e57d14b3e928",
+      "size": 1804429,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "6eebd4a73164d3b87faccbd45490e260e8d24e6b743caff38acbf54b8b977c7e",
+          "spans": [
+            {
+              "offset": 445888195,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 1126886,
+          "sha256": "80f325d9abb07e75d80dc9bca6cf359d798670479da9fff364571888a3a8c82d",
+          "spans": [
+            {
+              "offset": 4734459904,
+              "size": 1126886
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.sig",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.sig",
+      "transform": "identity",
+      "compressed": false,
+      "raw_sha256": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710",
+      "sha256": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710",
+      "size": 204,
+      "storage": [
+        {
+          "size": 204,
+          "sha256": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710",
+          "spans": [
+            {
+              "offset": 4734455808,
+              "size": 204
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.clmb",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.clm_blob",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "28e31d6caaa1eaf6e6adddefa2e83fb544714972c2cbecb9d23b625e1f03a0a1",
+      "sha256": "28e31d6caaa1eaf6e6adddefa2e83fb544714972c2cbecb9d23b625e1f03a0a1",
+      "size": 79547,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "db9fe80cdf5e1422cba420b9e28bfba0bf2183ab930da7b5ccde6c65544e99e3",
+          "spans": [
+            {
+              "offset": 445840138,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 28612,
+          "sha256": "8ed343d8a4495aba8272970bde9d2122283f4f28c435e4b7a9eb03361509c7e7",
+          "spans": [
+            {
+              "offset": 4734377984,
+              "size": 28612
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.txcb",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6",
+      "sha256": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6",
+      "size": 1371,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "eb7d19b006157af9ccfcef9cb4a8bc4fcc6a10a310aaf62eb6cad3a71a58e02d",
+          "spans": [
+            {
+              "offset": 445839382,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 879,
+          "sha256": "5ce375de49e8cb63a4dc2af385dbd4b00daa97db4302ed5bcc64565cf8f7b1ec",
+          "spans": [
+            {
+              "offset": 4734410752,
+              "size": 879
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/P-garden_M-WLMT_V-u__m-4.9.txt",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-u.txt",
+      "transform": "nvram",
+      "compressed": true,
+      "raw_sha256": "68acd4eca6ae81340bcc27bc093c554010c087756dfd0bd2f754f3f667f76b35",
+      "sha256": "68acd4eca6ae81340bcc27bc093c554010c087756dfd0bd2f754f3f667f76b35",
+      "size": 24913,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "53d6c97ce01fbc78d0c04c3a8f2e3a932da2dab23b83656372e7506f205766e3",
+          "spans": [
+            {
+              "offset": 445867779,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 7461,
+          "sha256": "d74a58df85d196bf2adef6045bd6da1c96867c6324c1fae9bc7825ab5c4f1bcf",
+          "spans": [
+            {
+              "offset": 4734230528,
+              "size": 7461
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "usr/share/firmware/wifi/C-4388__s-C2/P-garden_M-WLMT_V-a__m-4.9.txt",
+      "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-a.txt",
+      "transform": "nvram",
+      "compressed": true,
+      "raw_sha256": "a3cf85bdd68083f40e47e9a029e77a4e14b32047bb9251a46e6b04e2232591f6",
+      "sha256": "a3cf85bdd68083f40e47e9a029e77a4e14b32047bb9251a46e6b04e2232591f6",
+      "size": 24870,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "fd7d24e90d12c406a2abeda31427fb45520dccde2db2d81b3b3d08b0893b3f67",
+          "spans": [
+            {
+              "offset": 445868089,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 7438,
+          "sha256": "ee70e30f28ada739a66df46c4b9ffe32b748bd7fa8f25955066436f3018e9474",
+          "spans": [
+            {
+              "offset": 4734222336,
+              "size": 7438
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/CoreServices/SystemVersion.plist",
+      "name": "test/SystemVersion.plist",
+      "transform": "identity",
+      "compressed": false,
+      "raw_sha256": "6151cb883e5b48d43a33d4d41956405a1cd502e0c8622319388d943e2cb804a1",
+      "sha256": "6151cb883e5b48d43a33d4d41956405a1cd502e0c8622319388d943e2cb804a1",
+      "size": 603,
+      "storage": [
+        {
+          "size": 603,
+          "sha256": "6151cb883e5b48d43a33d4d41956405a1cd502e0c8622319388d943e2cb804a1",
+          "spans": [
+            {
+              "offset": 3642810368,
+              "size": 603
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

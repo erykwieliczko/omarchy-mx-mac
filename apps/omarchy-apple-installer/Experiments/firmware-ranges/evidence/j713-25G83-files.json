@@ -1,0 +1,43 @@
+[
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.trx",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden.bin",
+    "transform": "identity",
+    "expected_sha256": "8b18acb6116622c6161de80ef510dfa9afc47dd963440f090770e57d14b3e928"
+  },
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.sig",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden.sig",
+    "transform": "identity",
+    "expected_sha256": "a772cc7ae1d7893b71476c7f79b6746a2a504b1c3a9daa14502c2aab74759710"
+  },
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.clmb",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden.clm_blob",
+    "transform": "identity",
+    "expected_sha256": "28e31d6caaa1eaf6e6adddefa2e83fb544714972c2cbecb9d23b625e1f03a0a1"
+  },
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/garden.txcb",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden.txcap_blob",
+    "transform": "identity",
+    "expected_sha256": "19400f5b0b6b6217eb98eda9cc25a692d5a6ec4d77f840e7c69d6b0192b531d6"
+  },
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/P-garden_M-WLMT_V-u__m-4.9.txt",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-u.txt",
+    "transform": "nvram",
+    "expected_sha256": "68acd4eca6ae81340bcc27bc093c554010c087756dfd0bd2f754f3f667f76b35"
+  },
+  {
+    "source": "usr/share/firmware/wifi/C-4388__s-C2/P-garden_M-WLMT_V-a__m-4.9.txt",
+    "name": "brcm/brcmfmac4388c2-pcie.apple,garden-WLMT-a.txt",
+    "transform": "nvram",
+    "expected_sha256": "a3cf85bdd68083f40e47e9a029e77a4e14b32047bb9251a46e6b04e2232591f6"
+  },
+  {
+    "source": "System/Library/CoreServices/SystemVersion.plist",
+    "name": "test/SystemVersion.plist",
+    "transform": "identity"
+  }
+]

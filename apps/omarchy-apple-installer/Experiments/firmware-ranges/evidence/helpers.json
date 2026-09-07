@@ -1,0 +1,8 @@
+{
+  "go": "go version go1.27.0-X:nodwarf5 linux/amd64",
+  "production_key_source_sha256": "00fd2b1a5b27557eb8b0256f92a5ab4d205d52fd28c5359fb8d396a991f86861",
+  "helpers": {
+    "fcs-key": "7470a51f63529ff5c47691e6393efc345db765ed208ee80fffd092ed6d7d3fe8",
+    "apfs-reader": "cee0605748f9bc7310d5b5631e72fdf4246b4990c6fd175a01adb47a4f24504f"
+  }
+}

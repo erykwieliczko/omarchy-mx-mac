@@ -1078,5 +1078,10 @@
       "compression": 8,
       "header_offset": 19772072176
     }
+  },
+  "firmware_ranges": {
+    "file_name": "j713-25G83-ranges.json",
+    "size_bytes": 7470,
+    "sha256": "50acce0a4b6244cea0ffcb305cc66ed095663990db379be5d812c1971138fa60"
   }
 }

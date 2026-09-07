@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-07",
+  "host_platform": "Linux amd64 build machine",
+  "apple_build": "25G83",
+  "system_image_bytes": 10334765056,
+  "wifi_network_bytes": 2865066,
+  "wifi_elapsed_seconds": 1.916,
+  "network_byte_accounting": "HTTP range bodies only; FCS key response and HTTP/TLS framing excluded",
+  "recipe_sha256": "94ae751fc30c4c31a4a99b4bb5d398b577e259e11f18da866ec3fbef31e7add3",
+  "output_sha256_matches_existing_firmware_lock": true,
+  "strace_verified_no_baseline_image_or_firmware_cache_access": true,
+  "tests": 7,
+  "installer_integration": false,
+  "physical_installation_test": false,
+  "recipe_contains": "Offsets, sizes, paths, transforms, hashes and expected authentication tags; no keys or firmware bytes",
+  "full_aea_sha256_verified_at_preparation": true,
+  "full_decoded_apfs_sha256_verified_at_preparation": true,
+  "apfs_dependency_commit": "57944b8896848630241ad9543656b17c933de89e",
+  "reproducible_baseline_decoder_cli_test": true
+}

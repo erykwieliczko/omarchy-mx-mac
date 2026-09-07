@@ -5,8 +5,8 @@
   "stage1_build": "RELEASE=1 CHAINLOADING=1",
   "artifacts": {
     "omarchy-restore-image": {
-      "size_bytes": 10173874,
-      "sha256": "1ecd3359d292ed4b9f6d52fbc04ebe8970835ee22bc067ba3925d5d2fe810ea0"
+      "size_bytes": 10418386,
+      "sha256": "9365319ccb3a52566f13341d6beaa28a0d2d33382824917ae63769e84df4dd34"
     },
     "m1n1-stage1-base.bin": {
       "size_bytes": 1179648,

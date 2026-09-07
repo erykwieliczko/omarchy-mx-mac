@@ -127,13 +127,21 @@ def copy_verified(reader, writer, record, name):
         raise BootInputError("Apple ZIP member size or SHA-256 mismatch: " + name)
 
 
-def selected_archive(lock, profile, destination, *, cache_directory=None, opener=None):
+def selected_archive(lock, profile, destination, *, cache_directory=None, opener=None, include_system=True):
     """Hash every selected member before admitting a private local ZIP.
 
     A cache is enabled only by an explicit development engine build. Normal
     engines never consult it. Cache entries contain ZIP bytes, not extracted
     filesystem links, and never substitute for signed member validation.
     """
+    if not include_system:
+        system = lock["system_image"]["member"]
+        if system not in lock["members"]:
+            raise BootInputError("signed system image selection is missing")
+        # Leave the full signed lock intact for a qualified fallback. The exact
+        # effective member set also separates full/stub development caches.
+        lock = {**lock, "members": {name: record for name, record in lock["members"].items()
+                                   if name != system}}
     destination = Path(destination)
     cache = None
     if cache_directory is not None:
