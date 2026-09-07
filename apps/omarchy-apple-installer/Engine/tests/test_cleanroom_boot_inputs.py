@@ -9,11 +9,12 @@ import sys
 import subprocess
 import tempfile
 import unittest
+from types import SimpleNamespace
 import warnings
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cleanroom"))
-from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, load_profile, validate_host, stub_members
+from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, load_profile, validate_host, stub_members, apple_boot_identity, select_apple_boot_profile, maximum_apple_selection_bytes
 from recovery import prepare_recovery
 
 
@@ -60,6 +61,61 @@ class CleanroomBootInputsTests(unittest.TestCase):
                     archive.writestr(duplicate, b"duplicate")
         buffer.seek(0)
         return zipfile.ZipFile(buffer)
+
+    def test_apple_boot_identity_follows_real_hardware_without_a_model_allowlist(self):
+        host = SimpleNamespace(product_type="Mac99,1", device_class="j999ap", board_id=100, chip_id=0x8140)
+        lock = {"supported_products": ["Mac99,1"], "members": {"boot": {}},
+                "boot_identities": [{"device_class": "j999ap", "board_id": 100, "chip_id": 0x8140,
+                                     "members": ["boot"]}]}
+        selected = select_apple_boot_profile(self.profile, lock, host)
+        self.assertEqual(selected["device_identifier"], "apple,j999")
+        self.assertEqual(self.profile["device_identifier"], "apple,j713")
+        self.assertEqual(selected["firmware"], self.profile["firmware"])
+        for key, wrong in (("product_type", "Mac16,12"), ("device_class", "j713ap"),
+                           ("board_id", 44), ("chip_id", 0x8132)):
+            with self.subTest(key=key), self.assertRaisesRegex(BootInputError, "actual Mac"):
+                select_apple_boot_profile(self.profile, lock, SimpleNamespace(**(vars(host) | {key: wrong})))
+
+    def test_boot_identity_registry_rejects_duplicates_and_unpinned_members(self):
+        identity = {"device_class": "j999ap", "board_id": 100, "chip_id": 0x8140, "members": ["boot"]}
+        lock = {"supported_products": ["Mac99,1"], "members": {"boot": {}}, "boot_identities": [identity]}
+        for identities in ([], [identity, identity], [dict(identity, members=["missing"])],
+                           [dict(identity, board_id=True)], [dict(identity, members=[{}])]):
+            with self.subTest(identities=identities), self.assertRaises(BootInputError):
+                apple_boot_identity({**lock, "boot_identities": identities}, None)
+
+    def test_cache_budget_reserves_native_fallback_or_largest_yolo_host(self):
+        native = {"device_class": "j713ap", "board_id": 44, "chip_id": 0x8132, "members": ["common", "native"]}
+        lock = {"supported_products": [self.profile["product_type"]],
+                "system_image": {"member": "system"},
+                "members": {name: {"size_bytes": size} for name, size in
+                            (("common", 1), ("native", 2), ("system", 100), ("other", 20), ("third", 10))},
+                "boot_identities": [native, dict(native, device_class="j999ap", members=["common", "other"]),
+                                    dict(native, device_class="j888ap", members=["common", "third"])]}
+        self.assertEqual(maximum_apple_selection_bytes(lock, self.profile), 103)
+
+    def test_two_apple_identities_select_distinct_recovery_inputs(self):
+        neo = {**self.profile, "device_identifier": "apple,j700", "product_type": "Mac17,5",
+               "device_class": "j700ap", "board_id": 100, "chip_id": 0x8140}
+        identity = copy.deepcopy(self.identity)
+        identity.update(ApBoardID="0x64", ApChipID="0x8140")
+        identity["Info"]["DeviceClass"] = "j700ap"
+        for component, value in identity["Manifest"].items():
+            old = value["Info"]["Path"]
+            value["Info"]["Path"] = old.replace("test.dmg", "neo.dmg").replace("J713", "J700")
+            self.components["Neo" + component] = value["Info"]["Path"]
+        self.manifest["BuildIdentities"].append(identity)
+        self.manifest["SupportedProductTypes"].append("Mac17,5")
+        with self.archive() as archive:
+            # The fixture writes the generic AEA marker only for self.base.
+            with self.assertRaisesRegex(BootInputError, "BaseSystem format"):
+                inspect_ipsw(archive, neo)
+        self.base = "neo.dmg.aea"
+        with self.archive() as archive:
+            selection = inspect_ipsw(archive, neo)
+            self.assertEqual(selection["manifest"]["BuildIdentities"], [identity])
+            self.assertEqual(selection["recovery"]["image"], "neo.dmg.aea")
+            self.assertEqual(selection["recovery"]["root_hash"], "Firmware/neo.dmg.aea.root_hash")
 
     def test_profile_contains_model_inputs_and_no_installation_identity(self):
         self.assertEqual(self.profile["chip_id"], 0x8132)

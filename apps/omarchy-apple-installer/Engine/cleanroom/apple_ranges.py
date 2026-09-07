@@ -12,9 +12,10 @@ import tempfile
 import time
 import urllib.request
 import zipfile
+from types import SimpleNamespace
 
 from apple_inputs import AppleRedirects, apple_url, progress
-from boot_inputs import BootInputError, stub_members
+from boot_inputs import BootInputError, stub_members, apple_boot_identity
 
 
 class AppleRangeReader(io.RawIOBase):
@@ -127,13 +128,20 @@ def copy_verified(reader, writer, record, name):
         raise BootInputError("Apple ZIP member size or SHA-256 mismatch: " + name)
 
 
-def selected_archive(lock, profile, destination, *, cache_directory=None, opener=None, include_system=True):
+def selected_archive(lock, profile, destination, *, cache_directory=None, opener=None, include_system=True, linux_profile=None):
     """Hash every selected member before admitting a private local ZIP.
 
     A cache is enabled only by an explicit development engine build. Normal
     engines never consult it. Cache entries contain ZIP bytes, not extracted
     filesystem links, and never substitute for signed member validation.
     """
+    if "boot_identities" in lock:
+        selected = set()
+        for choice in (profile, linux_profile or profile):
+            identity = apple_boot_identity(lock, SimpleNamespace(**choice))
+            selected.update(identity["members"])
+        selected.add(lock["system_image"]["member"])
+        lock = {**lock, "members": {name: lock["members"][name] for name in sorted(selected)}}
     if not include_system:
         system = lock["system_image"]["member"]
         if system not in lock["members"]:

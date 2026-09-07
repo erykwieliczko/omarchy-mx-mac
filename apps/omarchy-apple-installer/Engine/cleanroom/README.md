@@ -232,3 +232,25 @@ image needs 39,531,315,200 bytes including boot partitions. The UI exposes the
 planner’s aligned minimum and maximum through a slider and a GB entry field;
 macOS resize limits and temporary download/workspace reserves still apply.
 Changing the size requires a new bound plan before installation can start.
+
+## Developer override / YOLO bring-up
+
+The override selects a Linux payload, not an Apple hardware identity. Apple
+boot identities and their complete member hashes are generated from the pinned
+universal IPSW by `pin_apple_members.py`. Runtime selection matches the actual
+Mac's product, device class, board and chip. There is no manually maintained
+Linux hardware allowlist in override mode. A hardware identity absent from the
+Apple restore build requires newer Apple inputs; Linux bring-up does not make
+an incompatible Apple boot manifest valid.
+
+The downloader selects only the actual Mac's boot members in YOLO mode. m1n1,
+U-Boot, kernel and initramfs still install. Optional Linux firmware mappings are
+used when available; missing mappings, extraction failures and absent device
+firmware are reported and skipped. Bytes failing verification are never used.
+An empty vendor-firmware archive remains valid so GRUB can still load its
+vendor initramfs. Wi-Fi calibration is not a boot prerequisite. Normal mode
+retains the full pinned Linux firmware requirement and verified fallback.
+
+Apple boot inputs, disk boundaries, required payload hashes, read-back and
+machine-owner authorization remain mandatory. `bless` output now goes through
+the helper's private, bounded, credential-redacted diagnostic pipes.

@@ -15,11 +15,11 @@ from asahi_firmware.multitouch import MultitouchFWCollection
 from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
 from apple_ranges import selected_archive
 from firmware import collect_macos_wifi
-from firmware_ranges import extract_wifi, FirmwareRangeFallback
+from firmware_ranges import extract_wifi, FirmwareRangeFallback, FirmwareRangeExecutionError
 import osinstall
 import stub
 
-from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, validate_host
+from boot_inputs import BootInputError, assemble_stage1, inspect_ipsw, validate_host, select_apple_boot_profile
 from recovery import prepare_recovery
 from omarchy_asahi import AsahiStage1Adapter, load_metadata
 from boot_inputs import _member, _path, stub_members
@@ -170,6 +170,10 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                           device_class=host.device_class, board_id=host.board_id,
                           chip_id=host.chip_id)
         self.spec = cleanroom_spec(load_metadata(self.metadata_path), self.profile)
+        self.boot_profile = select_apple_boot_profile(self.profile, self.spec["apple_inputs"], host)
+        progress("Apple boot identity: %s (%s); Linux profile: %s" % (
+            self.boot_profile["device_class"], self.boot_profile["product_type"],
+            self.profile["device_identifier"]))
         self.stage1_path = Path("boot/m1n1.bin")
         self.verifier_path = Path("tools/omarchy-restore-image").resolve()
         if file_descriptor(self.stage1_path) != self.spec["stage1"]:
@@ -186,50 +190,84 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         cache = None
         if (Path(__file__).parent / "cleanroom/development-apple-cache").is_file():
             cache = Path("/var/db/com.omarchy.mx.installer-dev-cache")
+        native_firmware = self.boot_profile["device_identifier"] == self.profile["device_identifier"]
         wifi = None
-        try:
-            wifi = extract_wifi(self.spec["apple_inputs"], self.profile,
-                                Path(__file__).parent / "cleanroom/profiles",
-                                self.verifier_path, work / "range-firmware")
-        except FirmwareRangeFallback as error:
-            progress("Firmware range download failed: " + str(error))
-            progress("Falling back to the fully verified Apple system image; this downloads about 10.3 GB more")
-        restore = selected_archive(self.spec["apple_inputs"], self.profile, work / "Apple.ipsw",
-                                   cache_directory=cache, include_system=wifi is None)
+        if self.developer_override_enabled and not native_firmware:
+            progress("YOLO: no Linux firmware/calibration mapping for %s; continuing without optional device firmware"
+                     % self.boot_profile["device_class"])
+            wifi = []
+        else:
+            try:
+                wifi = extract_wifi(self.spec["apple_inputs"], self.profile,
+                                    Path(__file__).parent / "cleanroom/profiles",
+                                    self.verifier_path, work / "range-firmware")
+            except FirmwareRangeExecutionError:
+                raise
+            except (BootInputError, OSError, subprocess.CalledProcessError) as error:
+                if self.developer_override_enabled:
+                    progress("YOLO: optional Wi-Fi firmware unavailable; skipping: " + str(error))
+                    wifi = []
+                elif isinstance(error, FirmwareRangeFallback):
+                    progress("Firmware range download failed: " + str(error))
+                    progress("Falling back to the fully verified Apple system image; this downloads about 10.3 GB more")
+                else:
+                    raise
+        restore = selected_archive(self.spec["apple_inputs"], self.boot_profile, work / "Apple.ipsw",
+                                   cache_directory=cache, include_system=wifi is None,
+                                   linux_profile=self.boot_profile if self.developer_override_enabled else self.profile)
         self.decoded = work / "BaseSystem.dmg"
         with zipfile.ZipFile(restore) as archive:
-            stub_members(archive, self.profile)
-            self.selection = inspect_ipsw(archive, self.profile)
-            restore_layout(archive, self.profile)
+            stub_members(archive, self.boot_profile)
+            self.selection = inspect_ipsw(archive, self.boot_profile)
+            self.linux_selection = (inspect_ipsw(archive, self.profile) if native_firmware
+                                    or not self.developer_override_enabled else None)
+            restore_layout(archive, self.boot_profile)
             self.recovery_receipt = prepare_recovery(
-                archive, self.profile, self.decoded, self.verifier_path)
+                archive, self.boot_profile, self.decoded, self.verifier_path)
             if wifi is None:
                 with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
                                           work, self.verifier_path) as system_root:
                     wifi = collect_macos_wifi(self.profile, system_root)
             self.firmware = self._collect_linux_firmware(archive, work, wifi)
-        restore = retain_stub_inputs(restore, self.profile, work / "apple-restore.zip")
+        restore = retain_stub_inputs(restore, self.boot_profile, work / "apple-restore.zip")
         verify_retained_workspace(work, self.spec["apple_inputs"]["execution_scratch_bytes"])
-        progress("Recovery, Wi-Fi and touchpad firmware verified; preparation complete")
+        progress("Apple boot inputs verified; %d optional Linux firmware files prepared" % len(self.firmware))
         self.installer.cleanroom_restore_path = restore
         super().preflight(plan)
 
     def _collect_linux_firmware(self, archive, work, wifi):
-        fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
-        fud.mkdir(parents=True)
-        path = self.selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
-        with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
-            shutil.copyfileobj(reader, writer)
-        firmware = list(MultitouchFWCollection(str(fud.parent)).files())
-        firmware.extend(wifi)
-        selected = [(name, value) for name, value in firmware if name in self.spec["linux_firmware"]]
-        observed = {name: hashlib.sha256(value.data).hexdigest() for name, value in selected}
-        if len(observed) != len(selected) or observed != self.spec["linux_firmware"]:
-            raise BootInputError("Linux payload firmware differs from admitted Apple inputs")
-        return sorted(selected)
+        firmware = list(wifi)
+        if self.linux_selection is not None:
+            try:
+                fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
+                fud.mkdir(parents=True)
+                path = self.linux_selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
+                with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
+                    shutil.copyfileobj(reader, writer)
+                firmware.extend(MultitouchFWCollection(str(fud.parent)).files())
+            except (OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
+                if not self.developer_override_enabled:
+                    raise
+                progress("YOLO: optional touchpad firmware unavailable; skipping: " + str(error))
+        expected = self.spec["linux_firmware"]
+        selected = {}
+        for name, value in firmware:
+            if name not in expected:
+                continue
+            if name in selected or hashlib.sha256(value.data).hexdigest() != expected[name]:
+                if not self.developer_override_enabled:
+                    raise BootInputError("Linux payload firmware differs from admitted Apple inputs")
+                progress("YOLO: optional firmware failed verification; omitting " + name)
+                continue
+            selected[name] = value
+        if set(selected) != set(expected):
+            if not self.developer_override_enabled:
+                raise BootInputError("Linux payload firmware differs from admitted Apple inputs")
+            progress("YOLO: continuing without optional firmware: " + ", ".join(sorted(set(expected) - set(selected))))
+        return sorted(selected.items())
 
     def _make_stub(self, *args):
-        return CleanroomStubInstaller(*args, profile=self.profile, selection=self.selection,
+        return CleanroomStubInstaller(*args, profile=self.boot_profile, selection=self.selection,
                                       decoded=self.decoded, firmware=self.firmware)
 
     def _make_os(self, *args):

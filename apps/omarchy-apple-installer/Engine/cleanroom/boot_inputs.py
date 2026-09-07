@@ -99,6 +99,80 @@ def validate_host(profile, *, product_type, device_class, board_id, chip_id):
     _require(observed == expected, "host does not match cleanroom model profile")
 
 
+def apple_boot_identity(lock, host):
+    """Match real hardware against identities extracted from the pinned IPSW."""
+    identities = lock.get("boot_identities")
+    _require(isinstance(identities, list) and 1 <= len(identities) <= 256,
+             "missing Apple boot identities")
+    products = lock.get("supported_products")
+    _require(isinstance(products, list) and 1 <= len(products) <= 256
+             and all(isinstance(p, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*,[0-9]+", p)
+                     for p in products), "invalid Apple supported products")
+    seen = set()
+    for identity in identities:
+        _require(isinstance(identity, dict) and set(identity) == {
+            "device_class", "board_id", "chip_id", "members"}, "invalid Apple boot identity fields")
+        device = identity["device_class"]
+        _require(isinstance(device, str) and re.fullmatch(r"j[0-9]+[a-z]*ap", device),
+                 "invalid Apple boot device class")
+        for key in ("board_id", "chip_id"):
+            _require(type(identity[key]) is int and 0 < identity[key] < 65536,
+                     "invalid Apple boot " + key)
+        key = (device, identity["board_id"], identity["chip_id"])
+        _require(key not in seen, "duplicate Apple boot identity")
+        seen.add(key)
+        members = identity["members"]
+        _require(isinstance(members, list) and members
+                 and all(isinstance(name, str) and name in lock["members"] for name in members)
+                 and len(members) == len(set(members)),
+                 "Apple boot identity has unpinned members")
+    if host is None:
+        return None
+    matches = [identity for identity in identities
+               if all(identity[key] == getattr(host, key, None)
+                      for key in ("device_class", "board_id", "chip_id"))]
+    _require(getattr(host, "product_type", None) in products and len(matches) == 1,
+             "This Apple restore build has no pinned boot identity for the actual Mac")
+    return matches[0]
+
+
+def maximum_apple_selection_bytes(lock, profile):
+    """Reserve the native fallback or one YOLO host's boot-only selection."""
+    from types import SimpleNamespace
+    native = apple_boot_identity(lock, SimpleNamespace(**profile))
+    selections = [set(native["members"]) | {lock["system_image"]["member"]}]
+    selections.extend(set(identity["members"]) for identity in lock["boot_identities"])
+    return max(sum(lock["members"][name]["size_bytes"] for name in selection)
+               for selection in selections)
+
+
+def select_apple_boot_profile(profile, lock, host):
+    apple_boot_identity(lock, host)
+    return {**profile, "device_identifier": "apple," + host.device_class[:-2],
+            **{key: getattr(host, key) for key in ("product_type", "device_class", "board_id", "chip_id")}}
+
+
+def ipsw_boot_profiles(archive, profile):
+    """Build-time discovery for every physical Mac identity in one Apple IPSW."""
+    manifest = plistlib.loads(archive.read(_member(archive, "BuildManifest.plist", 32 * 1024**2)))
+    firmware = profile["firmware"]
+    _require(manifest["ProductVersion"] == firmware["version"]
+             and manifest["ProductBuildVersion"] == firmware["build"], "IPSW build differs from profile")
+    profiles = []
+    for identity in manifest["BuildIdentities"]:
+        info = identity["Info"]
+        if (not re.fullmatch(r"j[0-9]+[a-z]*ap", info["DeviceClass"])
+                or info["Variant"] != firmware["variant"]
+                or info["RestoreBehavior"] != firmware["restore_behavior"]):
+            continue
+        profiles.append({**profile, "device_identifier": "apple," + info["DeviceClass"][:-2],
+                         "product_type": manifest["SupportedProductTypes"][0],
+                         "device_class": info["DeviceClass"], "board_id": int(identity["ApBoardID"], 0),
+                         "chip_id": int(identity["ApChipID"], 0)})
+    _require(profiles, "IPSW contains no physical Mac boot identities")
+    return manifest["SupportedProductTypes"], profiles
+
+
 def _path(value):
     _require(isinstance(value, str) and value and "\\" not in value
              and all(ord(char) >= 32 and ord(char) != 127 for char in value),

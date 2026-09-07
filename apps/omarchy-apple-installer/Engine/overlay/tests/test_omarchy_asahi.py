@@ -88,6 +88,7 @@ from omarchy_asahi import (  # noqa: E402
     AsahiAdapterError,
     AsahiInPlaceRepairAdapter,
     AsahiStage1Adapter,
+    load_metadata,
 )
 
 
@@ -135,6 +136,15 @@ class AsahiStage1AdapterTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary.cleanup()
+
+    def test_universal_metadata_fits_bounded_control_file_reader(self):
+        content = {"os_list": [{"apple_manifest_pins": "x" * 700_000}]}
+        self.metadata.chmod(0o600)
+        self.metadata.write_text(json.dumps(content))
+        self.assertEqual(load_metadata(self.metadata), content)
+        self.metadata.write_bytes(b"x" * (1024 * 1024 + 1))
+        with self.assertRaisesRegex(AsahiAdapterError, "metadata is invalid"):
+            load_metadata(self.metadata)
 
     def test_free_extent_runs_exact_upstream_stage_one_primitives(self):
         dutil = FakeDiskUtil([[self.free]])
@@ -219,8 +229,6 @@ class AsahiStage1AdapterTests(unittest.TestCase):
             ],
             input=b"owner-password\n",
             check=True,
-            stdout=-3,
-            stderr=-3,
         )
 
     def test_recovery_handoff_rejects_missing_owner_before_bless(self):

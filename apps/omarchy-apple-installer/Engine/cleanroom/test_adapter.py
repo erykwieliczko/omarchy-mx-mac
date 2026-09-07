@@ -17,7 +17,7 @@ from adapter import CleanroomStage1Adapter, FIRMWARE_NAMES, cleanroom_spec, rest
 from boot_inputs import BootInputError, assemble_stage1, load_profile
 from main import CleanroomInstaller, CleanroomRuntime
 from firmware import collect_macos_wifi, normalize_nvram
-from firmware_ranges import FirmwareRangeFallback
+from firmware_ranges import FirmwareRangeFallback, FirmwareRangeExecutionError
 
 
 PROFILE_PATH = Path(__file__).resolve().parent / "profiles/j713.json"
@@ -213,13 +213,28 @@ class CleanroomAdapterTests(unittest.TestCase):
                         self.assertFalse(adapter.preflight_complete)
                     finally:
                         adapter.workspace.cleanup()
+            adapter.installer.engine_runtime = SimpleNamespace(developer_model_override="apple,j713")
+            with patch("adapter.load_metadata", return_value={}), \
+                    patch("adapter.cleanroom_spec", return_value=spec), \
+                    patch("adapter.file_descriptor", return_value=spec["stage1"]), \
+                    patch("adapter.shutil.disk_usage", return_value=SimpleNamespace(free=128 * 1024**3)), \
+                    patch("adapter.extract_wifi", side_effect=FirmwareRangeExecutionError("cancelled")), \
+                    patch("adapter.AsahiStage1Adapter.preflight") as transaction:
+                try:
+                    with self.assertRaisesRegex(FirmwareRangeExecutionError, "cancelled"):
+                        adapter.preflight(plan)
+                    transaction.assert_not_called()
+                finally:
+                    adapter.workspace.cleanup()
 
     def test_range_success_skips_system_mount_and_fallback_restores_it(self):
         from contextlib import ExitStack
         from unittest.mock import MagicMock
         apple = json.loads(PROFILE_PATH.with_name("j713-apple-inputs.json").read_text())
         spec = {"stage1": {"sha256": "a" * 64, "size_bytes": 4096}, "apple_inputs": apple}
-        for fallback in (False, True):
+        for fallback, host_device, yolo in ((False, "j713ap", False), (True, "j713ap", False),
+                                            (False, "j700ap", True), (True, "j700ap", True),
+                                            (True, "j713ap", True)):
             with self.subTest(fallback=fallback), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
                 payload = Path(directory) / "os.zip"
                 with zipfile.ZipFile(payload, "w"):
@@ -231,6 +246,11 @@ class CleanroomAdapterTests(unittest.TestCase):
                 adapter.metadata_path = Path(directory) / "metadata.json"
                 adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
                     key: self.profile[key] for key in ("product_type", "device_class", "board_id", "chip_id")}))
+                if host_device == "j700ap":
+                    adapter.installer.sysinfo = SimpleNamespace(product_type="Mac17,5", device_class="j700ap",
+                                                                board_id=100, chip_id=0x8140)
+                if yolo:
+                    adapter.installer.engine_runtime = SimpleNamespace(developer_model_override="apple,j713")
                 mocks = {}
                 values = {"load_metadata": {}, "cleanroom_spec": spec,
                           "file_descriptor": spec["stage1"], "selected_archive": payload,
@@ -248,12 +268,61 @@ class CleanroomAdapterTests(unittest.TestCase):
                 transaction = stack.enter_context(patch("adapter.AsahiStage1Adapter.preflight"))
                 try:
                     adapter.preflight(SimpleNamespace(candidate_kind="resize", device_identifier="apple,j713"))
-                    self.assertEqual(mocks["selected_archive"].call_args.kwargs["include_system"], fallback)
-                    self.assertEqual(mount.call_count, int(fallback))
-                    self.assertEqual(mocks["collect_macos_wifi"].call_count, int(fallback))
+                    needs_fallback = fallback and not yolo
+                    self.assertEqual(mocks["selected_archive"].call_args.kwargs["include_system"], needs_fallback)
+                    if host_device != "j713ap":
+                        extraction.assert_not_called()
+                    self.assertEqual(adapter.boot_profile["device_class"], host_device)
+                    self.assertEqual(mocks["selected_archive"].call_args.args[1]["device_class"], host_device)
+                    self.assertEqual(mocks["prepare_recovery"].call_args.args[1]["device_class"], host_device)
+                    self.assertEqual(mocks["retain_stub_inputs"].call_args.args[1]["device_class"], host_device)
+                    self.assertEqual([call.args[1]["device_class"] for call in mocks["inspect_ipsw"].call_args_list],
+                                     [host_device, "j713ap"] if host_device == "j713ap" else [host_device])
+                    if needs_fallback:
+                        self.assertEqual(mount.call_args.args[2]["device_class"], "j713ap")
+                    self.assertEqual(mount.call_count, int(needs_fallback))
+                    self.assertEqual(mocks["collect_macos_wifi"].call_count, int(needs_fallback))
                     transaction.assert_called_once()
                 finally:
                     adapter.workspace.cleanup()
+
+    def test_yolo_optional_firmware_skips_missing_and_invalid_files(self):
+        from asahi_firmware.core import FWFile, FWPackage
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            adapter = object.__new__(CleanroomStage1Adapter)
+            adapter.profile = self.profile
+            adapter.installer = SimpleNamespace(engine_runtime=SimpleNamespace(developer_model_override="apple,j713"))
+            adapter.linux_selection = None
+            good = FWFile("good", b"verified")
+            adapter.spec = {"linux_firmware": {"brcm/good.bin": hashlib.sha256(good.data).hexdigest(),
+                                               "brcm/missing.bin": "a" * 64}}
+            self.assertEqual(adapter._collect_linux_firmware(None, work, []), [])
+            result = adapter._collect_linux_firmware(None, work,
+                [("brcm/good.bin", good), ("brcm/missing.bin", FWFile("bad", b"wrong bytes"))])
+            self.assertEqual(result, [("brcm/good.bin", good)])
+            # Even without device firmware, GRUB's vendor initramfs exists.
+            package = FWPackage(directory)
+            package.add_files([])
+            package.close()
+            for name in ("firmware.cpio", "firmware.tar", "manifest.txt"):
+                self.assertTrue((work / name).is_file())
+            adapter.installer.engine_runtime.developer_model_override = None
+            with self.assertRaisesRegex(BootInputError, "firmware differs"):
+                adapter._collect_linux_firmware(None, work, [])
+
+    def test_yolo_missing_touchpad_firmware_keeps_verified_wifi(self):
+        from asahi_firmware.core import FWFile
+        adapter = object.__new__(CleanroomStage1Adapter)
+        adapter.profile = self.profile
+        adapter.installer = SimpleNamespace(engine_runtime=SimpleNamespace(developer_model_override="apple,j713"))
+        adapter.linux_selection = {"manifest": {"BuildIdentities": [{"Manifest": {}}]}}
+        wifi = FWFile("wifi", b"verified")
+        adapter.spec = {"linux_firmware": {"brcm/wifi.bin": hashlib.sha256(wifi.data).hexdigest(),
+                                          "apple/tpmtfw-j713.bin": "a" * 64}}
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(adapter._collect_linux_firmware(None, Path(directory), [("brcm/wifi.bin", wifi)]),
+                             [("brcm/wifi.bin", wifi)])
 
     def test_engine_cannot_enter_interactive_or_repair_mode(self):
         with self.assertRaisesRegex(ValueError, "authenticated engine mode"):

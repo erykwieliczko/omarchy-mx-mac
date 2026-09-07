@@ -87,6 +87,27 @@ class AppleRangeTests(unittest.TestCase):
             self.assertEqual(len(list((root / "cache").glob("*.zip"))), 2)
         self.assertEqual(self.lock, original)
 
+    def test_universal_catalog_downloads_only_the_actual_host(self):
+        with zipfile.ZipFile(io.BytesIO(self.data)) as archive:
+            item = archive.getinfo("unneeded")
+            self.lock["members"]["unneeded"] = {
+                "size_bytes": item.file_size, "external_attr": item.external_attr,
+                "sha256": "0" * 64, "compressed_size_bytes": item.compress_size,
+                "compression": item.compress_type, "header_offset": item.header_offset}
+        host = {"product_type": "Mac99,1", "device_class": "j999ap", "board_id": 1, "chip_id": 2}
+        self.lock.update(supported_products=["Mac99,1"], system_image={"member": "unneeded"},
+                         boot_identities=[dict(device_class="j999ap", board_id=1, chip_id=2, members=["boot"]),
+                                          dict(device_class="j888ap", board_id=3, chip_id=4, members=["unneeded"])])
+        with tempfile.TemporaryDirectory() as directory, patch("apple_ranges.stub_members", return_value=["boot"]):
+            output = selected_archive(self.lock, host, Path(directory) / "selected.zip", include_system=False,
+                                      opener=SimpleNamespace(open=self.open))
+            with zipfile.ZipFile(output) as archive:
+                self.assertEqual(archive.namelist(), ["boot"])
+            self.assertLess(self.transferred, len(self.data) // 2)
+            with self.assertRaisesRegex(BootInputError, "actual Mac"):
+                selected_archive(self.lock, dict(host, device_class="j777ap"), Path(directory) / "absent.zip", include_system=False,
+                                 opener=SimpleNamespace(open=self.open))
+
     def test_unaligned_bulk_reads_keep_bounded_read_ahead(self):
         # ZIP member bodies rarely start on a 1 MiB boundary. A cached prefix
         # must not turn the rest of every bulk read into a separate request.

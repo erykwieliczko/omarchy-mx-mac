@@ -7,7 +7,7 @@ from pathlib import Path
 import zipfile
 
 from apple_inputs import verify_file
-from boot_inputs import load_profile, stub_members
+from boot_inputs import load_profile, stub_members, ipsw_boot_profiles
 
 
 def pin(ipsw, profile_path, lock_path):
@@ -15,7 +15,15 @@ def pin(ipsw, profile_path, lock_path):
     verify_file(ipsw, lock["ipsw"])
     profile = load_profile(profile_path)
     with zipfile.ZipFile(ipsw) as archive:
-        names = sorted(set(stub_members(archive, profile)) | {lock["system_image"]["member"]})
+        names = {lock["system_image"]["member"]}
+        products, profiles = ipsw_boot_profiles(archive, profile)
+        identities = []
+        for boot_profile in profiles:
+            closure = stub_members(archive, boot_profile)
+            identities.append({**{key: boot_profile[key] for key in ("device_class", "board_id", "chip_id")},
+                               "members": closure})
+            names.update(closure)
+        names = sorted(names)
         members = {}
         for name in names:
             info = archive.getinfo(name)
@@ -30,6 +38,9 @@ def pin(ipsw, profile_path, lock_path):
                              "compressed_size_bytes": info.compress_size,
                              "compression": info.compress_type,
                              "header_offset": info.header_offset}
+    lock.pop("boot_hosts", None)
+    lock["supported_products"] = products
+    lock["boot_identities"] = identities
     lock["schema_version"] = 2
     lock["members"] = members
     lock_path.write_text(json.dumps(lock, indent=2) + "\n")

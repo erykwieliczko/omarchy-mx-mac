@@ -13,6 +13,10 @@ class FirmwareRangeFallback(BootInputError):
     """Remote range/extraction failure eligible for the fully verified path."""
 
 
+class FirmwareRangeExecutionError(BootInputError):
+    """Unexpected exit or cancellation must never advance disk preparation."""
+
+
 def load_recipe(lock, profile, profile_directory):
     descriptor = lock.get("firmware_ranges")
     if (not isinstance(descriptor, dict)
@@ -69,7 +73,7 @@ def extract_wifi(lock, profile, profile_directory, decoder, destination, *, run=
     except subprocess.CalledProcessError as error:
         if error.returncode == 75:
             raise FirmwareRangeFallback("authenticated range extraction was unavailable; see decoder log") from error
-        raise BootInputError("native firmware range decoder failed or was cancelled; see decoder log") from error
+        raise FirmwareRangeExecutionError("native firmware range decoder failed or was cancelled; see decoder log") from error
     # Keep the same FWFile representation and independent Python hash gate used
     # by the existing touchpad + Wi-Fi inventory admission.
     from asahi_firmware.core import FWFile

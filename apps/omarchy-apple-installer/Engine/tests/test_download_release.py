@@ -181,7 +181,10 @@ class DownloadReleaseTests(unittest.TestCase):
             value = json.loads(metadata.read_text())
             value['os_list'][0]['cleanroom']['apple_inputs'] = {
                 'execution_scratch_bytes': 8 * 1024**3,
-                'members': {'boot': {'size_bytes': 100}}}
+                'members': {'boot': {'size_bytes': 100}},
+                'system_image': {'member': 'boot'}, 'supported_products': ['Mac16,12'],
+                'boot_identities': [{'device_class': 'j713ap', 'board_id': 44, 'chip_id': 0x8132,
+                                     'members': ['boot']}]}
             metadata.write_text(json.dumps(value))
             receipt_path = engine / 'receipt.json'
             receipt = json.loads(receipt_path.read_text())

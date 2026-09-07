@@ -22,6 +22,7 @@ import omarchy_planner
 
 TARGET = "apple-silicon-full-os"
 MAXIMUM_PASSWORD_BYTES = 1_024
+MAXIMUM_METADATA_BYTES = 1024 * 1024
 MACHINE_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
 PARTITION_PATTERN = re.compile(r"^disk[0-9]+s[0-9]+$")
 READBACK_CHUNK_BYTES = 1024 * 1024
@@ -255,12 +256,13 @@ class AsahiInPlaceRepairAdapter:
                 ],
                 input=password_input,
                 check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                # Inherit the engine's private, bounded, credential-redacted
+                # diagnostic pipes instead of discarding Apple's error text.
             )
         except (OSError, subprocess.CalledProcessError) as error:
+            status = getattr(error, "returncode", "could not start")
             raise AsahiAdapterError(
-                "Recovery handoff authorization failed"
+                f"Recovery handoff authorization failed (bless: {status}); see engine stdout/stderr logs"
             ) from error
         existing.prepare_for_step2()
         return self._canonical_evidence(
@@ -644,12 +646,13 @@ class AsahiStage1Adapter:
                 ],
                 input=password_input,
                 check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                # Inherit the engine's private, bounded, credential-redacted
+                # diagnostic pipes instead of discarding Apple's error text.
             )
         except (OSError, subprocess.CalledProcessError) as error:
+            status = getattr(error, "returncode", "could not start")
             raise AsahiAdapterError(
-                "Recovery handoff authorization failed"
+                f"Recovery handoff authorization failed (bless: {status}); see engine stdout/stderr logs"
             ) from error
 
         self.installer.ins.prepare_for_step2()
@@ -1039,13 +1042,13 @@ def load_metadata(path):
             not stat.S_ISREG(status.st_mode)
             or status.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
             or status.st_size < 1
-            or status.st_size > 65_536
+            or status.st_size > MAXIMUM_METADATA_BYTES
         ):
             raise AsahiAdapterError("metadata is invalid")
         data = os.read(descriptor, status.st_size + 1)
     finally:
         os.close(descriptor)
-    if not data or len(data) > 65_536:
+    if not data or len(data) > MAXIMUM_METADATA_BYTES:
         raise AsahiAdapterError("metadata is invalid")
     try:
         metadata = json.loads(data)

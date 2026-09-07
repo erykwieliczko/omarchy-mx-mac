@@ -19,7 +19,7 @@ import urllib.request
 import weakref
 import zipfile
 
-from boot_inputs import BootInputError, _hex, _member, inspect_ipsw, stub_members
+from boot_inputs import BootInputError, _hex, _member, inspect_ipsw, stub_members, apple_boot_identity
 
 
 def apple_url(url):
@@ -49,6 +49,7 @@ def load_apple_inputs(path, profile):
             or lock.get("product_type") != profile["product_type"]
             or lock.get("firmware_build") != profile["firmware"]["build"]):
         raise BootInputError("Apple input lock differs from model profile")
+    apple_boot_identity(lock, None)
     apple_url(lock["ipsw"]["url"])
     for record in (lock["ipsw"], lock["system_image"], lock["system_image"]["decoded"]):
         if (type(record["size_bytes"]) is not int or record["size_bytes"] <= 0
