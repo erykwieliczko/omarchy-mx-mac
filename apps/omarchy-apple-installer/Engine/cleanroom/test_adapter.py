@@ -45,18 +45,33 @@ class CleanroomAdapterTests(unittest.TestCase):
                 installer.sysinfo = SimpleNamespace(**(values | {key: value}))
                 self.assertFalse(installer.host_supported())
 
-    def test_override_bypasses_only_model_gate(self):
+    def test_override_admits_different_model_and_host_version_but_requires_macos(self):
         installer = object.__new__(CleanroomInstaller)
         installer.cleanroom_profile = self.profile
         installer.engine_runtime = SimpleNamespace(mode="install", developer_model_override="apple,j713")
         installer.sysinfo = SimpleNamespace(product_type="Mac99,1", device_class="j999ap",
-                                            board_id=99, chip_id=99, boot_mode="macOS", macos_ver="26.6.2")
+                                            board_id=99, chip_id=99, boot_mode="macOS", macos_ver="26.5.2")
         self.assertTrue(installer.host_supported())
         installer.sysinfo.boot_mode = "one true recoveryOS"
         self.assertFalse(installer.host_supported())
         installer.sysinfo.boot_mode = "macOS"
         installer.engine_runtime.developer_model_override = None
         self.assertFalse(installer.host_supported())
+
+    def test_override_keeps_recovery_and_root_unknown_boot_modes_blocked(self):
+        installer = object.__new__(CleanroomInstaller)
+        installer.cleanroom_profile = self.profile
+        installer.sysinfo = SimpleNamespace(product_type="Mac17,5", device_class="j700ap",
+                                            board_id=1, chip_id=1, macos_ver="26.5.2")
+        installer.engine_runtime = SimpleNamespace(mode="inspect", developer_model_override="apple,j713")
+        for uid, mode, boot_mode, accepted in (
+                (502, "inspect", "Unknown", True), (502, "plan", "Unknown", True),
+                (0, "inspect", "Unknown", False), (0, "install", "Unknown", False),
+                (0, "install", "macOS", True), (0, "install", "one true recoveryOS", False)):
+            installer.sysinfo.boot_mode = boot_mode
+            installer.engine_runtime.mode = mode
+            with self.subTest(uid=uid, mode=mode, boot_mode=boot_mode), patch("main.os.geteuid", return_value=uid):
+                self.assertEqual(installer.host_supported(), accepted)
 
     def test_override_inspection_normalizes_selected_profile(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -62,22 +62,40 @@ class CleanroomInstaller(InstallerMain):
 
     def host_supported(self):
         host = self.sysinfo
-        if getattr(self.engine_runtime, "developer_model_override", None) != self.cleanroom_profile["device_identifier"]:
+        overridden = (getattr(self.engine_runtime, "developer_model_override", None)
+                      == self.cleanroom_profile["device_identifier"])
+        if not overridden:
             try:
                 validate_host(self.cleanroom_profile, product_type=host.product_type,
                               device_class=host.device_class, board_id=host.board_id,
                               chip_id=host.chip_id)
-            except BootInputError:
+            except BootInputError as error:
+                logging.warning("Host rejected: %s", error)
                 return False
-        # Stage one requires the same macOS baseline as its restore input.
+        # Normal admission requires the qualified host baseline. An explicit
+        # developer profile override also admits a different host macOS version;
+        # the selected Apple restore build and its hashes remain unchanged.
         # Recovery execution is exclusively the separately reviewed step2.
         # bputil requires root on current macOS. A non-privileged inventory
         # may report its model capability without pretending to know boot
         # policy; the root install path must positively identify macOS again.
         readonly_unknown = (host.boot_mode == "Unknown" and os.geteuid() != 0
                             and self.engine_runtime.mode in ("inspect", "plan"))
-        return ((host.boot_mode == "macOS" or readonly_unknown)
-                and host.macos_ver == self.cleanroom_profile["firmware"]["version"])
+        if host.boot_mode != "macOS" and not readonly_unknown:
+            logging.warning("Host rejected: boot mode %s is not installed macOS", host.boot_mode)
+            return False
+        baseline = self.cleanroom_profile["firmware"]["version"]
+        if overridden:
+            logging.info("Developer override: profile %s, host %s on macOS %s; "
+                         "Apple restore inputs remain pinned to %s",
+                         self.cleanroom_profile["device_identifier"], host.product_type,
+                         host.macos_ver, baseline)
+            return True
+        if host.macos_ver != baseline:
+            logging.warning("Host rejected: macOS %s differs from qualified baseline %s; "
+                            "developer override is disabled", host.macos_ver, baseline)
+            return False
+        return True
 
     def choose_ipsw(self, supported_fw=None):
         firmware = self.cleanroom_profile["firmware"]

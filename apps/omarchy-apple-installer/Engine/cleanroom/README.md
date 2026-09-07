@@ -107,7 +107,11 @@ same component revisions throughout before signing its private catalog.
 
 Inspection may identify the model without root access to bputil. Execution
 requires positively identified macOS 26.6.2 and revalidates the complete model
-tuple. A source build and read-only preflight are not physical install proof.
+tuple in normal mode. The explicit developer profile override bypasses both
+the model match and host macOS version match, while requiring installed macOS
+for privileged execution. It keeps the selected restore build, firmware hashes,
+plan identity and partition checks unchanged. This does not establish support
+for the actual host or make the selected profile's kernel compatible with it. A source build and read-only preflight are not physical install proof.
 
 Resize planning reserves two complete sets of artifact bytes for the app handoff
 and the helper import, plus the catalog's `executionScratchBytes` and a separate

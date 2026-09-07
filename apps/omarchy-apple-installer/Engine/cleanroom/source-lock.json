@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "5aba416893e808ee4c9aea3c7f48cee9fbadd5e1e41063c930146c227cb0dc64"
+      "sha256": "8f7f46c3dd8e573261bc04a1f241fde08e795b2f7a784c60306c9433fb3a4617"
     },
     {
       "path": "cleanroom/adapter.py",
@@ -46,7 +46,7 @@
     },
     {
       "path": "cleanroom/main.py",
-      "sha256": "b53c2ced3e27577bfbfc800bb635259a88455cdb9b7fcadfc7da62987583cf3d"
+      "sha256": "85efd3465d628e41c5f9f4625903ed388931477cc10ae3ddb970c732e8987801"
     },
     {
       "path": "cleanroom/native-artifacts.json",
@@ -94,7 +94,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "4f1a7560a95d90dda75eefa87ba04c5dd86bc339a6cb8a25ffcc4592d2e36d70"
+      "sha256": "a5a559fe1b7110b618cf9de99e00aba83073f76e532e8220a585a687a8a12e47"
     },
     {
       "path": "installer_data.json",
