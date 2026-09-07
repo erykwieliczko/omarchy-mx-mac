@@ -4,6 +4,7 @@
 
   public struct AppleSiliconHostInspection: Equatable, Sendable {
     public var developerOverride: DeveloperModelOverride? = nil
+    public var skipBootBin: Bool = false
     public let identity: AppleMacIdentity
     public let eligibility: AppleSiliconInstallEligibility
     public let macOSVersion: String

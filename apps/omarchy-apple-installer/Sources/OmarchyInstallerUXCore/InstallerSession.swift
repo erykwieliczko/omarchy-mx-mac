@@ -118,6 +118,7 @@
         && environment.helperStatus.isEnabled
     }
 
+    public private(set) var skipBootBin = false
     public private(set) var developerOverride: DeveloperModelOverride?
 
     public var canChangeModel: Bool {
@@ -139,6 +140,12 @@
       }
     }
 
+    public func selectSkipBootBin(_ enabled: Bool) async {
+      guard canChangeModel, enabled != skipBootBin else { return }
+      skipBootBin = enabled
+      await inspect()
+    }
+
     public func selectModelOverride(_ selection: DeveloperModelOverride?) async {
       guard canChangeModel, selection != developerOverride else { return }
       developerOverride = selection
@@ -154,7 +161,8 @@
       defer { isBusy = false }
 
       do {
-        let host = try await environment.inspect(developerOverride: developerOverride)
+        let host = try await environment.inspect(
+          developerOverride: developerOverride, skipBootBin: skipBootBin)
         if !host.existingInstalls.isEmpty {
           // Refuse before anything is fetched: no catalog, no download.
           lastHost = host

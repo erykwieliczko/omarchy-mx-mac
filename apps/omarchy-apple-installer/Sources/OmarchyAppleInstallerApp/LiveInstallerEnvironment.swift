@@ -59,6 +59,12 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   }
 
   func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
+    try await inspect(developerOverride: developerOverride, skipBootBin: false)
+  }
+
+  func inspect(developerOverride: DeveloperModelOverride?, skipBootBin: Bool) async throws
+    -> HostDisplay
+  {
     lock.withLock {
       hostInspection = nil
       engineInspection = nil
@@ -68,9 +74,10 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       planApproval = nil
       releaseConfiguration = nil
     }
-    let host = try await Task.detached(priority: .userInitiated) {
+    var host = try await Task.detached(priority: .userInitiated) {
       try AppleSiliconHostInspector().inspect(developerOverride: developerOverride)
     }.value
+    host.skipBootBin = skipBootBin
 
     var engine: ValidatedEngineTranscript?
     var transcript: Data?

@@ -7,6 +7,25 @@ final class ClosedEngineProcessAdapterTests: XCTestCase {
   private let adapter = ClosedEngineProcessAdapter()
   private let now = Date(timeIntervalSince1970: 1_788_000_000)
 
+  func testDeveloperBootModeHasDistinctApprovalOnNativeAndOverriddenModels() throws {
+    let automatic = try makeRequest(deviceIdentifier: "apple,j713")
+    let normal = try adapter.candidateIdentity(for: automatic)
+    var bindings = Set([normal.bindingDigest])
+    for override in [nil, DeveloperModelOverride.m4MacBookAir] {
+      let request = ClosedEngineCandidateRequest(
+        planningTranscript: automatic.planningTranscript, catalogPayload: automatic.catalogPayload,
+        catalogSignature: automatic.catalogSignature, trustRoot: automatic.trustRoot,
+        validationTime: automatic.validationTime, developerOverride: override, skipBootBin: true)
+      let identity = try adapter.candidateIdentity(for: request)
+      XCTAssertEqual(identity.planDigest, normal.planDigest)
+      XCTAssertEqual(identity.format, 3)
+      XCTAssertTrue(identity.skipBootBin)
+      bindings.insert(identity.bindingDigest)
+    }
+    XCTAssertEqual(bindings.count, 3)
+    XCTAssertFalse(normal.skipBootBin)
+  }
+
   func testOverrideChangesApprovalBindingForIdenticalPlan() throws {
     let automatic = try makeRequest(deviceIdentifier: "apple,j713")
     let overridden = ClosedEngineCandidateRequest(

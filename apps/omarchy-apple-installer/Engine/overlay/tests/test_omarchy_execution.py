@@ -79,6 +79,34 @@ class ExecutionAdmissionTests(unittest.TestCase):
         self._write_inputs()
         self._assert_rejected("unknown developer model")
 
+    def test_skip_boot_bin_requires_distinct_bound_approval_with_and_without_override(self):
+        for override in (None, "apple,j713"):
+            with self.subTest(override=override):
+                self.request = self._request(device_identifier="apple,j713")
+                self.identity = self._identity()
+                self.identity["skip_boot_bin"] = True
+                if override:
+                    self.identity["developer_model_override"] = override
+                self.binding_digest = self.identity["binding_digest"]
+                self._write_inputs()
+                self._assert_rejected("approval binding mismatch")
+                request, identity = self.request, self.identity
+                fields = ["omarchy.apple.candidate-bound-plan", "3", identity["trust_root_fingerprint"],
+                          str(identity["catalog_sequence"]), identity["catalog_payload_digest"],
+                          request["plan_digest"], request["device_identifier"], request["store_identifier"],
+                          request["layout_digest"], request["candidate_kind"], request["source_identifier"],
+                          str(request["offset_bytes"]), str(request["length_bytes"]),
+                          identity["engine_digest"], identity["metadata_digest"], identity["payload_digest"],
+                          override or "", "skip-m1n1-boot-bin"]
+                self.binding_digest = self._length_prefixed(fields, prefix="sha256:")
+                self.identity["binding_digest"] = self.binding_digest
+                self._write_inputs()
+                self.assertTrue(self._admit().skip_boot_bin)
+                for invalid in (False, 1, "true", None):
+                    self.identity["skip_boot_bin"] = invalid
+                    self._write_inputs()
+                    self._assert_rejected("invalid skip boot.bin option")
+
     def test_valid_resize_candidate_uses_end_aligned_extent(self):
         self.inventory = self._inventory(kind="resize")
         candidate = self.inventory["candidates"][0]

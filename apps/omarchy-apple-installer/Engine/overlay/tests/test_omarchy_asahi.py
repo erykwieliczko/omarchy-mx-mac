@@ -126,6 +126,7 @@ class AsahiStage1AdapterTests(unittest.TestCase):
             part_type="Free space",
         )
         self.plan = SimpleNamespace(
+            skip_boot_bin=False,
             plan_digest="a" * 64,
             candidate_kind="free",
             source_identifier="disk0s3",
@@ -145,6 +146,40 @@ class AsahiStage1AdapterTests(unittest.TestCase):
         self.metadata.write_bytes(b"x" * (1024 * 1024 + 1))
         with self.assertRaisesRegex(AsahiAdapterError, "metadata is invalid"):
             load_metadata(self.metadata)
+
+    def test_developer_boot_removes_only_efi_payload_and_rechecks_absence(self):
+        self.plan.skip_boot_bin = True
+        adapter = self._adapter(FakeInstaller(FakeDiskUtil([[self.free]])))
+        adapter.preflight(self.plan)
+        target = adapter.prepare_target(self.plan)
+        # A same-named Apple boot object must never be touched.
+        stage1 = self.root / "Resources" / "boot.bin"
+        stage1.parent.mkdir()
+        stage1.write_bytes(b"authorized stage 1")
+        installed = adapter.install_stub_and_esp(self.plan)
+        self.assertFalse((self.installed_esp / "m1n1/boot.bin").exists())
+        self.assertEqual(stage1.read_bytes(), b"authorized stage 1")
+        self.assertTrue((self.installed_esp / "EFI/BOOT/BOOTAA64.EFI").exists())
+        retry = self._retry_adapter(target, installed)
+        retry.preflight(self.plan)
+        retry.validate_installed_checkpoint(self.plan, target, installed)
+        (self.installed_esp / "m1n1/boot.bin").write_bytes(b"m1n1")
+        with self.assertRaisesRegex(AsahiAdapterError, "unexpectedly present"):
+            retry.validate_installed_checkpoint(self.plan, target, installed)
+
+    def test_developer_boot_rejects_symlinks_without_deleting_target(self):
+        self.plan.skip_boot_bin = True
+        adapter = self._adapter(FakeInstaller(FakeDiskUtil([[self.free]])))
+        adapter.preflight(self.plan)
+        adapter.prepare_target(self.plan)
+        payload = self.installed_esp / "m1n1/boot.bin"
+        payload.unlink()
+        other = self.root / "other-boot.bin"
+        other.write_bytes(b"keep")
+        payload.symlink_to(other)
+        with self.assertRaisesRegex(AsahiAdapterError, "unsafe developer boot payload"):
+            adapter.install_stub_and_esp(self.plan)
+        self.assertEqual(other.read_bytes(), b"keep")
 
     def test_free_extent_runs_exact_upstream_stage_one_primitives(self):
         dutil = FakeDiskUtil([[self.free]])

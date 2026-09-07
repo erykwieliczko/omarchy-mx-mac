@@ -45,6 +45,7 @@ public enum AppOwnedTrustRootError: Error, Equatable, Sendable {
 }
 
 public struct CandidateBoundPlanIdentity: Equatable, Sendable {
+  public let skipBootBin: Bool
   public let developerOverride: DeveloperModelOverride?
   public let format: Int
   public let bindingDigest: String
@@ -63,10 +64,12 @@ public struct CandidateBoundPlanIdentity: Equatable, Sendable {
     plan: ValidatedEnginePlan,
     catalogIdentity: AcceptedCatalogIdentity,
     trustRootFingerprint: String,
-    developerOverride: DeveloperModelOverride? = nil
+    developerOverride: DeveloperModelOverride? = nil,
+    skipBootBin: Bool = false
   ) {
+    self.skipBootBin = skipBootBin
     self.developerOverride = developerOverride
-    format = developerOverride == nil ? 1 : 2
+    format = skipBootBin ? 3 : (developerOverride == nil ? 1 : 2)
     self.trustRootFingerprint = trustRootFingerprint
     self.catalogIdentity = catalogIdentity
     planDigest = plan.planDigest
@@ -96,7 +99,10 @@ public struct CandidateBoundPlanIdentity: Equatable, Sendable {
           plan.engineDigest,
           plan.metadataDigest,
           plan.payloadDigest,
-        ] + (developerOverride.map { [$0.rawValue] } ?? [])
+        ]
+          + (skipBootBin
+            ? [developerOverride?.rawValue ?? "", "skip-m1n1-boot-bin"]
+            : (developerOverride.map { [$0.rawValue] } ?? []))
       ).rawValue
   }
 }

@@ -353,6 +353,7 @@
   }
 
   private struct EngineExecutionIdentity: Encodable {
+    let skipBootBin: Bool?
     let developerOverride: DeveloperModelOverride?
     let format = 1
     let bindingDigest: String
@@ -366,6 +367,7 @@
     let repairManifestDigest: String?
 
     init(invocation: ClosedEngineInvocation) {
+      skipBootBin = invocation.candidateIdentity.skipBootBin ? true : nil
       developerOverride = invocation.candidateIdentity.developerOverride
       bindingDigest = invocation.candidateIdentity.bindingDigest
       trustRootFingerprint = invocation.candidateIdentity.trustRootFingerprint
@@ -379,6 +381,7 @@
     }
 
     enum CodingKeys: String, CodingKey {
+      case skipBootBin = "skip_boot_bin"
       case developerOverride = "developer_model_override"
       case format
       case bindingDigest = "binding_digest"

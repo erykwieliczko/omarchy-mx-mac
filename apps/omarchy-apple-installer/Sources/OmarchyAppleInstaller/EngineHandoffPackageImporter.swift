@@ -454,6 +454,12 @@
           }
           identityKeys.insert("developer_model_override")
         }
+        if let flag = rawObject["skip_boot_bin"] {
+          guard let value = flag as? NSNumber,
+            CFGetTypeID(value) == CFBooleanGetTypeID(), value.boolValue
+          else { throw EngineHandoffImportError.invalidIdentity }
+          identityKeys.insert("skip_boot_bin")
+        }
         _ = try exactObject(
           data,
           keys: identityKeys,
@@ -521,17 +527,24 @@
       else {
         throw EngineHandoffImportError.bindingMismatch
       }
-      if releasePolicy != nil || identity.developerOverride != nil {
+      guard identity.skipBootBin != true || request.operation == "install" else {
+        throw EngineHandoffImportError.bindingMismatch
+      }
+      if releasePolicy != nil || identity.developerOverride != nil || identity.skipBootBin != nil {
         let binding = InstallerDigest.lengthPrefixedSHA256(
           [
-            "omarchy.apple.candidate-bound-plan", identity.developerOverride == nil ? "1" : "2",
+            "omarchy.apple.candidate-bound-plan",
+            identity.skipBootBin == true ? "3" : (identity.developerOverride == nil ? "1" : "2"),
             identity.trustRootFingerprint,
             String(identity.catalogSequence), identity.catalogPayloadDigest, request.planDigest,
             request.deviceIdentifier, request.storeIdentifier, request.layoutDigest,
             request.candidateKind, request.sourceIdentifier, String(request.offsetBytes),
             String(request.lengthBytes), identity.engineDigest, identity.metadataDigest,
             identity.payloadDigest,
-          ] + (identity.developerOverride.map { [$0.rawValue] } ?? [])
+          ]
+            + (identity.skipBootBin == true
+              ? [identity.developerOverride?.rawValue ?? "", "skip-m1n1-boot-bin"]
+              : (identity.developerOverride.map { [$0.rawValue] } ?? []))
         ).rawValue
         guard binding == identity.bindingDigest else {
           throw EngineHandoffImportError.bindingMismatch
@@ -680,6 +693,7 @@
   }
 
   private struct ImportedIdentity: Decodable {
+    let skipBootBin: Bool?
     let developerOverride: DeveloperModelOverride?
     let format: Int
     let bindingDigest: String
@@ -693,6 +707,7 @@
     let repairManifestDigest: String?
 
     enum CodingKeys: String, CodingKey {
+      case skipBootBin = "skip_boot_bin"
       case developerOverride = "developer_model_override"
       case format
       case bindingDigest = "binding_digest"

@@ -362,6 +362,8 @@
   public protocol InstallerEnvironment: Sendable {
     func inspect() async throws -> HostDisplay
     func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay
+    func inspect(developerOverride: DeveloperModelOverride?, skipBootBin: Bool) async throws
+      -> HostDisplay
     /// `omarchyBytes` asks the planner for that much space for Omarchy; nil
     /// keeps the balanced default. The engine still clamps the request to the
     /// candidate's real minimum and maximum.
@@ -395,6 +397,13 @@
   public enum DeveloperOverrideError: Error { case unavailable }
 
   extension InstallerEnvironment {
+    public func inspect(developerOverride: DeveloperModelOverride?, skipBootBin: Bool) async throws
+      -> HostDisplay
+    {
+      guard !skipBootBin else { throw DeveloperOverrideError.unavailable }
+      return try await inspect(developerOverride: developerOverride)
+    }
+
     public func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
       guard developerOverride == nil else { throw DeveloperOverrideError.unavailable }
       return try await inspect()

@@ -5,6 +5,9 @@
   /// Every user-visible string in the installer. Screens read from here so the
   /// wording can be reviewed in one place and unit-tested for completeness.
   public enum PlainLanguage {
+    public static let skipBootBinHelp =
+      "For developers: keeps m1n1 stage 1 but removes the EFI m1n1/boot.bin payload. m1n1 will wait in its serial/USB proxy for DebugUSB and development tools instead of booting Linux. USB support depends on the target hardware."
+
     // MARK: Chrome
 
     public static let windowTitle = "Omarchy Installer"

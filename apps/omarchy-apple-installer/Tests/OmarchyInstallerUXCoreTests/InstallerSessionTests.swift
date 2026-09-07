@@ -81,6 +81,33 @@
       XCTAssertNil(session.developerOverride)
     }
 
+    func testChangingDeveloperBootModeInvalidatesApprovalAndLocksAfterExecution() async throws {
+      let environment = MockInstallerEnvironment()
+      let session = InstallerSession(environment: environment)
+      XCTAssertFalse(session.skipBootBin)
+      await session.inspect()
+      await session.continueToPlan()
+      session.continueToPlanReview()
+      session.setAcknowledged(true)
+      session.approve()
+      XCTAssertTrue(session.canStartInstallation)
+      await session.selectSkipBootBin(true)
+      XCTAssertTrue(environment.lastSkipBootBin)
+      XCTAssertFalse(environment.hasApprovedPlan)
+      XCTAssertFalse(session.canStartInstallation)
+      XCTAssertNil(session.developerOverride)
+      guard case .welcome = session.phase else { return XCTFail("Expected fresh inspection") }
+      await session.continueToPlan()
+      session.continueToPlanReview()
+      session.setAcknowledged(true)
+      session.approve()
+      session.presentInstallCredentials()
+      await session.submit(try authorization())
+      await session.selectSkipBootBin(false)
+      XCTAssertTrue(session.skipBootBin)
+      XCTAssertTrue(session.hasExecutionStarted)
+    }
+
     func testHappyPathFollowsTheTransitionTable() async throws {
       let environment = MockInstallerEnvironment()
       let session = InstallerSession(environment: environment)
@@ -585,6 +612,13 @@
     var hasApprovedPlan: Bool { approved }
     var helperStatus: HelperDisplay { helper }
 
+    var lastSkipBootBin = false
+    func inspect(developerOverride: DeveloperModelOverride?, skipBootBin: Bool) async throws
+      -> HostDisplay
+    {
+      lastSkipBootBin = skipBootBin
+      return try await inspect(developerOverride: developerOverride)
+    }
     var lastOverride: DeveloperModelOverride?
     func inspect(developerOverride: DeveloperModelOverride?) async throws -> HostDisplay {
       lastOverride = developerOverride

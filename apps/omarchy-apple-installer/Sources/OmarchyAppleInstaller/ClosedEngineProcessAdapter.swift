@@ -1,6 +1,7 @@
 import Foundation
 
 public struct ClosedEngineCandidateRequest: Sendable {
+  public let skipBootBin: Bool
   public let developerOverride: DeveloperModelOverride?
   public let planningTranscript: Data
   public let catalogPayload: Data
@@ -16,8 +17,10 @@ public struct ClosedEngineCandidateRequest: Sendable {
     trustRoot: AppOwnedTrustRoot,
     validationTime: Date,
     previouslyAcceptedCatalog: AcceptedCatalogIdentity? = nil,
-    developerOverride: DeveloperModelOverride? = nil
+    developerOverride: DeveloperModelOverride? = nil,
+    skipBootBin: Bool = false
   ) {
+    self.skipBootBin = skipBootBin
     self.developerOverride = developerOverride
     self.planningTranscript = planningTranscript
     self.catalogPayload = catalogPayload
@@ -165,7 +168,8 @@ public struct ClosedEngineProcessAdapter: Sendable {
       plan: plan,
       catalogIdentity: catalog.acceptedIdentity,
       trustRootFingerprint: request.trustRoot.fingerprint,
-      developerOverride: request.developerOverride
+      developerOverride: request.developerOverride,
+      skipBootBin: request.skipBootBin
     )
     return ClosedEngineInvocation(
       candidateIdentity: candidateIdentity,

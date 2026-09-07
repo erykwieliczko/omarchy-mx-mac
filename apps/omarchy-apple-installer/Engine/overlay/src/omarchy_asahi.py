@@ -4,6 +4,7 @@
 import hashlib
 import io
 import json
+import logging
 import os
 import re
 import stat
@@ -479,6 +480,8 @@ class AsahiStage1Adapter:
             self.osins.firmware_package = firmware_package
 
         self.osins.install(self.installer.ins)
+        if plan.skip_boot_bin:
+            self._remove_efi_boot_bin()
         for target in self.osins.idata_targets:
             self.installer.ins.collect_installer_data(target)
             shutil.copy(
@@ -486,6 +489,24 @@ class AsahiStage1Adapter:
                 os.path.join(target, "installer.log"),
             )
         return self._installed_evidence(plan)
+
+    def _remove_efi_boot_bin(self):
+        if self.osins.efi_part is None:
+            raise AsahiAdapterError("developer boot mode requires the installed ESP")
+        mountpoint = self.installer.dutil.mount(self.osins.efi_part.name)
+        for directory in (mountpoint, os.path.join(mountpoint, "m1n1")):
+            status = os.lstat(directory)
+            if not stat.S_ISDIR(status.st_mode):
+                raise AsahiAdapterError("unsafe developer boot payload directory")
+        path = os.path.join(mountpoint, "m1n1", "boot.bin")
+        try:
+            status = os.lstat(path)
+        except FileNotFoundError:
+            return
+        if not stat.S_ISREG(status.st_mode):
+            raise AsahiAdapterError("unsafe developer boot payload")
+        os.unlink(path)
+        logging.info("Developer boot mode: removed EFI m1n1/boot.bin; stage 1 will wait for serial/USB proxy")
 
     def validate_installed_checkpoint(
         self,
@@ -773,6 +794,7 @@ class AsahiStage1Adapter:
                 installed_bytes, content_digest = self._verify_copied_tree(
                     source,
                     info,
+                    skip_boot_bin=plan.skip_boot_bin,
                 )
                 population = source
                 verification = "copied-tree-sha256"
@@ -862,7 +884,7 @@ class AsahiStage1Adapter:
             "content_sha256": digest,
         }
 
-    def _verify_copied_tree(self, source, info):
+    def _verify_copied_tree(self, source, info, *, skip_boot_bin=False):
         if PARTITION_PATTERN.fullmatch(info.name) is None:
             raise AsahiAdapterError("installed partition identity changed")
         try:
@@ -892,6 +914,15 @@ class AsahiStage1Adapter:
         for member in members:
             relative = member.filename[len(prefix) :]
             target_path = os.path.join(mountpoint, *PurePosixPath(relative).parts)
+            if skip_boot_bin and member.filename == "esp/m1n1/boot.bin":
+                if self.osins.efi_part is None or info.name != self.osins.efi_part.name:
+                    raise AsahiAdapterError("developer boot payload is outside the installed ESP")
+                # lexists rejects dangling symlinks too. Repeat this check when
+                # resuming Recovery authorization, before using its checkpoint.
+                if os.path.lexists(target_path):
+                    raise AsahiAdapterError("developer boot payload unexpectedly present")
+                tree_digest.update(b"omarchy:absent:esp/m1n1/boot.bin\0")
+                continue
             try:
                 target_status = os.lstat(target_path)
                 if (

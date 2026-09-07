@@ -35,7 +35,8 @@ struct OnePageInstallerView: View {
       header
         .padding(.bottom, 26)
 
-      if session.canChangeModel || session.developerOverride != nil && !session.hasExecutionStarted
+      if session.canChangeModel
+        || (session.developerOverride != nil || session.skipBootBin) && !session.hasExecutionStarted
       {
         developerControls
           .frame(maxWidth: 560)
@@ -189,6 +190,21 @@ struct OnePageInstallerView: View {
         )
       )
       .toggleStyle(.checkbox)
+      Toggle(
+        "Skip m1n1/boot.bin",
+        isOn: Binding(
+          get: { session.skipBootBin },
+          set: { enabled in Task { await session.selectSkipBootBin(enabled) } }
+        )
+      )
+      .toggleStyle(.checkbox)
+      .help(PlainLanguage.skipBootBinHelp)
+      if session.skipBootBin {
+        Text(PlainLanguage.skipBootBinHelp)
+          .font(.system(size: 11))
+          .foregroundStyle(OmarchyTheme.secondaryText)
+          .fixedSize(horizontal: false, vertical: true)
+      }
       if session.developerOverride != nil {
         Picker(
           "Install profile",
@@ -244,12 +260,16 @@ struct OnePageInstallerView: View {
       )
 
     case .welcome:
-      Text(PlainLanguage.checkSubheadline)
-        .font(.system(size: 14))
-        .foregroundStyle(OmarchyTheme.secondaryText)
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 6)
+      Text(
+        session.skipBootBin
+          ? "After installation, selecting Omarchy will start the m1n1 development console."
+          : PlainLanguage.checkSubheadline
+      )
+      .font(.system(size: 14))
+      .foregroundStyle(OmarchyTheme.secondaryText)
+      .multilineTextAlignment(.center)
+      .frame(maxWidth: .infinity)
+      .padding(.top, 6)
 
     case .existingInstallRefused:
       existingInstallRefusedPanel()

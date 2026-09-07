@@ -36,6 +36,24 @@
       XCTAssertEqual(try Data(contentsOf: imported.engineURL), fixture.engine)
     }
 
+    func testInjectedSkipBootBinCannotReuseAnAutomaticApproval() throws {
+      let fixture = try makeFixture()
+      defer { try? FileManager.default.removeItem(at: fixture.root) }
+      let identityURL = fixture.source.appendingPathComponent("identity.json")
+      var identity = try XCTUnwrap(
+        JSONSerialization.jsonObject(with: Data(contentsOf: identityURL)) as? [String: Any])
+      identity["skip_boot_bin"] = true
+      try FileManager.default.removeItem(at: identityURL)
+      try writePrivate(JSONSerialization.data(withJSONObject: identity), to: identityURL)
+      let source = try openDirectory(fixture.source)
+      defer { try? source.close() }
+      XCTAssertThrowsError(
+        try EngineHandoffPackageImporter().prepare(from: source, in: fixture.destination)
+      ) {
+        XCTAssertEqual($0 as? EngineHandoffImportError, .bindingMismatch)
+      }
+    }
+
     func testInjectedOverrideCannotReuseAnAutomaticApproval() throws {
       let fixture = try makeFixture()
       defer { try? FileManager.default.removeItem(at: fixture.root) }

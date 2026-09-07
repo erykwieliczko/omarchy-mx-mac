@@ -298,3 +298,25 @@ Actual shared-container free space is checked before and after `bless`, and
 again in 1TR before `bputil -nc` and `kmutil`. These gates also apply in YOLO.
 Existing 2.5 GB installations require a fresh install; the installer does not
 move neighboring EFI/Linux partitions to enlarge an occupied boot container.
+
+## Developer serial/USB boot
+
+The first window offers **Skip m1n1/boot.bin**, off by default and independent
+of the model override. For development, it removes only `m1n1/boot.bin` from
+the newly installed EFI partition after the payload is populated. The Apple
+APFS stage-1 boot object (`Resources/boot.bin`), its ESP UUID/chainload variables,
+Recovery authorization, U-Boot, kernel and initramfs installation remain intact.
+With no EFI chainload payload, stage 1 falls back to its serial/USB proxy and
+waits for DebugUSB/development tools rather than starting Linux. Working USB
+still requires m1n1 support for the target hardware.
+
+The selection uses candidate approval binding version 3, including the model
+override (or an empty value) and `skip-m1n1-boot-bin`. The helper and engine
+validate that binding; the engine receives `skip_boot_bin: true` through the
+immutable execution identity, never an ambient environment variable. Changing
+it invalidates the previous approval. The default omits the field and retains
+the existing binding format. Installed-content verification and Recovery
+checkpoint validation require the EFI file to remain absent in developer mode.
+The downloaded archive is still fully verified and unchanged. Installing a new
+EFI boot payload later can restore normal boot; this option does not prevent
+subsequent development tools or OS updates from writing that file.

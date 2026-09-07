@@ -9,6 +9,35 @@
   final class ClosedEngineHandoffProcessTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_788_000_000)
 
+    func testDeveloperBootSelectionSurvivesAuthenticatedHandoff() async throws {
+      let fixture = try makeFixture()
+      defer { try? FileManager.default.removeItem(at: fixture.root) }
+      let original = fixture.request
+      let request = ClosedEngineCandidateRequest(
+        planningTranscript: original.planningTranscript, catalogPayload: original.catalogPayload,
+        catalogSignature: original.catalogSignature, trustRoot: original.trustRoot,
+        validationTime: original.validationTime, skipBootBin: true)
+      let adapter = ClosedEngineProcessAdapter()
+      let identity = try adapter.candidateIdentity(for: request)
+      let submitter = RecordingHandoffSubmitter(transcript: fixture.executionTranscript)
+      let process = ClosedEngineHandoffProcess(
+        assets: fixture.assets, handoffDirectory: fixture.handoffDirectory,
+        submitter: submitter, authorization: try machineOwnerAuthorization())
+      _ = try await adapter.execute(
+        request,
+        approval: CandidateBoundPlanApproval(
+          identity: identity, approvedBindingDigest: identity.bindingDigest),
+        authorization: GrantedEngineAuthorization(), process: process)
+      let recorded = await submitter.snapshot
+      let snapshot = try XCTUnwrap(recorded)
+      let serialized = try XCTUnwrap(
+        JSONSerialization.jsonObject(with: snapshot.identity) as? [String: Any])
+      XCTAssertEqual(serialized["skip_boot_bin"] as? Bool, true)
+      XCTAssertEqual(serialized["binding_digest"] as? String, identity.bindingDigest)
+      XCTAssertEqual(snapshot.engine, fixture.engine)
+      XCTAssertEqual(snapshot.payload, fixture.payload)
+    }
+
     func testApprovedInvocationProducesPrivateBoundPackageAndCleansIt() async throws {
       let fixture = try makeFixture()
       defer { try? FileManager.default.removeItem(at: fixture.root) }

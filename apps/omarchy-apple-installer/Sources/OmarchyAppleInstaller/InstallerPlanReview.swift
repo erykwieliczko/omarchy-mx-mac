@@ -65,7 +65,8 @@
         trustRoot: request.configuration.trustRoot,
         validationTime: request.validationTime,
         previouslyAcceptedCatalog: request.previouslyAcceptedCatalog,
-        developerOverride: request.host.developerOverride
+        developerOverride: request.host.developerOverride,
+        skipBootBin: request.host.skipBootBin
       )
       let identity = try processAdapter.candidateIdentity(
         for: candidateRequest

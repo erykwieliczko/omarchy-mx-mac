@@ -153,7 +153,8 @@
         trustRoot: request.configuration.trustRoot,
         validationTime: request.validationTime,
         previouslyAcceptedCatalog: request.previouslyAcceptedCatalog,
-        developerOverride: request.host.developerOverride
+        developerOverride: request.host.developerOverride,
+        skipBootBin: request.host.skipBootBin
       )
       return PreparedInstallerPlanExecution(
         review: review,
