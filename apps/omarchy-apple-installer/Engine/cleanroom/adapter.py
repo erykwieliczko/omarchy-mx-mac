@@ -15,6 +15,7 @@ from asahi_firmware.multitouch import MultitouchFWCollection
 from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image, progress, retain_stub_inputs, verify_retained_workspace
 from apple_ranges import selected_archive, selected_files
 from boot_builds import load_boot_builds, select_boot_build, verify_boot_version
+from boot_space import check_prepared_space, check_installed_space, RECOVERY_FREE_BYTES
 from firmware import collect_macos_wifi
 from firmware_ranges import extract_wifi, FirmwareRangeFallback, FirmwareRangeExecutionError
 import osinstall
@@ -147,6 +148,16 @@ class CleanroomStubInstaller(stub.StubInstaller):
         # unrelated camera/kernel firmware extractors for this boot stack.
         package.add_files(self.cleanroom_firmware)
 
+    def prepare_for_bless(self):
+        check_installed_space(self.osi.system)
+        super().prepare_for_bless()
+
+    def prepare_for_step2(self):
+        # bless may allocate additional personalized objects. Do not announce
+        # a successful Recovery handoff if it consumed the reserved headroom.
+        check_installed_space(self.osi.system)
+        super().prepare_for_step2()
+
 
 class CleanroomStage1Adapter(AsahiStage1Adapter):
     def __init__(self, *, installer, **kwargs):
@@ -234,6 +245,7 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             restore_layout(archive, self.boot_profile)
             self.recovery_receipt = prepare_recovery(
                 archive, self.boot_profile, self.decoded, self.verifier_path)
+            check_prepared_space(archive, self.boot_profile, self.recovery_receipt, self.stub_size)
             if wifi is None:
                 with mounted_system_image(archive, self.spec["apple_inputs"], self.profile,
                                           work, self.verifier_path) as system_root:
@@ -340,6 +352,7 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             "ESP": esp_uuid.upper(),
             "STAGE1_SHA256": hashlib.sha256(stage1).hexdigest(),
             "STAGE1_SIZE": str(len(stage1)),
+            "RECOVERY_FREE_KIB": str(RECOVERY_FREE_BYTES // 1024),
         }
         for key, value in values.items():
             if not isinstance(value, str) or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,-" for char in value):

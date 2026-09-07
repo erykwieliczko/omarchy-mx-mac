@@ -14,7 +14,8 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from adapter import CleanroomStage1Adapter, FIRMWARE_NAMES, cleanroom_spec, restore_layout
+from adapter import CleanroomStage1Adapter, CleanroomStubInstaller, FIRMWARE_NAMES, cleanroom_spec, restore_layout
+from boot_space import STUB_SIZE
 from boot_inputs import BootInputError, assemble_stage1, load_profile
 from main import CleanroomInstaller, CleanroomRuntime
 from firmware import collect_macos_wifi, normalize_nvram
@@ -29,6 +30,26 @@ VGID = "22222222-3333-4444-8555-666666666666"
 class CleanroomAdapterTests(unittest.TestCase):
     def setUp(self):
         self.profile = load_profile(PROFILE_PATH)
+
+    def test_cleanroom_planner_and_writer_receive_the_same_enlarged_stub(self):
+        for mode in ("inspect", "plan", "install", "retry-recovery-authorization"):
+            with tempfile.TemporaryDirectory() as directory:
+                runtime = CleanroomRuntime(mode=mode, values={"OMARCHY_ENGINE_JOURNAL": str(Path(directory) / "journal")})
+                with patch("main.EngineRuntime.run_layout", return_value="result") as layout:
+                    self.assertEqual(runtime.run_layout(installer="installer", free_parts=[], resizable_parts=[],
+                                                        stub_size=2499805184, part_align=1024**2), "result")
+                    self.assertEqual(layout.call_args.kwargs["stub_size"], STUB_SIZE)
+
+    def test_space_gate_runs_before_and_after_apple_personalization(self):
+        instance = object.__new__(CleanroomStubInstaller)
+        instance.osi = SimpleNamespace(system="/Volumes/Omarchy")
+        for method in ("prepare_for_bless", "prepare_for_step2"):
+            with patch("adapter.check_installed_space", side_effect=BootInputError("full boot container")) as space, \
+                    patch("adapter.stub.StubInstaller." + method) as parent:
+                with self.assertRaisesRegex(BootInputError, "full boot container"):
+                    getattr(instance, method)()
+                space.assert_called_once_with("/Volumes/Omarchy")
+                parent.assert_not_called()
 
     def test_model_gate_requires_complete_identity_and_macos_baseline(self):
         installer = object.__new__(CleanroomInstaller)
@@ -191,6 +212,7 @@ class CleanroomAdapterTests(unittest.TestCase):
             adapter = object.__new__(CleanroomStage1Adapter)
             adapter.profile = self.profile
             adapter.preflight_complete = False
+            adapter.stub_size = STUB_SIZE
             adapter.payload_path = payload
             adapter.metadata_path = Path(directory) / "metadata.json"
             adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
@@ -246,6 +268,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                 adapter = object.__new__(CleanroomStage1Adapter)
                 adapter.profile = self.profile
                 adapter.preflight_complete = False
+                adapter.stub_size = STUB_SIZE
                 adapter.payload_path = payload
                 adapter.metadata_path = Path(directory) / "metadata.json"
                 adapter.installer = SimpleNamespace(sysinfo=SimpleNamespace(**{
@@ -260,7 +283,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                 values = {"load_metadata": {}, "cleanroom_spec": spec,
                           "file_descriptor": spec["stage1"], "selected_archive": payload,
                           "stub_members": [], "inspect_ipsw": {}, "restore_layout": {}, "verify_boot_version": None,
-                          "prepare_recovery": {}, "collect_macos_wifi": [],
+                          "prepare_recovery": {}, "check_prepared_space": None, "collect_macos_wifi": [],
                           "retain_stub_inputs": payload, "verify_retained_workspace": None}
                 for name, value in values.items():
                     mocks[name] = stack.enter_context(patch("adapter." + name, return_value=value))

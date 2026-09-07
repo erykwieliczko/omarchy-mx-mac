@@ -280,3 +280,21 @@ installed bytes. It needs a fresh installation with compatible boot inputs, or
 an owner-managed macOS update that supplies the required SFR. The installer
 does not modify Apple version metadata or update macOS automatically. Passing
 the SFR check does not replace Apple's final personalization/authorization.
+
+### Apple boot container space
+
+The cleanroom runtime reserves 4 GiB for the shared APFS System/Data/Preboot/
+Recovery container in both planning and execution. The user's Linux allocation
+does not control this size. The historical 2.5 GB stub can reach 98.8% usage on
+25F84/J700 before 1TR, leaving too little space for Apple's boot setup.
+
+Before partitioning, selected uncompressed boot-member sizes plus the actual
+decoded Recovery size must fit with a 512 MiB allowance for APFS metadata,
+personalization and installer files, and a further 1 GiB Recovery setup reserve.
+The encrypted Recovery input is excluded from installed size. A larger future
+Apple closure fails this check instead of silently exhausting the container.
+
+Actual shared-container free space is checked before and after `bless`, and
+again in 1TR before `bputil -nc` and `kmutil`. These gates also apply in YOLO.
+Existing 2.5 GB installations require a fresh install; the installer does not
+move neighboring EFI/Linux partitions to enlarge an occupied boot container.

@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from asahi_main import InstallerMain
 from adapter import CleanroomStage1Adapter
 from boot_inputs import BootInputError, load_profile, validate_host
+from boot_space import STUB_SIZE
 from omarchy_runtime import EngineRuntime, EngineRuntimeError
 
 
@@ -46,6 +47,13 @@ class CleanroomRuntime(EngineRuntime):
     def inspect(self, device_class, supported):
         selected = self.developer_model_override
         super().inspect(selected.removeprefix("apple,") if selected else device_class, supported)
+
+    def run_layout(self, *, installer, free_parts, resizable_parts, stub_size, part_align):
+        # One value must reach both the planner and the partition writer. Keep
+        # the upstream enumeration threshold so older stubs stay recognizable.
+        return super().run_layout(installer=installer, free_parts=free_parts,
+                                  resizable_parts=resizable_parts, stub_size=STUB_SIZE,
+                                  part_align=part_align)
 
     def __init__(self, **kwargs):
         super().__init__(stage1_adapter_factory=CleanroomStage1Adapter, **kwargs)

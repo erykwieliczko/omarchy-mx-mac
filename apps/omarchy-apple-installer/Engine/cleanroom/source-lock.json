@@ -10,11 +10,11 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "5bf8c4b5cc621565a93ed9aedc8d2e9a41f3cb05024f24593abc58d2976c5286"
+      "sha256": "f5b5ae047b7476e75978950fea1a3286b2eb25440a286a386e5ebbb001a4ce2f"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "0e0c81538fb5ebf6869fe8dd6b0b0ca6bfc7c3c9bbed8141eb278e96478d99ff"
+      "sha256": "7267e91fcbaad4e8110d00c5eb7763ff2287a41b0330aa65927cf56215bcae3e"
     },
     {
       "path": "cleanroom/apple_inputs.py",
@@ -46,7 +46,7 @@
     },
     {
       "path": "cleanroom/main.py",
-      "sha256": "9ac361df7a691a4e47f4725090d354be3463a7600cdb6054fb0962a6a766ea91"
+      "sha256": "328fb315a019e8317314740f6a60fce6b29a34de39fb43844539d136c555786f"
     },
     {
       "path": "cleanroom/native-artifacts.json",
@@ -86,15 +86,15 @@
     },
     {
       "path": "cleanroom/stage_sources.py",
-      "sha256": "a8c2cc7fb7af0b06aaf3b9a40976dc17a8e983eed921c22c479f02447c73ce7d"
+      "sha256": "6b931de9f5878f2614bf0b76b6023ab1922d468aa366c978cb34c38d93d3b68e"
     },
     {
       "path": "cleanroom/step2.sh",
-      "sha256": "2a1f996955173133aabf8f2d06d8887e0b2648890b25cad5ba030c9cdd430cb0"
+      "sha256": "652c0136f74fa395a2d190d7b7dd366e9fbb805f980a7ef7f8eb99d5dfffa3bb"
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "8db63263edfb5f65325079a10d56693f06be1bb0a3ee38e8a7eecdb1578adfec"
+      "sha256": "1b51653b25f175d4765c315fe9f9cce90c9aefafca200224f81da604c13816e7"
     },
     {
       "path": "installer_data.json",
@@ -231,6 +231,14 @@
     {
       "path": "tests/test_cleanroom_boot_builds.py",
       "sha256": "d4bf5e01bc3e7e19e4ae2fea21299ca7615f4fb0a86e4d8f2747f0e165a5d0cf"
+    },
+    {
+      "path": "cleanroom/boot_space.py",
+      "sha256": "ee9e62b3d70d611243c821b45b21fa0edfae0f42fb50961107173a297f7763a5"
+    },
+    {
+      "path": "tests/test_cleanroom_boot_space.py",
+      "sha256": "8767abc9dfff0c5dd88607f2b168bbb0566f9b8eede582b6ce76e237dcaa81ed"
     }
   ]
 }

@@ -54,6 +54,16 @@ def j700_fixture():
 
 
 class UninstallTests(unittest.TestCase):
+    def test_four_gib_boot_container_remains_uninstallable(self):
+        root, store, records, containers = fixture()
+        extra = 4 * 1024**3 - records[2]['IOKitSize']
+        records[2]['IOKitSize'] += extra
+        for record in records[3:]:
+            record['PartitionMapPartitionOffset'] += extra
+        plan = worker.make_plan(root, store, records, containers)
+        self.assertEqual(plan['remove'][0]['IOKitSize'], 4 * 1024**3)
+        self.assertEqual(len(plan['remove']), 4)
+
     def test_plan_discovers_all_four_partitions_without_pinned_device_numbers(self):
         plan = worker.make_plan(*fixture())
         self.assertEqual([p['DiskUUID'] for p in plan['remove']],
