@@ -38,6 +38,7 @@ export PATH="$OMARCHY_PATH/bin:$PATH"
 # runtime package it bundles, so an install and the first boot that finishes it
 # can never offer different layouts or accept different usernames.
 source "$OMARCHY_PATH/install/provisioning/setup-form.sh"
+source "$OMARCHY_PATH/install/provisioning/wifi-country.sh"
 
 # Unlike a fresh install target, this machine already has accounts; a pinned
 # resume (below) bypasses the prompt entirely.
@@ -651,6 +652,7 @@ user_form() {
 
   step "Let's set your timezone..."
   omarchy_prompt_timezone || return $?
+  omarchy_prompt_wifi_country || return $?
 }
 
 confirm_form() {
@@ -663,7 +665,8 @@ Password,$(printf "%${#password}s" | tr ' ' '*')
 Full name,${full_name:-[Skipped]}
 Email address,${email_address:-[Skipped]}
 Hostname,${hostname:-omarchy}
-Timezone,${timezone:-UTC}" |
+Timezone,${timezone:-UTC}
+Wi-Fi country,${wifi_country:-[Not required]}" |
     gum table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
 
   echo
@@ -1009,6 +1012,9 @@ run_provisioning() {
 
   log_step "setting timezone to ${timezone:-UTC}"
   configure_timezone
+
+  log_step "persisting Wi-Fi country ${wifi_country:-[not required]}"
+  omarchy_configure_wifi_country
 
   log_step "finalizing user"
   echo finalize >"$STATE_FILE"
