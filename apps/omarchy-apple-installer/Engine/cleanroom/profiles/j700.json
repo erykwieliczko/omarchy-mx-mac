@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "device_identifier": "apple,j700",
+  "product_type": "Mac17,5",
+  "device_class": "j700ap",
+  "board_id": 100,
+  "chip_id": 33088,
+  "firmware": {
+    "version": "26.6.2",
+    "build": "25G83",
+    "variant": "macOS Customer",
+    "restore_behavior": "Erase"
+  },
+  "boot_format": "m1n1-uboot-grub-apple-download-v2",
+  "sources": {
+    "m1n1": "1ab1683c8ef21b8e6f74253782a9c5af44220eee",
+    "u_boot": "ab2cdaf1dd94dc75d43935ec7c79bd86bfcfc167",
+    "grub": "d38d6a1a9b79427848976f53d474392cd29c2a71",
+    "linux": "d31ff64b6332333f770d8d15642198ed20489403",
+    "enablement": "eb18361654bef156f170f1a70530227757056933"
+  },
+  "wifi": {
+    "source_directory": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA",
+    "files": {
+      "sunrise/IZUBA_W7932_2.bin": "IZUBA_W7932_2.bin",
+      "sunrise/IZUBA_WIFI_MT7932_patch_mcu_1_2_hdr.bin": "IZUBA_WIFI_MT7932_patch_mcu_1_2_hdr.bin",
+      "sunrise/IZUBA_PPR_MT7932.bin": "IZUBA_PPR_MT7932.bin",
+      "sunrise/IZUBA_wifi.cfg": "IZUBA_wifi.cfg",
+      "sunrise/IZUBA_db.dat": "IZUBA_db.dat",
+      "sunrise/IZUBA_TxPwrLimit_MT79x1.dat": "IZUBA_TxPwrLimit_MT79x1.dat",
+      "sunrise/IZUBA_TxPwrLimit_SAR.dat": "IZUBA_TxPwrLimit_SAR.dat",
+      "sunrise/IZUBA_TxPwrLimit_2gCommonPath.dat": "IZUBA_TxPwrLimit_2gCommonPath.dat",
+      "sunrise/IZUBA_TxPwrLimit_SDB.dat": "IZUBA_TxPwrLimit_SDB.dat"
+    }
+  }
+}

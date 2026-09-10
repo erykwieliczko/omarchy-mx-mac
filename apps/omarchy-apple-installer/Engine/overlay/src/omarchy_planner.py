@@ -309,7 +309,7 @@ def _load_exact_json(path, keys, role):
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise PlanningError(f"invalid {role}") from error
     if role == "planning identity" and isinstance(value, dict) and "developer_model_override" in value:
-        if value["developer_model_override"] != "apple,j713":
+        if value["developer_model_override"] not in ("apple,j713", "apple,j700"):
             raise PlanningError("unknown developer model override")
         keys = keys | {"developer_model_override"}
     if (

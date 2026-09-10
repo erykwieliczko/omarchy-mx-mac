@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Seal verified firmware-free J713 images into a downloadable OS package."""
+"""Seal verified firmware-free M4 and Neo images into a downloadable OS package."""
 import argparse
 import hashlib
 import json
@@ -38,7 +38,8 @@ def verified_descriptors(images, boot, verification):
     records = {}
     for directory, receipt_name, names in (
         (images, verification / 'verification.json', ('root.img', 'boot.img', 'initramfs.img')),
-        (boot, boot / 'receipt.json', ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin')),
+        (boot, boot / 'receipt.json', tuple(f'{model}/{name}' for model in ('j713', 'j700')
+                                         for name in ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin', 'Image', 'initramfs.img'))),
     ):
         expected = json.loads(receipt_name.read_text())
         for name in names:
@@ -51,7 +52,8 @@ def verified_descriptors(images, boot, verification):
 
 def build(inputs, images, boot, verification, destination):
     verified = verified_descriptors(images, boot, verification)
-    profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
+    profiles = [load_profile(Path(__file__).parent / f'profiles/{model}.json')
+                for model in ('j713', 'j700')]
     evidence = json.loads((verification / 'firmware-free.json').read_text())
     if evidence != {'schema_version': 1, 'fresh_filesystems': True,
                     'vendor_firmware_files': [], 'vendor_firmware_packages': []}:
@@ -60,12 +62,18 @@ def build(inputs, images, boot, verification, destination):
         'root.img': images / 'root.img',
         'boot.img': images / 'boot.img',
         'omarchy-volume.icns': images / 'omarchy-volume.icns',
-        'esp/m1n1/boot.bin': boot / 'boot.bin',
-        'esp/EFI/BOOT/BOOTAA64.EFI': boot / 'BOOTAA64.EFI',
     }
+    for model in ('j713', 'j700'):
+        for relative, name in (('m1n1/boot.bin', 'boot.bin'), ('EFI/BOOT/BOOTAA64.EFI', 'BOOTAA64.EFI'),
+                               ('omarchy/Image', 'Image'), ('omarchy/initramfs.img', 'initramfs.img')):
+            files[f'esp-{model}/{relative}'] = boot / model / name
+    if verified[boot / 'j713/Image'] != verified[boot / 'j700/Image']:
+        raise ValueError('both models must use the exact same kernel')
+    if verified[boot / 'j713/initramfs.img'] != verified[boot / 'j700/initramfs.img']:
+        raise ValueError('both models must use the exact same initramfs')
     if files['root.img'].stat().st_size != 34359738368 or files['boot.img'].stat().st_size != 2147483648:
         raise ValueError('unexpected partition image sizes')
-    receipt = {'schema_version': 1, 'profile': profile, 'files': {}}
+    receipt = {'schema_version': 2, 'profiles': profiles, 'files': {}}
     # The ZIP is never exposed under its final name until streaming and CRC
     # verification finish; failed candidates remain distinguishable.
     pending = destination.with_name(destination.name + '.pending')

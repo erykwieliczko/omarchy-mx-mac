@@ -139,11 +139,11 @@ class AsahiStage1AdapterTests(unittest.TestCase):
         self.temporary.cleanup()
 
     def test_universal_metadata_fits_bounded_control_file_reader(self):
-        content = {"os_list": [{"apple_manifest_pins": "x" * 700_000}]}
+        content = {"os_list": [{"apple_manifest_pins": "x" * 800_000} for _ in range(2)]}
         self.metadata.chmod(0o600)
         self.metadata.write_text(json.dumps(content))
         self.assertEqual(load_metadata(self.metadata), content)
-        self.metadata.write_bytes(b"x" * (1024 * 1024 + 1))
+        self.metadata.write_bytes(b"x" * (4 * 1024 * 1024 + 1))
         with self.assertRaisesRegex(AsahiAdapterError, "metadata is invalid"):
             load_metadata(self.metadata)
 

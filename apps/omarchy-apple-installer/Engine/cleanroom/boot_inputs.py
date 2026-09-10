@@ -78,13 +78,16 @@ def load_profile(path):
         _require(isinstance(wifi, dict) and set(wifi) == {"source_directory", "files"},
                  "invalid Wi-Fi profile")
         _path(wifi["source_directory"])
-        _require(wifi["source_directory"].startswith("usr/share/firmware/wifi/")
-                 and isinstance(wifi["files"], dict) and len(wifi["files"]) == 6,
+        _require(((device == "apple,j700" and wifi["source_directory"] ==
+                   "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA")
+                  or (device != "apple,j700" and wifi["source_directory"].startswith("usr/share/firmware/wifi/")))
+                 and isinstance(wifi["files"], dict)
+                 and len(wifi["files"]) == (9 if device == "apple,j700" else 6),
                  "invalid Wi-Fi source closure")
         for destination, source in wifi["files"].items():
             _path(destination)
             _path(source)
-            _require(destination.startswith("brcm/") and "/" not in source,
+            _require(destination.startswith("sunrise/" if device == "apple,j700" else "brcm/") and "/" not in source,
                      "invalid Wi-Fi source mapping")
         return profile
     except (KeyError, TypeError, OSError, json.JSONDecodeError) as error:

@@ -6,6 +6,7 @@ import omarchy_planner
 
 import logging
 import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -24,7 +25,7 @@ class CleanroomRuntime(EngineRuntime):
         environment = os.environ if environment is None else environment
         runtime = super().from_environment(environment)
         override = environment.get("OMARCHY_DEVELOPER_MODEL_OVERRIDE")
-        if override is not None and override != "apple,j713":
+        if override is not None and override not in ("apple,j713", "apple,j700"):
             raise EngineRuntimeError("unknown developer model override")
         if runtime is None:
             if override is not None:
@@ -65,8 +66,18 @@ class CleanroomInstaller(InstallerMain):
     def __init__(self, version, *, engine_runtime):
         if engine_runtime is None:
             raise EngineRuntimeError("cleanroom requires an authenticated engine mode")
-        self.cleanroom_profile = load_profile("cleanroom/profiles/j713.json")
+        selected = getattr(engine_runtime, "developer_model_override", None)
+        if selected is None:
+            target = subprocess.check_output(
+                ["/usr/sbin/sysctl", "-n", "hw.targettype"], text=True).strip().lower()
+            selected = "apple,j700" if target == "j700" else "apple,j713"
+        model = selected.removeprefix("apple,")
+        self.cleanroom_profile = load_profile(f"cleanroom/profiles/{model}.json")
         super().__init__(version, engine_runtime=engine_runtime)
+        self.data["os_list"] = [template for template in self.data["os_list"]
+                                if template.get("cleanroom", {}).get("device_identifier") == selected]
+        if len(self.data["os_list"]) != 1:
+            raise BootInputError("metadata must contain one selected model template")
 
     def host_supported(self):
         host = self.sysinfo
@@ -80,9 +91,7 @@ class CleanroomInstaller(InstallerMain):
             except BootInputError as error:
                 logging.warning("Host rejected: %s", error)
                 return False
-        # Normal admission requires the qualified host baseline. An explicit
-        # developer profile override also admits a different host macOS version;
-        # a compatible Apple boot build is selected from authenticated inputs
+        # Both native models select a compatible Apple boot build from authenticated inputs
         # during preflight, independently of the Linux firmware baseline.
         # Recovery execution is exclusively the separately reviewed step2.
         # bputil requires root on current macOS. A non-privileged inventory
@@ -100,10 +109,6 @@ class CleanroomInstaller(InstallerMain):
                          self.cleanroom_profile["device_identifier"], host.product_type,
                          host.macos_ver, baseline)
             return True
-        if host.macos_ver != baseline:
-            logging.warning("Host rejected: macOS %s differs from qualified baseline %s; "
-                            "developer override is disabled", host.macos_ver, baseline)
-            return False
         return True
 
     def choose_ipsw(self, supported_fw=None):

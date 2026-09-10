@@ -1,11 +1,12 @@
 # Cleanroom boot inputs
 
 These components implement a private fresh-install path for MacBook Air M4
-J713 (Mac16,12), using the accepted cleanroom source graph. They do not enable
+J713 (Mac16,12) and MacBook Neo J700 (Mac17,5), using one shared kernel
+and the accepted cleanroom source graph. They do not enable
 any public model or claim physical qualification. Each new candidate requires owner smoke testing of installation and paired
 Recovery boot.
 
-`profiles/j713.json` pins model identity, firmware version and the accepted
+`profiles/j713.json` and `profiles/j700.json` pin model identity, firmware version and the accepted
 cleanroom source graph. It contains no machine UUIDs or host paths. The signed
 catalog and engine artifact descriptor must authenticate the profile before
 it can govern an installation.
@@ -72,7 +73,7 @@ unconfirmed, rather than recursively traversing a mounted image.
 The installer writes the converted firmware to the new ESP as `firmware.cpio`
 and `firmware.tar`. U-Boot loads GRUB from the ESP selected by m1n1's generated
 partition UUID; GRUB derives its device from `$cmdpath`, loads the firmware CPIO
-after its firmware-free embedded initramfs, and passes
+after its firmware-free initramfs loaded from the same ESP, and passes
 `firmware_class.path=/vendorfw`. The existing first-boot service imports the
 same firmware into the installed root filesystem. The distributed root, boot,
 initramfs and factory snapshot contain no vendor firmware blobs. The image
@@ -86,8 +87,8 @@ retains the temporary catalog signing key.
 
 The filesystem recipe lives in the ISO repository at `builder/cleanroom/`.
 The root image keeps Omarchy's provisioning services, replaces stock boot
-writers with `linux-omarchy-j713`, and uses a model-level image UUID. GRUB embeds
-the matching kernel and initramfs. The current filesystem recipe boots to the graphical login and Omarchy using
+writers with `linux-omarchy-mac`, and uses a model-level image UUID. The small
+GRUB EFI loads the matching kernel and initramfs from its own ESP. The current filesystem recipe boots to the graphical login and Omarchy using
 Mesa software rendering and the patched Aquamarine backend. The kernel does
 not enable the Asahi GPU driver. Kernel/boot updates require a new
 qualified complete boot bundle; the stock update-m1n1 path is removed.
@@ -96,8 +97,8 @@ Assign each candidate its own engine version and payload basename when assemblin
 
 ```sh
 python3 Engine/cleanroom/assemble_engine.py /path/to/transaction-checkout \
-  /path/to/inputs /path/to/new-engine --version v0.2.0-cleanroom.1 \
-  --payload-name omarchy-j713-private-0.9.0.zip
+  /path/to/inputs /path/to/new-engine --version v2.0.0-cleanroom.1 \
+  --payload-name omarchy-mac-2.0.0.zip
 ```
 
 The payload sealer checks the exact root/initramfs verification and boot receipts
@@ -106,9 +107,10 @@ Release assembly requires matching engine/metadata and payload receipts and the
 same component revisions throughout before signing its private catalog.
 
 Inspection may identify the model without root access to bputil. Execution
-requires positively identified macOS 26.6.2 and revalidates the complete model
-tuple in normal mode. The explicit developer profile override bypasses both
-the model match and host macOS version match, while requiring installed macOS
+requires positively identified installed macOS and revalidates the complete model
+tuple in normal mode. Both models select an SFR-compatible Apple boot build,
+independently of the Linux firmware baseline. The explicit developer profile
+override bypasses the model match while requiring installed macOS
 for privileged execution. It selects compatible Apple boot inputs from the
 authenticated catalog while preserving Linux firmware hashes, plan identity
 and partition checks. This does not establish support
@@ -157,14 +159,14 @@ Qualification must exercise the helper's `/var/db` path, not just `/Users/Shared
 ### Explicit developer model override
 
 The app starts in automatic detection mode. The developer checkbox selects a
-release profile (currently M4 MacBook Air / `apple,j713`), including on a model
+release profile (M4 MacBook Air / `apple,j713` by default, or MacBook Neo / `apple,j700`), including on a model
 that automatic detection rejects or cannot identify. Switching it clears the
 plan and its approval. The selected profile is included in the authenticated
 handoff identity and a version-2 candidate approval digest; the helper and
 engine reject mismatched selections. Automatic approvals keep their version-1
 binding unchanged.
 
-Override bypasses the hardware tuple and host macOS baseline gates. The engine preserves actual
+Override bypasses the hardware tuple gate. The engine preserves actual
 sysinfo for Apple personalization and binds Recovery's product check to the
 actual Mac. Boot mode, SFR compatibility, signed artifacts, firmware validation,
 live disk layout, existing-install refusal, and owner authorization still
@@ -320,3 +322,33 @@ checkpoint validation require the EFI file to remain absent in developer mode.
 The downloaded archive is still fully verified and unchanged. Installing a new
 EFI boot payload later can restore normal boot; this option does not prevent
 subsequent development tools or OS updates from writing that file.
+
+### Shared M4 and Neo release (2.0.0)
+
+The signed catalog has two model records sharing one engine, metadata and OS
+archive. Inventory and execution select exactly one model template; each ESP
+uses a model-specific GRUB command line. Both ESP variants contain byte-identical
+kernel and initramfs files. The combined m1n1 disk payload contains both DTBs,
+then the padded, compressed U-Boot ARM64 Image without an early terminator.
+Neo's EFI loader is bounded to 64 MiB; the kernel is therefore a separate ESP
+file rather than an embedded EFI payload. M4 retains its original kernel
+features and command line. Neo adds `idle=nop arm64.nowfxt`.
+
+Neo's nine Sunrise Wi-Fi originals come from the same 25G83 Apple system image,
+using `j700-25G83-ranges.json` (3,213,393 bytes of authenticated range downloads).
+The J700 Multitouch member is fetched separately and converted from C1FE to
+HIDF. `neo_wifi/` converts original Apple configuration and power tables into
+Linux country policies on the target; every generic output is hash-pinned.
+Policies, raw originals and firmware bytes are never release inputs.
+
+WCAL and OCA2 calibration comes from the target's live IORegistry, bound to its
+platform serial and validated for structure/checksums. It is never copied from
+a build machine or substituted from another Mac. Normal Neo admission requires
+these files; explicit YOLO mode may omit unavailable optional firmware or
+calibration. Older compatible Recovery builds do not change the fixed Linux
+firmware baseline. Native range extraction and touchpad conversion were tested
+on Neo; paired Recovery and Linux boot require separate physical qualification.
+
+The source repositories for the shared boot stack are
+`aurora-silicon/cleanroom-linux`, `aurora-silicon/m1n1-cleanroom` and
+`aurora-silicon/u-boot-cleanroom`. Exact revisions are pinned in both profiles.

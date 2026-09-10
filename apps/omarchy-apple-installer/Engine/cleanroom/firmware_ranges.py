@@ -54,7 +54,7 @@ def load_recipe(lock, profile, profile_directory):
         if (source is None or name in observed
                 or item.get("source") != profile["wifi"]["source_directory"] + "/" + source
                 or item.get("transform") != ("nvram" if source.endswith(".txt") else "identity")
-                or item.get("sha256") != lock["linux_firmware"][name]):
+                or item.get("sha256") != lock.get("wifi_source_hashes", lock["linux_firmware"])[name]):
             raise BootInputError("firmware range file differs from model source or final hash")
         observed[name] = item["sha256"]
     return path
@@ -91,8 +91,8 @@ def extract_wifi(lock, profile, profile_directory, decoder, destination, *, run=
     if actual != expected:
         raise BootInputError("native range firmware inventory mismatch")
     for name in sorted(expected):
-        data = regular_bytes(destination / name)
-        if hashlib.sha256(data).hexdigest() != lock["linux_firmware"][name]:
+        data = regular_bytes(destination / name, 32 * 1024 * 1024 if profile["device_identifier"] == "apple,j700" else 4 * 1024 * 1024)
+        if hashlib.sha256(data).hexdigest() != lock.get("wifi_source_hashes", lock["linux_firmware"])[name]:
             raise BootInputError("range firmware differs from admitted Apple inputs")
         result.append((name, FWFile(profile["wifi"]["files"][name], data)))
     progress("All range-extracted Wi-Fi firmware hashes verified")

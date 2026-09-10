@@ -16,7 +16,7 @@ from apple_inputs import AppleWorkspace, load_apple_inputs, mounted_system_image
 from apple_ranges import selected_archive, selected_files
 from boot_builds import load_boot_builds, select_boot_build, verify_boot_version
 from boot_space import check_prepared_space, check_installed_space, RECOVERY_FREE_BYTES
-from firmware import collect_macos_wifi
+from firmware import collect_macos_wifi, convert_neo_wifi, convert_neo_touchpad, collect_neo_calibration
 from firmware_ranges import extract_wifi, FirmwareRangeFallback, FirmwareRangeExecutionError
 import osinstall
 import stub
@@ -62,7 +62,9 @@ def file_descriptor(path):
 
 
 def cleanroom_spec(metadata, profile):
-    templates = metadata.get("os_list", [])
+    templates = [template for template in metadata.get("os_list", [])
+                 if isinstance(template, dict) and template.get("cleanroom", {}).get("device_identifier")
+                 == profile["device_identifier"]]
     if (not isinstance(templates, list) or len(templates) != 1
             or not isinstance(templates[0], dict)):
         raise BootInputError("cleanroom metadata must have exactly one OS")
@@ -78,7 +80,8 @@ def cleanroom_spec(metadata, profile):
             or spec["sources"] != profile["sources"]):
         raise BootInputError("cleanroom metadata differs from engine profile")
     expected_apple = load_apple_inputs(
-        Path(__file__).parent / "cleanroom/profiles/j713-apple-inputs.json", profile)
+        Path(__file__).parent / ("cleanroom/profiles/" +
+                                profile["device_identifier"].removeprefix("apple,") + "-apple-inputs.json"), profile)
     if (spec["apple_inputs"] != expected_apple
             or spec["linux_firmware"] != expected_apple["linux_firmware"]):
         raise BootInputError("Apple inputs differ from the bundled source lock")
@@ -96,11 +99,11 @@ def cleanroom_spec(metadata, profile):
                 or any(char not in "0123456789abcdef" for char in descriptor["sha256"])):
             raise BootInputError("invalid cleanroom " + role + " descriptor")
     firmware = spec["linux_firmware"]
-    if not isinstance(firmware, dict) or set(firmware) != FIRMWARE_NAMES:
+    if not isinstance(firmware, dict) or not firmware or (profile["device_identifier"] == "apple,j713" and set(firmware) != FIRMWARE_NAMES):
         raise BootInputError("cleanroom Linux firmware inventory is required")
     for name, digest in firmware.items():
         _path(name)
-        if (not isinstance(name, str) or not name.startswith(("apple/", "brcm/"))
+        if (not isinstance(name, str) or not name.startswith(("apple/", "brcm/", "mediatek/mt7932/"))
                 or ".." in Path(name).parts or "\\" in name
                 or not isinstance(digest, str) or len(digest) != 64
                 or any(char not in "0123456789abcdef" for char in digest)):
@@ -167,6 +170,13 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         self.spec = None
         self.workspace = None
 
+    def _load_metadata(self):
+        metadata = super()._load_metadata()
+        metadata["os_list"] = [template for template in metadata["os_list"]
+                               if template.get("cleanroom", {}).get("device_identifier")
+                               == self.profile["device_identifier"]]
+        return metadata
+
     @property
     def developer_override_enabled(self):
         runtime = getattr(self.installer, "engine_runtime", None)
@@ -188,7 +198,7 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
         _, builds = load_boot_builds(Path(__file__).parent / "cleanroom/profiles",
                                     self.spec["apple_inputs"], self.profile)
         self.boot_entry, self.boot_inputs, self.boot_profile = select_boot_build(
-            builds, self.profile, host, allow_fallback=self.developer_override_enabled)
+            builds, self.profile, host, allow_fallback=True)
         progress("Apple boot identity: %s (%s), build %s; SFR: %s; Linux profile: %s" % (
             self.boot_profile["device_class"], self.boot_profile["product_type"],
             self.boot_profile["firmware"]["build"], host.sfr_full_ver,
@@ -232,6 +242,17 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                 else:
                     raise
         same_build = self.boot_profile["firmware"] == self.profile["firmware"]
+        if wifi is None and not same_build:
+            # A compatible older Recovery is not the Linux firmware baseline.
+            # Keep the fallback's OS image and manifest tied to the native lock.
+            native_restore = selected_archive(
+                self.spec["apple_inputs"], self.profile, work / "LinuxFirmware.ipsw",
+                cache_directory=cache, include_system=True)
+            with zipfile.ZipFile(native_restore) as native_archive:
+                with mounted_system_image(native_archive, self.spec["apple_inputs"], self.profile,
+                                          work, self.verifier_path) as system_root:
+                    wifi = collect_macos_wifi(self.profile, system_root)
+            native_restore.unlink()
         restore = selected_archive(self.boot_inputs, self.boot_profile, work / "Apple.ipsw",
                                    cache_directory=cache, include_system=wifi is None,
                                    linux_profile=self.boot_profile if self.developer_override_enabled else self.profile)
@@ -279,6 +300,15 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
 
     def _collect_linux_firmware(self, archive, work, wifi, *, touchpad_path=None):
         firmware = list(wifi)
+        if self.profile["device_identifier"] == "apple,j700" and firmware:
+            try:
+                progress("Preparing Neo Wi-Fi country policies from Apple originals")
+                firmware = convert_neo_wifi(firmware, self.spec["apple_inputs"], work / "neo-wifi")
+            except (BootInputError, OSError, ValueError) as error:
+                if not self.developer_override_enabled:
+                    raise
+                progress("YOLO: optional Neo Wi-Fi policy unavailable; skipping: " + str(error))
+                firmware = []
         if self.linux_selection is not None or touchpad_path is not None:
             try:
                 fud = work / "fud" / self.profile["device_identifier"].removeprefix("apple,")
@@ -286,7 +316,10 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
                 path = touchpad_path or self.linux_selection["manifest"]["BuildIdentities"][0]["Manifest"]["Multitouch"]["Info"]["Path"]
                 with archive.open(path) as reader, (fud / "Multitouch.im4p").open("xb") as writer:
                     shutil.copyfileobj(reader, writer)
-                firmware.extend(MultitouchFWCollection(str(fud.parent)).files())
+                if self.profile["device_identifier"] == "apple,j700":
+                    firmware.extend(convert_neo_touchpad((fud / "Multitouch.im4p").read_bytes()))
+                else:
+                    firmware.extend(MultitouchFWCollection(str(fud.parent)).files())
             except (OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
                 if not self.developer_override_enabled:
                     raise
@@ -306,6 +339,14 @@ class CleanroomStage1Adapter(AsahiStage1Adapter):
             if not self.developer_override_enabled:
                 raise BootInputError("Linux payload firmware differs from admitted Apple inputs")
             progress("YOLO: continuing without optional firmware: " + ", ".join(sorted(set(expected) - set(selected))))
+        if (self.profile["device_identifier"] == "apple,j700"
+                and self.boot_profile["device_identifier"] == "apple,j700"):
+            try:
+                selected.update(collect_neo_calibration())
+            except (BootInputError, OSError, ValueError, subprocess.CalledProcessError) as error:
+                if not self.developer_override_enabled:
+                    raise
+                progress("YOLO: optional target Wi-Fi calibration unavailable; skipping: " + str(error))
         return sorted(selected.items())
 
     def _make_stub(self, *args):

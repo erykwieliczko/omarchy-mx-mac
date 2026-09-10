@@ -47,12 +47,16 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     if type(execution_scratch_bytes) is not int or not 0 < execution_scratch_bytes < 2**64:
         raise ValueError("a qualified positive execution scratch budget is required")
     templates = json.loads((engine / 'installer_data.json').read_text()).get('os_list', [])
-    if len(templates) != 1 or templates[0].get('package') != payload.name:
+    if len(templates) != 2 or any(t.get('package') != payload.name for t in templates):
         raise ValueError("metadata package does not match payload filename")
     apple = templates[0].get('cleanroom', {}).get('apple_inputs')
-    if apple is not None and execution_scratch_bytes < apple['execution_scratch_bytes']:
+    if any(t.get('cleanroom', {}).get('apple_inputs') is not None
+           and execution_scratch_bytes < t['cleanroom']['apple_inputs']['execution_scratch_bytes']
+           for t in templates):
         raise ValueError('execution scratch budget does not cover retained Apple inputs')
-    profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
+    profiles = [load_profile(Path(__file__).parent / f'profiles/{model}.json')
+                for model in ('j713', 'j700')]
+    profile = profiles[0]
     now = datetime.now(timezone.utc).replace(microsecond=0)
     engine_receipt = json.loads((engine / 'receipt.json').read_text())
     for role, path in (('engine', engine / ('installer-' + engine_receipt['version'] + '.tar.gz')),
@@ -74,8 +78,10 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     payload_receipt = json.loads(payload.with_suffix('.receipt.json').read_text())
     if descriptor(payload) != payload_receipt.get('payload'):
         raise ValueError('payload receipt mismatch')
-    if (payload_receipt.get('profile') != profile
-            or templates[0].get('cleanroom', {}).get('sources') != profile['sources']):
+    if (payload_receipt.get('profiles') != profiles
+            or any(t.get('cleanroom', {}).get('sources') != p['sources']
+                   or t.get('cleanroom', {}).get('device_identifier') != p['device_identifier']
+                   for t, p in zip(templates, profiles))):
         raise ValueError('release component profile mismatch')
     destination.mkdir(exist_ok=False)
     assets = destination / 'Assets'
@@ -104,7 +110,8 @@ def build(engine, payload, destination, artifact_base_url=None, bundle_payload=F
     catalog = {'schemaVersion': 4, 'sequence': int(time.time()),
                'issuedAt': (now - timedelta(minutes=5)).isoformat().replace('+00:00', 'Z'),
                'expiresAt': (now + timedelta(days=30)).isoformat().replace('+00:00', 'Z'),
-               'models': [model]}
+               'models': [{**model, 'deviceIdentifier': p['device_identifier'],
+                           'componentRevisions': p['sources']} for p in profiles]}
     data = (json.dumps(catalog, sort_keys=True, separators=(',', ':')) + '\n').encode()
     key = Ed25519PrivateKey.generate()
     public = key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)

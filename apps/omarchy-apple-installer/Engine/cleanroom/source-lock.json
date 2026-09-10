@@ -10,31 +10,47 @@
   "files": [
     {
       "path": "cleanroom/README.md",
-      "sha256": "be06961224cd59d5488b6b963644c241248d41eb0c552f1153402514252b9eff"
+      "sha256": "424be270aef2e43eb9c36755813daaacce56dc7afc883c0405d906935660a6ac"
+    },
+    {
+      "path": "cleanroom/THIRD_PARTY_NOTICES.txt",
+      "sha256": "a84d8d91e98aa0c32d94cc4196e22ec523f414dc346db08d007af78efb0a8721"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "7267e91fcbaad4e8110d00c5eb7763ff2287a41b0330aa65927cf56215bcae3e"
+      "sha256": "ae1e915d2a8194f199be29eab02a82e00d897278ec216d1f11fc61eb46477570"
     },
     {
       "path": "cleanroom/apple_inputs.py",
       "sha256": "d37920458dfc0873b806bb86dd9a63df2149abd0862f36294b35380df5efde37"
     },
     {
+      "path": "cleanroom/apple_ranges.py",
+      "sha256": "132169e072d235861f3e4b07ed96b60a8608905705aba8cccd6ed6155c9844d9"
+    },
+    {
       "path": "cleanroom/assemble_engine.py",
-      "sha256": "2fdf9936196feb1aa0bee1636da32512b490f9ee84965ef52baab7b3e5d1681d"
+      "sha256": "f24da846f3f89c74335c3543196b544f268bcf76d7f6db3c3e5dfc5c9f952d9a"
+    },
+    {
+      "path": "cleanroom/boot_builds.py",
+      "sha256": "1b7898a55c213784fd3bcdd1524fa659de1c372ca4d2da5c29e624e7c407d10b"
     },
     {
       "path": "cleanroom/boot_inputs.py",
-      "sha256": "f6ca4c86dcf4807b4da62933d812d4854f7e0c122e4c7433727b68cd73f2d747"
+      "sha256": "94780434cb94477ebae8c01a8c2637bb22b4579377e04d35beba3a75bbd4e44b"
+    },
+    {
+      "path": "cleanroom/boot_space.py",
+      "sha256": "ee9e62b3d70d611243c821b45b21fa0edfae0f42fb50961107173a297f7763a5"
     },
     {
       "path": "cleanroom/build_payload.py",
-      "sha256": "af57f97bfc95379625ef793004f43ead69e8b2be04732a030f4651a231084d7c"
+      "sha256": "d52625158243b60933bbbe5039c8ee920c6102f4de0ad0699a8d411290e8a0f9"
     },
     {
       "path": "cleanroom/build_release.py",
-      "sha256": "5ed606a1b65b054258d9985f3fd12d5e0230e1929f31905c3497719e4c78c425"
+      "sha256": "b96daab498feb628d991c8bd7049b3cc9d07a3a57c95394f0092928b840d1eaf"
     },
     {
       "path": "cleanroom/build_restore_package.py",
@@ -42,15 +58,51 @@
     },
     {
       "path": "cleanroom/firmware.py",
-      "sha256": "ee38fa0b76da26e63a5d3e5e6a5325c7c45f0cd5b5200df4969bdc1a2aa8c889"
+      "sha256": "4ec2167dbe559a60559ed92643fdf69b95c1befa5a14e8b14dc3cce3e5365654"
+    },
+    {
+      "path": "cleanroom/firmware_ranges.py",
+      "sha256": "26f81fc0f876a5be07467d2570ca832b73d485527b9b0c7155f09e835d2794be"
     },
     {
       "path": "cleanroom/main.py",
-      "sha256": "328fb315a019e8317314740f6a60fce6b29a34de39fb43844539d136c555786f"
+      "sha256": "c483f94c9f5cbd86621ddabe5619c1739908f421b98c96d1c6e4567716a069fb"
     },
     {
       "path": "cleanroom/native-artifacts.json",
-      "sha256": "61924062d14c641bdd6f329a0e1abcd5b69ee81a63f9b5887aff6bb0304d7869"
+      "sha256": "6c4bfd2c7ba1e4acb0244af222a2bf943961a147f900219caed3bb9bc285e0a5"
+    },
+    {
+      "path": "cleanroom/neo_wifi/COPYING",
+      "sha256": "8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa"
+    },
+    {
+      "path": "cleanroom/neo_wifi/README.md",
+      "sha256": "5b9beedf14ca52e6ab6a89bd71d511065f7a5bf783368765a765b9d01ef7bebe"
+    },
+    {
+      "path": "cleanroom/neo_wifi/__init__.py",
+      "sha256": "9739ce9ff07954c6d0d19109b40c904608b1c8861574b32bac906423d8e222c8"
+    },
+    {
+      "path": "cleanroom/neo_wifi/j700_wifi_artifacts.py",
+      "sha256": "f75e1700ee1f6c1a5ee6a3004b08250c72cb9b1f98ddb0d5f9ecc150c2bd38ce"
+    },
+    {
+      "path": "cleanroom/neo_wifi/j700_wifi_boot_policy.py",
+      "sha256": "99342ce79f91f77ea5752857fb16f0651a10948dc1f05d1c65e9f3bf3e674283"
+    },
+    {
+      "path": "cleanroom/neo_wifi/j700_wifi_host_model.py",
+      "sha256": "2f19b0b32feb5e17df966d6795bffe391d1329494bb26aeb0340d2f394a6864f"
+    },
+    {
+      "path": "cleanroom/neo_wifi/j700_wifi_policy.py",
+      "sha256": "3da890ee159296e3820236e72327998407364354b3486a97b990059d2fcc285f"
+    },
+    {
+      "path": "cleanroom/neo_wifi/j700_wifi_startup.py",
+      "sha256": "838cdfd9dfa6abd7a84b1b480e9af397b218ac999b862bee039445f738b4a3aa"
     },
     {
       "path": "cleanroom/patches/0001-boot-factories.patch",
@@ -61,12 +113,44 @@
       "sha256": "67f323af0489a8a8f92a8748acce866d845e7891933482c2022f9bf3498b3766"
     },
     {
+      "path": "cleanroom/pin_apple_boot.py",
+      "sha256": "c8162261abeb76176f459e9a502ad30d350a0c32681c168dd12f3adec43e3da6"
+    },
+    {
+      "path": "cleanroom/pin_apple_members.py",
+      "sha256": "ecb4d78f24307d45e76b8e1ecbbd8343ff83ebfbb862b6baa4394aeb766704db"
+    },
+    {
+      "path": "cleanroom/profiles/apple-boot-25F84.json",
+      "sha256": "4eeb5708adca159720bf3312cb62f2abafc73dac52f93486057218e0b6fabb05"
+    },
+    {
+      "path": "cleanroom/profiles/apple-boot-builds.json",
+      "sha256": "d05718863a40169ccdf41dcd4cde5e33b028d04b3b34c7adfa83475bc61e60c2"
+    },
+    {
+      "path": "cleanroom/profiles/j700-25G83-ranges.json",
+      "sha256": "801a11d2698350aaac207a7cbedddcc8d522393a7b70894ded4e7923592b6820"
+    },
+    {
+      "path": "cleanroom/profiles/j700-apple-inputs.json",
+      "sha256": "cb3742e0104efe1df27521858b28550f53b6620ff1db5a4a9075fb74c1d8f0b6"
+    },
+    {
+      "path": "cleanroom/profiles/j700.json",
+      "sha256": "3d4d80dee9c86973a2057fbc0ae4e9515ddf78f3b420447dd9a5c2a5e91672d2"
+    },
+    {
+      "path": "cleanroom/profiles/j713-25G83-ranges.json",
+      "sha256": "50acce0a4b6244cea0ffcb305cc66ed095663990db379be5d812c1971138fa60"
+    },
+    {
       "path": "cleanroom/profiles/j713-apple-inputs.json",
       "sha256": "69dbca136146517f4b546d94ac5cf06aa749a3c2934684c5a7da1144f9606545"
     },
     {
       "path": "cleanroom/profiles/j713.json",
-      "sha256": "62372d32c449602228d4b8ebb48fe8d129256998e27e7c5358eb81b1e7f792ed"
+      "sha256": "b2679d21d281de7954d2817f3b62be276dd6fd8ad605fb07c67116a0e2e11eb4"
     },
     {
       "path": "cleanroom/recovery.py",
@@ -77,6 +161,10 @@
       "sha256": "c800db76e4310b6bd509ff9536619942b9304527367c80df7ff78e85c6d63ca0"
     },
     {
+      "path": "cleanroom/restore-image/go.sum",
+      "sha256": "f013f2c889dd415bb48f1cce818aa30187d227cf81f3976375ddcfedd41698e8"
+    },
+    {
       "path": "cleanroom/restore-image/main.go",
       "sha256": "456f9b9b01dfff6bbeef7170e33bf7d64eb7900a4a2807bc280620567bba9611"
     },
@@ -85,8 +173,16 @@
       "sha256": "eaab80329be605ee91df8cf4d34916ae881aaca40dd970e32aa9c122a0cc9cd1"
     },
     {
+      "path": "cleanroom/restore-image/ranges.go",
+      "sha256": "dc860e03d73c608f037aefbcde7eb6781a26e547000edb56cd7fde8cfadc67e8"
+    },
+    {
+      "path": "cleanroom/restore-image/ranges_test.go",
+      "sha256": "5697dfdb8fbe7f7f2d15b544d483fd612db4f9932d4c05d97451cc61a55abc8d"
+    },
+    {
       "path": "cleanroom/stage_sources.py",
-      "sha256": "6b931de9f5878f2614bf0b76b6023ab1922d468aa366c978cb34c38d93d3b68e"
+      "sha256": "50418b1ac963adacd858ab411bca296ff337f9a987966ab432cf8a322e21a784"
     },
     {
       "path": "cleanroom/step2.sh",
@@ -94,7 +190,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "1b51653b25f175d4765c315fe9f9cce90c9aefafca200224f81da604c13816e7"
+      "sha256": "323a884ec46e017d4ef04a8866aae93a8c8159c0c09d8508cde7b982059457ce"
     },
     {
       "path": "installer_data.json",
@@ -114,7 +210,7 @@
     },
     {
       "path": "overlay/src/omarchy_asahi.py",
-      "sha256": "c24be0a5254870cefdbd0d175f7f9e184c535efe2278ac21416c114de104496a"
+      "sha256": "48e1853f59d43c62649590dfe2af10a1de7f0e9b80edcc19e2a604ac98fe582e"
     },
     {
       "path": "overlay/src/omarchy_contract.py",
@@ -122,11 +218,11 @@
     },
     {
       "path": "overlay/src/omarchy_execution.py",
-      "sha256": "40102ec1c08adfc57c2324f4353f1d05e6901007992b8832a4b0835d5c6976bd"
+      "sha256": "ea2850974ec427d7d30ac20f0edd5559c58f94cfbbce70f55a73c63a2f2dfb6c"
     },
     {
       "path": "overlay/src/omarchy_planner.py",
-      "sha256": "249e905039d1f3a160f0dde8a0d968b5d944777b798978e324c2e16f52f611e0"
+      "sha256": "2733c05d0a1bb527aa813c385568e95242caf1983183ea461a5e5d2399f7a194"
     },
     {
       "path": "overlay/src/omarchy_repair.py",
@@ -142,7 +238,7 @@
     },
     {
       "path": "overlay/tests/test_omarchy_asahi.py",
-      "sha256": "7e70b33b862c1216e2b73f6f6d76c4f72e5ce5bac4818d5bff8958e0c8181660"
+      "sha256": "980f169627e67fe421245a2517dffc708d1cf962298586bb6c13d4180fea29da"
     },
     {
       "path": "overlay/tests/test_omarchy_contract.py",
@@ -178,63 +274,11 @@
     },
     {
       "path": "source-lock.json",
-      "sha256": "8b063957b3da9adecd8a48b4594d07599e73f3c657b7c33f966d0f9f50b7ba16"
-    },
-    {
-      "path": "cleanroom/apple_ranges.py",
-      "sha256": "132169e072d235861f3e4b07ed96b60a8608905705aba8cccd6ed6155c9844d9"
-    },
-    {
-      "path": "cleanroom/pin_apple_members.py",
-      "sha256": "ecb4d78f24307d45e76b8e1ecbbd8343ff83ebfbb862b6baa4394aeb766704db"
-    },
-    {
-      "path": "cleanroom/firmware_ranges.py",
-      "sha256": "c519f196f9e11b5f0bf52ac58c6509a41d59fa1432d5da628f7b53986f2850be"
-    },
-    {
-      "path": "cleanroom/profiles/j713-25G83-ranges.json",
-      "sha256": "50acce0a4b6244cea0ffcb305cc66ed095663990db379be5d812c1971138fa60"
-    },
-    {
-      "path": "cleanroom/restore-image/ranges.go",
-      "sha256": "dc860e03d73c608f037aefbcde7eb6781a26e547000edb56cd7fde8cfadc67e8"
-    },
-    {
-      "path": "cleanroom/restore-image/ranges_test.go",
-      "sha256": "5697dfdb8fbe7f7f2d15b544d483fd612db4f9932d4c05d97451cc61a55abc8d"
-    },
-    {
-      "path": "cleanroom/restore-image/go.sum",
-      "sha256": "f013f2c889dd415bb48f1cce818aa30187d227cf81f3976375ddcfedd41698e8"
-    },
-    {
-      "path": "cleanroom/THIRD_PARTY_NOTICES.txt",
-      "sha256": "3b4ad4dd2666fb8e02d34aca0f1af5689a031841d3546e0203472fc9d8faf0a1"
-    },
-    {
-      "path": "cleanroom/boot_builds.py",
-      "sha256": "96edb39626c23a090e143366fb1b02251663629190d76ac0e32f458af85c3faf"
-    },
-    {
-      "path": "cleanroom/pin_apple_boot.py",
-      "sha256": "c8162261abeb76176f459e9a502ad30d350a0c32681c168dd12f3adec43e3da6"
-    },
-    {
-      "path": "cleanroom/profiles/apple-boot-25F84.json",
-      "sha256": "4eeb5708adca159720bf3312cb62f2abafc73dac52f93486057218e0b6fabb05"
-    },
-    {
-      "path": "cleanroom/profiles/apple-boot-builds.json",
-      "sha256": "d05718863a40169ccdf41dcd4cde5e33b028d04b3b34c7adfa83475bc61e60c2"
+      "sha256": "64cd4ff6138b97e774b97c6bc3341ccdb2deaba98f7bb35213047746fa0e58ac"
     },
     {
       "path": "tests/test_cleanroom_boot_builds.py",
       "sha256": "d4bf5e01bc3e7e19e4ae2fea21299ca7615f4fb0a86e4d8f2747f0e165a5d0cf"
-    },
-    {
-      "path": "cleanroom/boot_space.py",
-      "sha256": "ee9e62b3d70d611243c821b45b21fa0edfae0f42fb50961107173a297f7763a5"
     },
     {
       "path": "tests/test_cleanroom_boot_space.py",

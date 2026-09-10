@@ -31,6 +31,30 @@ class CleanroomAdapterTests(unittest.TestCase):
     def setUp(self):
         self.profile = load_profile(PROFILE_PATH)
 
+    def test_both_models_select_one_template_before_inventory(self):
+        metadata = {"os_list": [
+            {"cleanroom": {"device_identifier": "apple,j713"}},
+            {"cleanroom": {"device_identifier": "apple,j700"}},
+        ]}
+
+        def parent(instance, version, engine_runtime):
+            instance.data = copy.deepcopy(metadata)
+
+        for target, override, expected in (
+            ("J713", None, "apple,j713"), ("J700", None, "apple,j700"),
+            ("J700", "apple,j713", "apple,j713"), ("J713", "apple,j700", "apple,j700"),
+        ):
+            runtime = SimpleNamespace(developer_model_override=override)
+            with self.subTest(target=target, override=override), \
+                    patch("main.InstallerMain.__init__", parent), \
+                    patch("main.subprocess.check_output", return_value=target), \
+                    patch("main.load_profile", side_effect=lambda path: load_profile(
+                        PROFILE_PATH.parent / Path(path).name)):
+                installer = CleanroomInstaller("v2.0.0", engine_runtime=runtime)
+                self.assertEqual(installer.cleanroom_profile["device_identifier"], expected)
+                self.assertEqual(installer.data["os_list"], [{"cleanroom": {"device_identifier": expected}}])
+        self.assertEqual(len(metadata["os_list"]), 2)
+
     def test_cleanroom_planner_and_writer_receive_the_same_enlarged_stub(self):
         for mode in ("inspect", "plan", "install", "retry-recovery-authorization"):
             with tempfile.TemporaryDirectory() as directory:
@@ -51,7 +75,7 @@ class CleanroomAdapterTests(unittest.TestCase):
                 space.assert_called_once_with("/Volumes/Omarchy")
                 parent.assert_not_called()
 
-    def test_model_gate_requires_complete_identity_and_macos_baseline(self):
+    def test_model_gate_requires_complete_identity_and_installed_macos(self):
         installer = object.__new__(CleanroomInstaller)
         installer.cleanroom_profile = self.profile
         installer.engine_runtime = SimpleNamespace(mode="install")
@@ -62,7 +86,7 @@ class CleanroomAdapterTests(unittest.TestCase):
         self.assertTrue(installer.host_supported())
         for key, value in (("product_type", "Mac16,1"), ("device_class", "j614sap"),
                            ("board_id", 45), ("chip_id", 0x8133),
-                           ("boot_mode", "one true recoveryOS"), ("macos_ver", "26.6.1")):
+                           ("boot_mode", "one true recoveryOS")):
             with self.subTest(key=key):
                 installer.sysinfo = SimpleNamespace(**(values | {key: value}))
                 self.assertFalse(installer.host_supported())

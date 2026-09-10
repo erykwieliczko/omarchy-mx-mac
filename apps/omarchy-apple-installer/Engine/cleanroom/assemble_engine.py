@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Assemble locked cleanroom sources with the admitted macOS Python runtime."""
 import argparse
+import copy
 import gzip
 import hashlib
 import json
@@ -33,19 +34,23 @@ def assemble(checkout, inputs, destination, version, payload_name, development_a
         if descriptor(inputs / name) != expected:
             raise ValueError('native engine input differs from admission: ' + name)
     destination.mkdir(exist_ok=False)
-    profile = load_profile(Path(__file__).parent / 'profiles/j713.json')
-    metadata = json.loads((Path(__file__).parent.parent / 'installer_data.json').read_text())
-    template = metadata['os_list'][0]
-    template['package'] = payload_name
-    template['supported_fw'] = [profile['firmware']['version']]
-    apple = load_apple_inputs(Path(__file__).parent / 'profiles/j713-apple-inputs.json', profile)
-    boot_catalog, _ = load_boot_builds(Path(__file__).parent / 'profiles', apple, profile)
-    template['cleanroom'] = {
-        'schema_version': 2, 'device_identifier': profile['device_identifier'],
-        'firmware_build': profile['firmware']['build'], 'sources': profile['sources'],
-        'apple_inputs': apple, 'apple_boot_builds': boot_catalog,
-        'stage1': descriptor(inputs / 'm1n1-stage1-base.bin'), 'linux_firmware': apple['linux_firmware'],
-    }
+    base = json.loads((Path(__file__).parent.parent / 'installer_data.json').read_text())['os_list'][0]
+    metadata = {'os_list': []}
+    for model in ('j713', 'j700'):
+        profile = load_profile(Path(__file__).parent / f'profiles/{model}.json')
+        template = copy.deepcopy(base)
+        template['package'] = payload_name
+        template['supported_fw'] = [profile['firmware']['version']]
+        template['partitions'][0]['source'] = 'esp-' + model
+        apple = load_apple_inputs(Path(__file__).parent / f'profiles/{model}-apple-inputs.json', profile)
+        boot_catalog, _ = load_boot_builds(Path(__file__).parent / 'profiles', apple, profile)
+        template['cleanroom'] = {
+            'schema_version': 2, 'device_identifier': profile['device_identifier'],
+            'firmware_build': profile['firmware']['build'], 'sources': profile['sources'],
+            'apple_inputs': apple, 'apple_boot_builds': boot_catalog,
+            'stage1': descriptor(inputs / 'm1n1-stage1-base.bin'), 'linux_firmware': apple['linux_firmware'],
+        }
+        metadata['os_list'].append(template)
     metadata_path = destination / 'installer_data.json'
     metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')
     runtime = inputs / 'installer-runtime-source.tar.gz'

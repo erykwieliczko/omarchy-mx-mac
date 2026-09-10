@@ -30,3 +30,8 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
+
+Neo Wi-Fi conversion tools: linux-enablement-mac-alpha revision
+eb18361654bef156f170f1a70530227757056933, GPL version 2.
+Source provenance and complete license are included in neo_wifi/README.md
+and neo_wifi/COPYING. No Apple firmware or target calibration is included.

@@ -43,7 +43,9 @@ def load_boot_builds(directory, native_lock, profile):
             raise BootInputError("invalid Apple boot firmware version")
         restore_version(entry["restore_version"])
         if name == "j713-apple-inputs.json":
-            if lock != native_lock or firmware != profile["firmware"]:
+            if (any(lock.get(key) != native_lock.get(key) for key in
+                    ("ipsw", "members", "system_image", "boot_identities"))
+                    or firmware != profile["firmware"]):
                 raise BootInputError("native Apple boot inputs differ from Linux baseline")
         elif (lock.get("schema_version") != 1 or lock.get("kind") != "apple-boot-only"
                 or lock.get("firmware") != firmware or lock.get("restore_version") != entry["restore_version"]

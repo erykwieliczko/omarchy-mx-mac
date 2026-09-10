@@ -18,10 +18,13 @@ class DownloadReleaseTests(unittest.TestCase):
     def candidate(self, root):
         engine = root / 'engine'
         engine.mkdir()
-        profile = build_release.load_profile(CLEANROOM / 'profiles/j713.json')
+        profiles = [build_release.load_profile(CLEANROOM / f'profiles/{model}.json')
+                    for model in ('j713', 'j700')]
         (engine / 'installer-v-test.tar.gz').write_bytes(b'engine')
         (engine / 'installer_data.json').write_text(json.dumps({'os_list': [{
-            'package': 'payload.zip', 'cleanroom': {'sources': profile['sources']}}]}))
+            'package': 'payload.zip', 'cleanroom': {'sources': profile['sources'],
+                                                  'device_identifier': profile['device_identifier']}}
+            for profile in profiles]}))
         (engine / 'receipt.json').write_text(json.dumps({
             'version': 'v-test',
             'engine': build_release.descriptor(engine / 'installer-v-test.tar.gz'),
@@ -29,7 +32,7 @@ class DownloadReleaseTests(unittest.TestCase):
         payload = root / 'payload.zip'
         payload.write_bytes(b'os payload')
         payload.with_suffix('.receipt.json').write_text(json.dumps({
-            'payload': build_release.descriptor(payload), 'profile': profile}))
+            'payload': build_release.descriptor(payload), 'profiles': profiles}))
         return engine, payload
 
     def test_release_only_bundles_engine_and_keeps_payload_identity(self):
@@ -41,7 +44,11 @@ class DownloadReleaseTests(unittest.TestCase):
                 build_release.build(engine, payload, output, 'https://downloads.example.test/m4',
                                     execution_scratch_bytes=8_589_934_592)
             self.assertEqual([p.name for p in (output / 'Assets').iterdir()], ['installer-v-test.tar.gz'])
-            model = json.loads((output / 'catalog.json').read_text())['models'][0]
+            models = json.loads((output / 'catalog.json').read_text())['models']
+            self.assertEqual([m['deviceIdentifier'] for m in models], ['apple,j713', 'apple,j700'])
+            self.assertEqual(models[0]['payloadDigest'], models[1]['payloadDigest'])
+            self.assertEqual(models[0]['payloadArtifact'], models[1]['payloadArtifact'])
+            model = models[0]
             self.assertEqual(model['executionScratchBytes'], 8_589_934_592)
             self.assertEqual(model['payloadDigest'], build_release.digest(payload))
             self.assertEqual(model['payloadArtifact']['sourceURL'], 'https://downloads.example.test/m4/payload.zip')
@@ -94,7 +101,7 @@ class DownloadReleaseTests(unittest.TestCase):
                 if changed == 'profile':
                     receipt = payload.with_suffix('.receipt.json')
                     record = json.loads(receipt.read_text())
-                    record['profile']['sources']['linux'] = '0' * 40
+                    record['profiles'][0]['sources']['linux'] = '0' * 40
                     receipt.write_text(json.dumps(record))
                 else:
                     path = {'engine': engine / 'installer-v-test.tar.gz',

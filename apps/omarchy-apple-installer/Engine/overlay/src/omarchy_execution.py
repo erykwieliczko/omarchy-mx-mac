@@ -188,7 +188,7 @@ def _load_exact_json(path, keys, role):
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ExecutionAdmissionError(f"invalid {role}") from error
     if role == "identity" and isinstance(value, dict) and "developer_model_override" in value:
-        if value["developer_model_override"] != "apple,j713":
+        if value["developer_model_override"] not in ("apple,j713", "apple,j700"):
             raise ExecutionAdmissionError("unknown developer model override")
         keys = keys | {"developer_model_override"}
     if role == "identity" and isinstance(value, dict) and "skip_boot_bin" in value:

@@ -23,7 +23,8 @@ import omarchy_planner
 
 TARGET = "apple-silicon-full-os"
 MAXIMUM_PASSWORD_BYTES = 1_024
-MAXIMUM_METADATA_BYTES = 1024 * 1024
+# Two model templates include independently pinned Apple member inventories.
+MAXIMUM_METADATA_BYTES = 4 * 1024 * 1024
 MACHINE_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
 PARTITION_PATTERN = re.compile(r"^disk[0-9]+s[0-9]+$")
 READBACK_CHUNK_BYTES = 1024 * 1024
@@ -914,7 +915,7 @@ class AsahiStage1Adapter:
         for member in members:
             relative = member.filename[len(prefix) :]
             target_path = os.path.join(mountpoint, *PurePosixPath(relative).parts)
-            if skip_boot_bin and member.filename == "esp/m1n1/boot.bin":
+            if skip_boot_bin and relative == "m1n1/boot.bin":
                 if self.osins.efi_part is None or info.name != self.osins.efi_part.name:
                     raise AsahiAdapterError("developer boot payload is outside the installed ESP")
                 # lexists rejects dangling symlinks too. Repeat this check when
@@ -999,8 +1000,15 @@ class AsahiStage1Adapter:
             )
 
         partitions = self.template.get("partitions")
+        esp_source = "esp"
+        cleanroom = self.template.get("cleanroom")
+        if isinstance(cleanroom, dict):
+            model = cleanroom.get("device_identifier")
+            if model not in ("apple,j713", "apple,j700"):
+                raise AsahiAdapterError("unknown cleanroom ESP model")
+            esp_source = "esp-" + model.removeprefix("apple,")
         expected = (
-            ("EFI", "EFI", "esp", None, False),
+            ("EFI", "EFI", esp_source, None, False),
             ("Boot", "Linux", None, "boot.img", False),
             ("Root", "Linux", None, "root.img", True),
         )
@@ -1027,10 +1035,12 @@ class AsahiStage1Adapter:
         required = {
             "boot.img",
             "root.img",
-            "esp/m1n1/boot.bin",
-            "esp/EFI/BOOT/BOOTAA64.EFI",
+            esp_source + "/m1n1/boot.bin",
+            esp_source + "/EFI/BOOT/BOOTAA64.EFI",
             "omarchy-volume.icns",
         }
+        if cleanroom is not None:
+            required.update({esp_source + "/omarchy/Image", esp_source + "/omarchy/initramfs.img"})
         members = {}
         for member in self.osins.pkg.infolist():
             path = PurePosixPath(member.filename)

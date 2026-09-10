@@ -14,7 +14,7 @@ from build_payload import descriptor, verified_descriptors, write_directories
 
 class PayloadLayoutTests(unittest.TestCase):
     def test_stale_verification_cannot_seal_different_images_or_boot_files(self):
-        for changed in ('root.img', 'boot.img', 'initramfs.img', 'grub.cfg', 'BOOTAA64.EFI', 'boot.bin'):
+        for changed in ('root.img', 'boot.img', 'initramfs.img', 'j713/grub.cfg', 'j700/BOOTAA64.EFI', 'j713/boot.bin', 'j700/Image'):
             with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 images, boot, verification = [root / name for name in ('images', 'boot', 'verification')]
@@ -23,12 +23,14 @@ class PayloadLayoutTests(unittest.TestCase):
                 (verification / 'result').write_text('passed\n')
                 for directory, receipt, names in (
                     (images, verification / 'verification.json', ('root.img', 'boot.img', 'initramfs.img')),
-                    (boot, boot / 'receipt.json', ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin')),
+                    (boot, boot / 'receipt.json', tuple(f'{model}/{name}' for model in ('j713', 'j700')
+                                                     for name in ('grub.cfg', 'BOOTAA64.EFI', 'boot.bin', 'Image', 'initramfs.img'))),
                 ):
                     for name in names:
+                        (directory / name).parent.mkdir(parents=True, exist_ok=True)
                         (directory / name).write_bytes(b'verified bytes')
                     receipt.write_text(json.dumps({name: descriptor(directory / name) for name in names}))
-                self.assertEqual(len(verified_descriptors(images, boot, verification)), 6)
+                self.assertEqual(len(verified_descriptors(images, boot, verification)), 13)
                 path = images / changed if (images / changed).exists() else boot / changed
                 path.write_bytes(b'different bytes')
                 with self.assertRaisesRegex(ValueError, 'verified input changed'):

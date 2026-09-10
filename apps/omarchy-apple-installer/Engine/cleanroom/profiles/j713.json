@@ -13,11 +13,11 @@
   },
   "boot_format": "m1n1-uboot-grub-apple-download-v2",
   "sources": {
-    "m1n1": "a091e6f0855f8870be2381a5c004e90c972431b1",
-    "u_boot": "7af6b444d69a291ea697f6f80591f75eec5ef7ff",
+    "m1n1": "1ab1683c8ef21b8e6f74253782a9c5af44220eee",
+    "u_boot": "ab2cdaf1dd94dc75d43935ec7c79bd86bfcfc167",
     "grub": "d38d6a1a9b79427848976f53d474392cd29c2a71",
-    "linux": "84a385b855425f0bf6bf04e5930f759611012eef",
-    "enablement": "0a1c68920ab14959cfe5b6447c76a3ce4bc423e1"
+    "linux": "d31ff64b6332333f770d8d15642198ed20489403",
+    "enablement": "eb18361654bef156f170f1a70530227757056933"
   },
   "wifi": {
     "source_directory": "usr/share/firmware/wifi/C-4388__s-C2",

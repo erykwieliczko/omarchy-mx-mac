@@ -21,6 +21,22 @@ class FirmwareRangeTests(unittest.TestCase):
         self.profile = load_profile(PROFILES / "j713.json")
         self.lock = json.loads((PROFILES / "j713-apple-inputs.json").read_text())
 
+    def test_neo_recipe_preserves_m4_and_binds_separate_originals(self):
+        neo = load_profile(PROFILES / "j700.json")
+        lock = json.loads((PROFILES / "j700-apple-inputs.json").read_text())
+        self.assertEqual(neo["sources"], self.profile["sources"])
+        self.assertEqual(load_recipe(lock, neo, PROFILES).name, "j700-25G83-ranges.json")
+        self.assertEqual(len(lock["linux_firmware"]), 249)
+        self.assertEqual(len(self.lock["linux_firmware"]), 7)
+        self.assertNotIn("mediatek/mt7932/wcal.bin", lock["linux_firmware"])
+        self.assertNotIn("mediatek/mt7932/oca2.bin", lock["linux_firmware"])
+        changed = copy.deepcopy(lock)
+        changed["wifi_source_hashes"][next(iter(neo["wifi"]["files"]))] = "0" * 64
+        with self.assertRaises(BootInputError):
+            load_recipe(changed, neo, PROFILES)
+        with self.assertRaises(BootInputError):
+            load_recipe(lock, self.profile, PROFILES)
+
     def test_recipe_binds_apple_build_model_and_final_firmware_hashes(self):
         path = load_recipe(self.lock, self.profile, PROFILES)
         self.assertEqual(path.name, "j713-25G83-ranges.json")
