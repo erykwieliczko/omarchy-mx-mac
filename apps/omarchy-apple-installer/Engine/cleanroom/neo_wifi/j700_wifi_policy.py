@@ -8,10 +8,14 @@ Full header bitmap/unsupported-rate publication remain separate prerequisites.
 Original integer units are preserved; sentinel bytes are not numerical limits.
 """
 import csv
+from functools import lru_cache
 import re
 import struct
 
 
+# Tables are read-only to all consumers. Keep the four original table files
+# per worker instead of reparsing every country in every conversion step.
+@lru_cache(maxsize=4)
 def parse_tables(data):
     if len(data) > 32 * 1024 * 1024:
         raise ValueError('policy input too large')

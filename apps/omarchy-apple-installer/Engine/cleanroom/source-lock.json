@@ -78,7 +78,7 @@
     },
     {
       "path": "cleanroom/neo_wifi/README.md",
-      "sha256": "5b9beedf14ca52e6ab6a89bd71d511065f7a5bf783368765a765b9d01ef7bebe"
+      "sha256": "e0e146605165150c93add17087056edf127fdd6114811300502b9ca9034d7528"
     },
     {
       "path": "cleanroom/neo_wifi/__init__.py",
@@ -98,7 +98,7 @@
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_policy.py",
-      "sha256": "3da890ee159296e3820236e72327998407364354b3486a97b990059d2fcc285f"
+      "sha256": "30795939974af0a1a5ca44d8c7729c3e2f2b35313ef9245381904910a9928808"
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_startup.py",
