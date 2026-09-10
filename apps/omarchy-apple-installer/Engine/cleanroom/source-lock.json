@@ -138,7 +138,7 @@
     },
     {
       "path": "cleanroom/profiles/j700.json",
-      "sha256": "3d4d80dee9c86973a2057fbc0ae4e9515ddf78f3b420447dd9a5c2a5e91672d2"
+      "sha256": "d84eae4c055b72f591c2da2693ec1dc0a2955bd0534f9d26df97564aa9c41e40"
     },
     {
       "path": "cleanroom/profiles/j713-25G83-ranges.json",
@@ -150,7 +150,7 @@
     },
     {
       "path": "cleanroom/profiles/j713.json",
-      "sha256": "b2679d21d281de7954d2817f3b62be276dd6fd8ad605fb07c67116a0e2e11eb4"
+      "sha256": "197866612180dd1173d0b29f0b9a1b9ad0ee840b4b8f8c289d6e16eaa51deb17"
     },
     {
       "path": "cleanroom/recovery.py",
