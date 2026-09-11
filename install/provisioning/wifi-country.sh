@@ -1,37 +1,9 @@
-# Neo's radio requires an explicit country policy before scanning. Keep the
-# choice in iwd, the installed NetworkManager backend, across normal reboots.
-omarchy_wifi_country_required() {
-  [[ -f /sys/firmware/devicetree/base/compatible ]] &&
-    tr '\0' '\n' </sys/firmware/devicetree/base/compatible | grep -qx 'apple,j700'
-}
-
+# Discovery works in the default world domain. Only an intentional country
+# selection changes persistent regulatory settings; an unset value is a no-op.
 omarchy_wifi_country_valid() {
   [[ $1 =~ ^[A-Z]{2}$ ]] &&
     awk -F '\t' -v country="$1" '$1 == country { found=1 } END { exit !found }' \
       /usr/share/zoneinfo/iso3166.tab
-}
-
-omarchy_prompt_wifi_country() {
-  omarchy_wifi_country_required || return 0
-  local choice status
-  while true; do
-    choice=$(awk -F '\t' '!/^#/ && NF >= 2 { print $1 "  " $2 }' \
-      /usr/share/zoneinfo/iso3166.tab |
-      gum filter --height 10 --placeholder "Search country" \
-        --header "Select the country you are physically in (Wi-Fi regulations)") && status=0 || status=$?
-    (( status == 0 )) || return "$status"
-    wifi_country=${choice%% *}
-    omarchy_wifi_country_valid "$wifi_country" || continue
-    if [[ -f /usr/lib/firmware/mediatek/mt7932/policy/$wifi_country.bin ]]; then
-      return 0
-    fi
-    if gum confirm "Wi-Fi policy for $wifi_country is unavailable. Continue with Ethernet/offline?"; then
-      return 0
-    else
-      status=$?
-      (( status == 130 )) && return "$status"
-    fi
-  done
 }
 
 # Replacing only Country preserves other iwd settings, comments and sections.

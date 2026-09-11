@@ -35,24 +35,14 @@ for invalid in 00 ZZ pl 'PL/../../x' ''; do
   fi
   cmp "$config" "$work/expected"
 done
-omarchy_wifi_country_required() { return 1; }
-gum() { echo 'Unexpected prompt for non-Neo' >&2; return 99; }
-omarchy_prompt_wifi_country
-omarchy_wifi_country_required() { return 0; }
-for cancelled in 1 130; do
-  gum() { cat >/dev/null; return "$cancelled"; }
-  status=0
-  omarchy_prompt_wifi_country || status=$?
-  [[ $status == "$cancelled" ]]
-done
-# An unavailable policy never forces a made-up country; explicit offline
-# continuation preserves the actual country for a future firmware update.
-gum() {
-  case $1 in
-    filter) cat >/dev/null; echo 'PL  Poland' ;;
-    confirm) return 0 ;;
-  esac
-}
-omarchy_prompt_wifi_country
-[[ $wifi_country == "PL" ]]
+# World/unset startup neither prompts nor overwrites intentional settings.
+(
+  unset wifi_country
+  install() { echo 'Unexpected country write' >&2; return 99; }
+  systemctl() { echo 'Unexpected network restart' >&2; return 99; }
+  iw() { echo 'Unexpected country hint' >&2; return 99; }
+  omarchy_configure_wifi_country
+)
+# First-run account setup must not require a country to discover Wi-Fi.
+! grep -q 'omarchy_prompt_wifi_country' "$ROOT/bin/omarchy-provision-owner"
 echo 'Wi-Fi country tests passed'
