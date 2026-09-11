@@ -17,6 +17,7 @@ from apple_ranges import selected_archive, selected_files
 from boot_builds import load_boot_builds, select_boot_build, verify_boot_version
 from boot_space import check_prepared_space, check_installed_space, RECOVERY_FREE_BYTES
 from firmware import collect_macos_wifi, convert_neo_wifi, convert_neo_touchpad, collect_neo_calibration
+from firmware_archive import verify_package
 from firmware_ranges import extract_wifi, FirmwareRangeFallback, FirmwareRangeExecutionError
 import osinstall
 import stub
@@ -150,6 +151,8 @@ class CleanroomStubInstaller(stub.StubInstaller):
         # Conversion was completed and checked before disk mutation. Do not run
         # unrelated camera/kernel firmware extractors for this boot stack.
         package.add_files(self.cleanroom_firmware)
+        package.close()
+        verify_package(package.path, self.cleanroom_firmware)
 
     def prepare_for_bless(self):
         check_installed_space(self.osi.system)

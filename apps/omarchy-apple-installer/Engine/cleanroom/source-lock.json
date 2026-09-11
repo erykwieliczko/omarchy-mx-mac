@@ -14,11 +14,11 @@
     },
     {
       "path": "cleanroom/THIRD_PARTY_NOTICES.txt",
-      "sha256": "a84d8d91e98aa0c32d94cc4196e22ec523f414dc346db08d007af78efb0a8721"
+      "sha256": "489f56ef55ba57ae5bd247ffab73ab1906ee26a1a6fc6aa4c8c53869eb7c305b"
     },
     {
       "path": "cleanroom/adapter.py",
-      "sha256": "ae1e915d2a8194f199be29eab02a82e00d897278ec216d1f11fc61eb46477570"
+      "sha256": "eb91f636943f02640f93c10239b33cd23ee8c88cbb45310c56167eb9f1c46c95"
     },
     {
       "path": "cleanroom/apple_inputs.py",
@@ -61,6 +61,10 @@
       "sha256": "4ec2167dbe559a60559ed92643fdf69b95c1befa5a14e8b14dc3cce3e5365654"
     },
     {
+      "path": "cleanroom/firmware_archive.py",
+      "sha256": "90d48d8dba1c8c97baec809a236c231690163670198026864649fd2474718a20"
+    },
+    {
       "path": "cleanroom/firmware_ranges.py",
       "sha256": "26f81fc0f876a5be07467d2570ca832b73d485527b9b0c7155f09e835d2794be"
     },
@@ -78,7 +82,7 @@
     },
     {
       "path": "cleanroom/neo_wifi/README.md",
-      "sha256": "e0e146605165150c93add17087056edf127fdd6114811300502b9ca9034d7528"
+      "sha256": "29ba623d804c1bcc89534433fff5a04e961668356fcfa4649846450e494787ed"
     },
     {
       "path": "cleanroom/neo_wifi/__init__.py",
@@ -86,23 +90,23 @@
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_artifacts.py",
-      "sha256": "f75e1700ee1f6c1a5ee6a3004b08250c72cb9b1f98ddb0d5f9ecc150c2bd38ce"
+      "sha256": "559c5692445fa0e02b9e7014d1e7d9a2c382c969b56f4aa51df4a4a64458a568"
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_boot_policy.py",
-      "sha256": "99342ce79f91f77ea5752857fb16f0651a10948dc1f05d1c65e9f3bf3e674283"
+      "sha256": "4f4643469558fe30f6a11dfd67004cd05adf4d69f18830dc9cc9176353faeace"
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_host_model.py",
-      "sha256": "2f19b0b32feb5e17df966d6795bffe391d1329494bb26aeb0340d2f394a6864f"
+      "sha256": "5f73b92ca5a3b2920bc00266eb22163d26ce991149d0d747f942264637f1a8b0"
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_policy.py",
-      "sha256": "30795939974af0a1a5ca44d8c7729c3e2f2b35313ef9245381904910a9928808"
+      "sha256": "fe8cf0f951a7fac26cc6caabba0074f72a092a8a0b9c31fe1f49b23f717331a4"
     },
     {
       "path": "cleanroom/neo_wifi/j700_wifi_startup.py",
-      "sha256": "838cdfd9dfa6abd7a84b1b480e9af397b218ac999b862bee039445f738b4a3aa"
+      "sha256": "ae86dada6d234ee6220f4c3a38455c4d53a8bcd3db0a2dd55efbbd516b729e7c"
     },
     {
       "path": "cleanroom/patches/0001-boot-factories.patch",
@@ -134,11 +138,11 @@
     },
     {
       "path": "cleanroom/profiles/j700-apple-inputs.json",
-      "sha256": "cb3742e0104efe1df27521858b28550f53b6620ff1db5a4a9075fb74c1d8f0b6"
+      "sha256": "1740db89c93bcd308b8f9b7b7ed73f2ba213d65404b23b811afa41f4359898cb"
     },
     {
       "path": "cleanroom/profiles/j700.json",
-      "sha256": "d84eae4c055b72f591c2da2693ec1dc0a2955bd0534f9d26df97564aa9c41e40"
+      "sha256": "36ea7ebd74d60459f553c2459274ba2ae58564fd72c64aa67905419dfafaf699"
     },
     {
       "path": "cleanroom/profiles/j713-25G83-ranges.json",
@@ -150,7 +154,7 @@
     },
     {
       "path": "cleanroom/profiles/j713.json",
-      "sha256": "197866612180dd1173d0b29f0b9a1b9ad0ee840b4b8f8c289d6e16eaa51deb17"
+      "sha256": "7869fbd43f96c5434ba1178dcc405f6dc83a5313b94553cacd5abdf263281f4f"
     },
     {
       "path": "cleanroom/recovery.py",
@@ -182,7 +186,7 @@
     },
     {
       "path": "cleanroom/stage_sources.py",
-      "sha256": "50418b1ac963adacd858ab411bca296ff337f9a987966ab432cf8a322e21a784"
+      "sha256": "1f3217ec5995380defd10d84b7c21e41acb499808ad5e769647501d1fcff4bad"
     },
     {
       "path": "cleanroom/step2.sh",
@@ -190,7 +194,7 @@
     },
     {
       "path": "cleanroom/test_adapter.py",
-      "sha256": "323a884ec46e017d4ef04a8866aae93a8c8159c0c09d8508cde7b982059457ce"
+      "sha256": "aa29c2a6073467d8d2565772d32630eaa563068fbc4ccf235f0430cab679c3e7"
     },
     {
       "path": "installer_data.json",

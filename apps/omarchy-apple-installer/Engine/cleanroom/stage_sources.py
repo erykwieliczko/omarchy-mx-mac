@@ -54,7 +54,7 @@ def stage_sources(checkout, destination):
         for patch in lock["patches"]:
             subprocess.run(["git", "-C", str(tree), "apply", str(engine / patch)], check=True)
         (tree / "src/main.py").rename(tree / "src/asahi_main.py")
-        for name in ("main.py", "adapter.py", "boot_inputs.py", "boot_builds.py", "boot_space.py", "recovery.py", "firmware.py", "firmware_ranges.py", "apple_inputs.py", "apple_ranges.py"):
+        for name in ("main.py", "adapter.py", "boot_inputs.py", "boot_builds.py", "boot_space.py", "recovery.py", "firmware.py", "firmware_archive.py", "firmware_ranges.py", "apple_inputs.py", "apple_ranges.py"):
             shutil.copyfile(engine / "cleanroom" / name, tree / "src" / name)
         shutil.copytree(engine / "cleanroom/neo_wifi", tree / "src/neo_wifi",
                         ignore=shutil.ignore_patterns("__pycache__"))

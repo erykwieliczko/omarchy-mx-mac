@@ -1,4 +1,4 @@
-# Source: linux-enablement-mac-alpha eb18361654bef156f170f1a70530227757056933
+# Source: linux-enablement-mac-alpha 6b4eb9858dc5841e3a848cd21b727ab32d7f44e6
 #!/usr/bin/env python3
 """Generate country policy bodies from unchanged originals, not oracle arrays.
 
@@ -64,6 +64,7 @@ def generate(archive, output, database, country='PL'):
         path.chmod(0o600)
     (output / 'manifest.json').write_text(json.dumps({
         'format': 'J7RP-1', 'producer': 'j700-original-contextual-v1', 'country': country,
+        'linux_requested_country': '00' if country == 'XZ' else country,
         'profile': 'J700 MT7932 native fullmac non-6GHz 20MHz',
         'inputs': qualified,
         'database_sha256': hashlib.sha256(database.read_bytes()).hexdigest(),
@@ -103,16 +104,18 @@ def firmware_tree(output, destination):
     (target / 'policy').mkdir(parents=True, exist_ok=True)
     count = 0
     for cc, entry in index.items():
-        # XZ is a vendor fallback fixture with a14-channel band, not a
-        # userspace regulatory country and not this bounded driver profile.
-        if entry['error'] or cc == 'XZ':
+        if entry['error']:
             continue
         source = output / cc / 'policy.bin'
         manifest = json.loads((output / cc / 'manifest.json').read_text())
         data = source.read_bytes()
         if manifest['country'] != cc or hashlib.sha256(data).hexdigest() != manifest['bodies']['policy.bin']['sha256']:
             raise ValueError('package/manifest mismatch: ' + cc)
-        path = target / 'policy' / (cc + '.bin')
+        # Stock unknown-country startup selects XZ for domain/power while
+        # Linux remains in world00. Keep the firmware profile explicit;
+        # never relabel its bytes as00 or expose XZ as an ISO country.
+        name = 'world-XZ.bin' if cc == 'XZ' else cc + '.bin'
+        path = target / 'policy' / name
         shutil.copyfile(source, path)
         path.chmod(0o644)
         count += 1

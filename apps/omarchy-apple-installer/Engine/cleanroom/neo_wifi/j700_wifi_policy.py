@@ -1,4 +1,4 @@
-# Source: linux-enablement-mac-alpha eb18361654bef156f170f1a70530227757056933
+# Source: linux-enablement-mac-alpha 6b4eb9858dc5841e3a848cd21b727ab32d7f44e6
 #!/usr/bin/env python3
 """Parse original policy data and serialize documented policy subsets.
 

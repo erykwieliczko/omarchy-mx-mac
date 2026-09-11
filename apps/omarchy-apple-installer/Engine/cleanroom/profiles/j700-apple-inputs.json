@@ -267,7 +267,8 @@
     "mediatek/mt7932/IZUBA_W7932_2.bin": "aa9ca3443279aa2878ca8275e69829d429fa8856ca74b84da1f65f7c2da989d4",
     "mediatek/mt7932/IZUBA_WIFI_MT7932_patch_mcu_1_2_hdr.bin": "60e37f53dbc6d757c2a23fb125e53b0b04c0104be5315910885955d0f6b57379",
     "mediatek/mt7932/ppr.bin": "5b3193034aed2b73be88dc8074699992a04c0e450d051d52af44489093b9b1e8",
-    "apple/tpmtfw-j700.bin": "9d17f2a0f9fb17f45ac4d2da94fb0e0296d7c1a9511fc799411b6b058c7d7c74"
+    "apple/tpmtfw-j700.bin": "9d17f2a0f9fb17f45ac4d2da94fb0e0296d7c1a9511fc799411b6b058c7d7c74",
+    "mediatek/mt7932/policy/world-XZ.bin": "926b390f709a4125a53ecbc12d5b94eba765f142e099b9a711b43dda23f7aea0"
   },
   "execution_scratch_bytes": 8589934592,
   "preflight_scratch_bytes": 68719476736,

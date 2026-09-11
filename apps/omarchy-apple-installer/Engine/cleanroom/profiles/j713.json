@@ -16,8 +16,8 @@
     "m1n1": "1ab1683c8ef21b8e6f74253782a9c5af44220eee",
     "u_boot": "eb052fe3f2871bf8cdddf25ec600ef7dfec0269f",
     "grub": "d38d6a1a9b79427848976f53d474392cd29c2a71",
-    "linux": "d31ff64b6332333f770d8d15642198ed20489403",
-    "enablement": "eb18361654bef156f170f1a70530227757056933"
+    "linux": "6ba27a80f991f1627f41fa71aa241d600246e948",
+    "enablement": "6b4eb9858dc5841e3a848cd21b727ab32d7f44e6"
   },
   "wifi": {
     "source_directory": "usr/share/firmware/wifi/C-4388__s-C2",

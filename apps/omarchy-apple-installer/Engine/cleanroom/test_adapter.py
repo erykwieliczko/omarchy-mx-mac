@@ -19,6 +19,8 @@ from boot_space import STUB_SIZE
 from boot_inputs import BootInputError, assemble_stage1, load_profile
 from main import CleanroomInstaller, CleanroomRuntime
 from firmware import collect_macos_wifi, normalize_nvram
+from asahi_firmware.core import FWFile, FWPackage
+from firmware_archive import verify_package
 from firmware_ranges import FirmwareRangeFallback, FirmwareRangeExecutionError
 
 
@@ -30,6 +32,27 @@ VGID = "22222222-3333-4444-8555-666666666666"
 class CleanroomAdapterTests(unittest.TestCase):
     def setUp(self):
         self.profile = load_profile(PROFILE_PATH)
+
+    def test_firmware_tar_and_complete_cpio_preserve_world_policy_and_calibration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files = [("mediatek/mt7932/policy/world-XZ.bin", FWFile("world", b"J7RP\x01\x00XZ")),
+                     ("mediatek/mt7932/wcal.bin", FWFile("wcal", b"own-device calibration")),
+                     ("mediatek/mt7932/policy/PL.bin", FWFile("PL", b"country data")),
+                     ("mediatek/mt7932/policy/DE.bin", FWFile("DE", b"country data"))]
+            package = FWPackage(directory)
+            stub = object.__new__(CleanroomStubInstaller)
+            stub.cleanroom_firmware = files
+            stub.collect_firmware(package)
+            verify_package(directory, files)
+            path = Path(directory) / "firmware.cpio"
+            original = path.read_bytes()
+            for damaged in (original[:-20], original + b"debug archive", original.replace(b"J7RP", b"FAIL")):
+                path.write_bytes(damaged)
+                with self.assertRaises(BootInputError):
+                    verify_package(directory, files)
+            path.write_bytes(original)
+            with self.assertRaises(BootInputError):
+                verify_package(directory, files[:-1])
 
     def test_both_models_select_one_template_before_inventory(self):
         metadata = {"os_list": [

@@ -26,7 +26,7 @@ class FirmwareRangeTests(unittest.TestCase):
         lock = json.loads((PROFILES / "j700-apple-inputs.json").read_text())
         self.assertEqual(neo["sources"], self.profile["sources"])
         self.assertEqual(load_recipe(lock, neo, PROFILES).name, "j700-25G83-ranges.json")
-        self.assertEqual(len(lock["linux_firmware"]), 249)
+        self.assertEqual(len(lock["linux_firmware"]), 250)
         self.assertEqual(len(self.lock["linux_firmware"]), 7)
         self.assertNotIn("mediatek/mt7932/wcal.bin", lock["linux_firmware"])
         self.assertNotIn("mediatek/mt7932/oca2.bin", lock["linux_firmware"])
