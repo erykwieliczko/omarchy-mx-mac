@@ -216,7 +216,7 @@ python3 - <<'PY'                                             # inputs: payload_n
 …
 PY
 git tag -a $TAG -m "…" && git push origin $TAG                # publish-r2 requires the tag on origin
-bash $A/scripts/publish-m1-release prepare --payload "$P" --engine $A/Engine/artifacts/installer-v0.9.0-omarchy.14.tar.gz \
+bash $A/scripts/publish-m1-release prepare --payload "$P" --engine $A/Engine/artifacts/installer-v0.9.2-omarchy.17.tar.gz \
   --metadata $W/installer_data.json --tag $TAG --repo maralcbr/omarchy-mx-mac --out-dir $W/staged --no-split \
   --base-url https://downloads.aicodelabs.com.au/releases/$TAG
 python3 $A/scripts/make-unsigned-catalog.py --base-url https://downloads.aicodelabs.com.au/releases/$TAG \
@@ -229,6 +229,24 @@ OMARCHY_PUBLISH_ASSUME_YES=$TAG bash $A/scripts/publish-m1-release publish-r2 --
   --base-url https://downloads.aicodelabs.com.au/releases/$TAG --catalog-dir $W/catalog
 OMARCHY_PUBLISH_ASSUME_YES=$TAG $A/scripts/publish-channels os-promote --tag $TAG --to rc
 ```
+
+The engine is a Python-only repack of the deployed `omarchy.14` engine, so it
+needs no re-signing. Rebuild it from an `asahi-installer` checkout at the
+commit in `Engine/source-lock.json` (submodules initialised); the lock records
+the expected size and SHA-256:
+
+```bash
+python3 $A/Engine/rebuild-python-overlay.py <asahi-installer checkout> \
+  $A/Engine/artifacts/installer-v0.9.0-omarchy.14.tar.gz $A/Engine/artifacts/installer-v0.9.2-omarchy.17.tar.gz
+```
+
+The rebuild only takes the upstream Python files the lock lists under
+`incremental_build.upstream_delta`, and refuses any other upstream change. When
+the Omarchy patch also edits one of those files (`src/main.py` today), the
+rebuild applies the patch to a scratch copy of the old and new upstream file
+and checks both results against the lock, so the checkout is never modified.
+Build it twice into different folders and compare the two files before
+recording a new size and SHA-256.
 
 R2 credentials come from the login Keychain (`omarchy-r2-access-key-id`,
 `omarchy-r2-secret-access-key`), the catalog key from
