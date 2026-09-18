@@ -94,6 +94,13 @@ grep -Fq $'skipped\tLimine boot image repair' "$state_dir/1786482992.sh.skipped"
 [[ -f $state_dir/1787560726.sh ]] || fail "package repository migration is reviewed to run on Apple Silicon"
 pass "Asahi migration policy blocks unvalidated platform changes"
 
+for migration in 1789325478.sh 1789444024.sh; do
+  [[ -f $state_dir/$migration.skipped && ! -e $state_dir/$migration ]] || fail "4.0.4 kernel migration $migration is skipped on Apple Silicon"
+done
+grep -Fq $'skipped\tx86_64 linux-omarchy kernel and Limine boot order' "$state_dir/1789325478.sh.skipped" || fail "kernel migration records its Apple Silicon reason"
+grep -Fq $'skipped\tlinux-omarchy and linux-t2 header repair' "$state_dir/1789444024.sh.skipped" || fail "header migration records its Apple Silicon reason"
+pass "Asahi skips the reviewed 4.0.4 kernel migrations"
+
 cat >"$test_root/migrations/9999999999.sh" <<'SH'
 printf '%s\n' unknown >>"$TEST_CALLS"
 SH
@@ -104,3 +111,37 @@ fi
 grep -Fq 'has not been reviewed for Apple Silicon' "$test_tmp/unknown.err" || fail "unreviewed migration failure is actionable"
 ! grep -Fxq unknown "$calls" || fail "unreviewed Apple Silicon migration did not execute"
 pass "Asahi migration policy fails closed for unknown migrations"
+
+# The real 4.0.4 kernel migrations must never execute on Apple Silicon, even
+# where their own architecture checks would pass: every tool they could reach
+# is a logging stub, and uname claims x86_64.
+kernel_root="$test_tmp/kernel-omarchy"
+kernel_home="$test_tmp/kernel-home"
+kernel_stubs="$test_tmp/kernel-stubs"
+mkdir -p "$kernel_root/bin" "$kernel_root/migrations" "$kernel_home" "$kernel_stubs"
+cp "$test_root/bin/omarchy-hw-apple-silicon" "$kernel_root/bin/"
+cp "$ROOT/migrations/1789325478.sh" "$ROOT/migrations/1789444024.sh" "$kernel_root/migrations/"
+for tool in pacman sudo limine-mkinitcpio limine-entry-tool omarchy-pkg-add omarchy-pkg-present omarchy-state; do
+  cat >"$kernel_stubs/$tool" <<SH
+#!/bin/bash
+printf '%s %s\n' '$tool' "\$*" >>"\$TEST_CALLS"
+SH
+done
+cat >"$kernel_stubs/uname" <<'SH'
+#!/bin/bash
+case "$1" in
+  -m) echo x86_64 ;;
+  *) echo 7.2.5-arch1-1 ;;
+esac
+SH
+chmod +x "$kernel_stubs"/*
+: >"$calls"
+HOME="$test_home" OMARCHY_PATH="$kernel_root" OMARCHY_MIGRATION_STATE="$kernel_home/state" \
+  TEST_CALLS="$calls" PATH="$kernel_stubs:$PATH" \
+  "$ROOT/bin/omarchy-migrate" >"$test_tmp/kernel.out"
+[[ ! -s $calls ]] || fail "4.0.4 kernel migrations do not execute on Apple Silicon" "$(<"$calls")"
+for migration in 1789325478.sh 1789444024.sh; do
+  [[ -f $kernel_home/state/$migration.skipped && ! -e $kernel_home/state/$migration ]] ||
+    fail "4.0.4 kernel migration $migration settles as skipped"
+done
+pass "Apple Silicon settles the 4.0.4 kernel migrations without touching packages or boot files"

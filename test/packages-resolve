@@ -103,7 +103,8 @@ fi
 declare -A upstream_only_packages=(
   [nvim]=1
   [nvidia-dkms]=1
-  [linux-ptl-headers]=1
+  [linux-omarchy]=1
+  [linux-omarchy-headers]=1
   [yay-debug]=1
 )
 
