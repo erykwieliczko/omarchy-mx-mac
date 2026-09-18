@@ -101,6 +101,7 @@ fi
 # fork's checks, so they only ever fail when reintroduced into an Asahi
 # manifest, which must never carry them.
 declare -A upstream_only_packages=(
+  [apple-bcm-firmware]=1
   [nvim]=1
   [nvidia-dkms]=1
   [linux-omarchy]=1
