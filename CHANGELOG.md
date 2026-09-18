@@ -4,6 +4,14 @@ Release notes for the maintained Apple Silicon line are version-controlled in
 [`docs/releases/`](docs/releases/). GitHub Releases publish those files
 verbatim.
 
+## [4.0.4-mac.1] - Unreleased
+
+- Integrate upstream 4.0.4 x86 kernel changes and migrations.
+- Skip both new kernel migrations on Apple Silicon; the Asahi or Aurora kernel
+  and GRUB boot setup stay unchanged.
+- Publication and physical qualification remain pending. See
+  [preparation notes](docs/releases/v4.0.4-mac.1.md).
+
 ## [4.0.3-mac.1] - 2026-09-12
 
 - Integrate upstream 4.0.3 security fixes, AI integrations, and migrations.
