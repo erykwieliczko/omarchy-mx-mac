@@ -24,8 +24,9 @@ test/vm/asahi-fresh/run
 ```
 
 The guest uses 8 vCPUs, 6 GiB RAM, and a 96 GiB sparse disk. Set
-`OMARCHY_VM_MEMORY_MB` explicitly when a different disposable-guest limit is
-required.
+`OMARCHY_VM_CPUS` or `OMARCHY_VM_MEMORY_MB` explicitly when a different
+disposable-guest limit is required; benchmark a run before changing the 8 vCPU
+default.
 
 The guest takes its Arch Linux ARM packages from a dated, immutable copy of the
 `core`, `extra`, `alarm` and `aur` repositories in our own bucket, not from the
@@ -36,16 +37,59 @@ with it. The default is the snapshot the current payload was built against;
 URL naming `$repo` and `$arch`, so a live Arch Linux ARM mirror works too). Only the signed base rootfs still comes from a live mirror. See
 `docs/apple-silicon-distribution-channels.md`, "The Arch Linux ARM snapshot".
 
-Use `--rebuild-base` to discard the cached Arch Linux ARM base and `--keep` to
-retain the VM container after a run. State and failure artifacts are written to
-`test/vm/asahi-fresh/test-runs/`, which is ignored by Git.
+Use `--rebuild-base` to discard the cached Arch Linux ARM base. State is kept
+in `test/vm/asahi-fresh/test-runs/` (ignored by Git; `OMARCHY_VM_STATE_DIR`
+moves it): the cached base, the guest SSH key, and one `runs/<run-id>/`
+directory per run holding the guest disk (about 23 GB by the
+end of a run) and its logs.
+
+Each run gets an ID (`OMARCHY_VM_RUN_ID`, by default the UTC start time and
+process ID) and its own `omarchy-asahi-fresh-vm-<run-id>` container. Cleanup
+removes only the container ID that its own `docker run` recorded, so a run never
+removes another run's VM or directory. A run holds the host lock
+`/tmp/omarchy-asahi-fresh-vm.lock` from start until its evidence is exported and
+its directory cleaned up. The path is fixed, so every checkout, user and `sudo`
+meet the same lock. One user runs VM acceptance on a host: the first run
+creates the lock 0644 for its user, and a lock file anyone else owns is refused,
+since its owner could replace it while a run holds it. A run also checks, once
+it holds the lock, that the path still names the file it locked. A second run
+is refused with the holder's run ID, user and state directory;
+`--wait-for-lease` queues it instead. A run also refuses to start while any container still forwards its
+SSH or VNC port (`OMARCHY_VM_SSH_PORT`, `OMARCHY_VM_VNC_PORT`), such as a VM
+kept with `--keep`. The state directory belongs to the user who created it: a
+run as anyone else is refused, and its `lease` file keeps a second run out even
+past the host lock.
+
+When a run ends, pass or fail, it stops the VM and copies its evidence to
+`~/vm-evidence/<run-id>/` (`--evidence-dir DIR` or `OMARCHY_VM_EVIDENCE_DIR`
+changes the parent, which must be outside the state directory): the logs an
+acceptance record hashes
+(`candidate-repository.log`, `install.log`, `serial.log`, `verify.log`,
+`optional-packages.log`, `rerun.log`), `optional-package-logs/`, the final
+`desktop.ppm`, `SHA256SUMS`, and `run.txt` with the run's inputs, its result and
+the `*_log_sha256` lines an acceptance record takes. The copy is checked
+against hashes of the originals and only then renamed from `<run-id>.partial`.
+
+- A passing run then deletes its run directory.
+- A failed run keeps its run directory for debugging; `--discard-failed-run`
+  deletes it once the evidence is exported. Remove kept directories by hand when
+  done; each run lists the ones still on disk. A run's disk is backed by the
+  run's own `base.qcow2`, a hard link to the cached base it started from, so a
+  kept disk stays usable after `--rebuild-base` or a new base replaces the
+  cached one (the old base's space is then held until the kept run is removed).
+- An export that does not verify keeps the run directory and fails the run.
+- A container that cannot be confirmed removed may still be running its guest
+  on the run directory, so the run exports nothing, keeps everything, and
+  fails.
+- `--keep` leaves the VM running in its container on its run directory,
+  pausing the guest while the evidence is copied.
 
 Use `--optional-packages` to install every transaction in
 `install/optional-packages-aarch64-required` with real `pacman -S` operations
 after the reboot checks. Each transaction gets a separate log under
-`test-runs/run/optional-package-logs/`. This validates package installation and
-post-install hooks in a disposable system, but it does not automate application
-login, GUI interaction, or hardware behavior.
+`optional-package-logs/` in the evidence directory. This validates package
+installation and post-install hooks in a disposable system, but it does not
+automate application login, GUI interaction, or hardware behavior.
 
 To run the full lifecycle after installing an exact immutable package candidate,
 provide its trusted identity explicitly:
