@@ -608,7 +608,7 @@ product produces the same bytes it did before this lane existed.
 
 | Artifact | Where | Made by |
 | --- | --- | --- |
-| kernel `aurora-packages-<pkgs commit>` | GitHub release, immutable, prerelease | `release-aurora-package.yml` |
+| kernel `aurora-packages-<pkgs commit>` | GitHub release, immutable, prerelease | `release-aurora-rc.yml` |
 | payload `omarchy-<date>-aarch64-apple-silicon-aurora-os-package.zip` | this Mac | `omarchy-iso-make --product omarchy-mx-mac-aurora` |
 | channel `channels/rc-aurora` | R2 | `publish-channels os-promote --to rc-aurora` |
 
@@ -617,7 +617,7 @@ product produces the same bytes it did before this lane existed.
    see [kernel builds](#kernel-builds-run-only-on-new-inputs).
 
    ```bash
-   gh workflow run release-aurora-package.yml -R maralcbr/omarchy-pkgs --ref asahi-quattro -f publish=true
+   gh workflow run release-aurora-rc.yml -R maralcbr/omarchy-pkgs --ref asahi-quattro -f publish=true
    ```
 
 2. Pin both halves in `omarchy-iso` — they are compared at build time and the
@@ -643,9 +643,22 @@ product produces the same bytes it did before this lane existed.
 
 Steps 2 through 4 need the owner's authorization, like every other publication.
 
+### The stable lane and what it lacks
+
+Decided 2026-09-20 (owner): the `stable` kernel lane is pinned to
+`aurora-silicon/linux` `aurora-stable` at `77cb8f24` (a 7.1.9 Asahi base;
+recipe `pkgbuilds/linux-aurora-stable` in `omarchy-pkgs`). That base has no
+Thunderbolt/USB4 (`USB4_APPLE_SOC`, `RESET_APPLE_CIO`) and no `dcpext2`/`dcpext3`,
+so on the stable lane an M2 Max has **no USB4 devices and at most two external
+displays**. `rc` and `edge` carry them. A display-count check on a Mac running
+stable is expected to show that limit; it is not a regression. The pin tool
+`bin/mac-aurora-pin` (omarchy-pkgs) moves `stable` the day `aurora-stable`
+advances; the recipe and this note change together.
+
 ### Kernel builds run only on new inputs
 
-Both kernel lanes, rc (`release-aurora-package.yml`) and edge
+All three kernel lanes, stable (`release-aurora-stable.yml`), rc
+(`release-aurora-rc.yml`, formerly `release-aurora-package.yml`) and edge
 (`release-aurora-edge.yml`), build only when their inputs change.
 
 - **Input digest.** `bin/aurora-kernel-input-digest` writes the build inputs
