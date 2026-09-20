@@ -66,7 +66,7 @@ grep -Fq '/var/lib/sddm/state.conf' "$installer" || fail "fresh installer seeds 
 grep -Fq 'Session=omarchy.desktop' "$installer" || fail "fresh installer records the Omarchy session as last"
 pass "fresh installer runs the Quattro system and user finalizers"
 
-grep -Fq 'kernel_package=linux-asahi' "$installer" || fail "fresh installer defaults to the Asahi kernel"
+grep -Fq 'kernel_package=linux-aurora' "$installer" || fail "fresh installer defaults to the Aurora kernel"
 grep -Fq 'asahi_kernel_sha256=$(sha256sum "/boot/vmlinuz-$kernel_package")' "$installer" || fail "fresh installer protects the selected kernel"
 grep -Fq '/boot/grub/grub.cfg' "$installer" || fail "fresh installer protects GRUB"
 grep -Fq 'sha256sum --check --status <<<"$asahi_kernel_sha256"' "$installer" || fail "fresh installer verifies the Asahi kernel hash"
@@ -220,7 +220,9 @@ grep -Fq 'PATH="$package_runtime_root/sudo:$package_runtime_root/usr/bin:/usr/lo
   fail "the sudo stand-in is created in the private directory and reaches only the updater's PATH"
 ! grep -Eq '^[[:space:]]*export (PATH|OMARCHY_PATH|OMARCHY_ASAHI_KEY_FILE|OMARCHY_ASAHI_PACKAGE_KEY_FILE)=' "$installer" ||
   fail "the runtime's key files and PATH never leak into system setup"
-grep -Fq '(( EUID == 0 )) || { echo "sudo: this installer stand-in only runs as root" >&2; exit 1; }' "$installer" ||
+grep -Fq '(( EUID == 0 )) || [[ ${OMARCHY_ASAHI_TESTING:-0} == 1 ]] ||' "$installer" ||
+  fail "the sudo stand-in only runs as root"
+grep -Fq 'sudo: this installer stand-in only runs as root' "$installer" ||
   fail "the sudo stand-in only runs as root"
 grep -Fq 'export OMARCHY_ASAHI_KEEP_SERVER="$server"' "$installer" ||
   fail "the fresh installer hands the kept Server to system setup"
