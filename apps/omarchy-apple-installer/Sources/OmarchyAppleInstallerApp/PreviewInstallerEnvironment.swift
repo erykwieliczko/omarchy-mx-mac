@@ -134,8 +134,10 @@
     func execute(
       operation: InstallOperationKind,
       authorization: MachineOwnerAuthorization,
+      encryptLinuxDisk: Bool,
       journal: @escaping @Sendable (Data) -> Void
     ) async throws -> CompletionDisplay {
+      _ = encryptLinuxDisk
       if scenario == .credentialReject {
         let first = lock.withLock { () -> Bool in
           credentialAttempts += 1
@@ -195,7 +197,7 @@
     private static let previewArtifacts = [
       PreviewArtifact(
         role: "payload",
-        fileName: "omarchy-2026.09.02-aarch64-apple-silicon-asahi-os-package.zip",
+        fileName: "omarchy-2026.09.02-aarch64-apple-silicon-os-package.zip",
         expectedBytes: 3_638_729_568
       ),
       PreviewArtifact(

@@ -24,6 +24,15 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   private var planApproval: CandidateBoundPlanApproval?
   private var reusableAssets: PreparedInstallerAssets?
   private var releaseConfiguration: InstallerReleaseConfiguration?
+  private var encryptLinuxDisk = true
+  private var selectedLane = ReleaseChannel.stable.rawValue
+  private let prefetch = PayloadPrefetchOrchestrator()
+
+  var payloadPrefetchRequired: Bool { true }
+
+  var payloadPrefetchState: PayloadPrefetchState {
+    prefetch.currentState()
+  }
 
   // MARK: Fail-closed gates
 
@@ -92,6 +101,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       planApproval = nil
       releaseConfiguration = nil
     }
+    cancelPayloadPrefetch()
 
     return display(host: host, engine: engine, engineFailure: engineFailure)
   }
@@ -144,9 +154,13 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
         progress: { event in
           collector.record(event)
         },
-        previouslyPrepared: lock.withLock { reusableAssets }
+        previouslyPrepared: lock.withLock { reusableAssets },
+        includePayload: false
       )
-    lock.withLock { reusableAssets = release.assets }
+    lock.withLock {
+      reusableAssets = release.assets
+      selectedLane = channel.rawValue
+    }
     try catalogStore.store(release.assets.catalogIdentity)
 
     progress(
@@ -210,6 +224,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       planReview = prepared.review
       releaseConfiguration = configuration
     }
+    beginPayloadPrefetch(release.assets.payload)
 
     return .plan(
       Self.planDisplay(
@@ -283,11 +298,64 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     }
   }
 
+  func setEncryptLinuxDisk(_ encrypt: Bool) {
+    lock.withLock { encryptLinuxDisk = encrypt }
+  }
+
+  func cancelPayloadPrefetch() {
+    prefetch.cancel()
+  }
+
+  func prefetchPayload(
+    progress: @escaping @Sendable (PayloadPrefetchState) -> Void
+  ) async throws {
+    try await prefetch.waitUntilVerified(progress: progress)
+  }
+
+  func waitUntilPayloadVerified() async throws {
+    try await prefetch.waitUntilVerified(progress: { _ in })
+  }
+
+  private func beginPayloadPrefetch(_ payload: StagedInstallerArtifact) {
+    prefetch.begin(payload: payload)
+  }
+
+  private func recordInstallConf(
+    configuration: InstallerReleaseConfiguration,
+    plan: ValidatedEnginePlan,
+    authorization: MachineOwnerAuthorization,
+    encrypt: Bool
+  ) async -> InstallConfHandoff {
+    let lane = lock.withLock { selectedLane }
+    guard let conf = try? InstallConf(encrypt: encrypt, lane: lane) else {
+      return .notRecorded
+    }
+    do {
+      let submitter = try AuthenticatedEngineXPCSubmitter(
+        machServiceName: configuration.helperMachServiceName,
+        helperCodeSigningRequirement: configuration.helperCodeSigningRequirement
+      )
+      let helper = AuthorizedInstallConfESPHelper(
+        submitter: submitter,
+        authorization: authorization
+      )
+      return await InstallConfESPWriter(helper: helper).record(
+        conf,
+        storeIdentifier: plan.storeIdentifier,
+        offsetBytes: plan.offsetBytes,
+        lengthBytes: plan.lengthBytes
+      )
+    } catch {
+      return .notRecorded
+    }
+  }
+
   // MARK: Execution
 
   func execute(
     operation: InstallOperationKind,
     authorization: MachineOwnerAuthorization,
+    encryptLinuxDisk: Bool,
     journal: @escaping @Sendable (Data) -> Void
   ) async throws -> CompletionDisplay {
     let executionStarted = ProcessInfo.processInfo.systemUptime
@@ -331,12 +399,24 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
         journalProgress: journal
       )
     }
-    let completion = Self.completionDisplay(progress)
-    if operation == .install, completion.nextAction == .enterRecovery {
-      InstallationTimingHistory.recordCompleted(
-        seconds: ProcessInfo.processInfo.systemUptime - executionStarted)
+    var installConf: InstallConfHandoff = .recorded
+    let handoffOperation: EngineHandoffOperation =
+      operation == .retryRecoveryAuthorization ? .retryRecoveryAuthorization : .install
+    if InstallConfRecordPolicy.shouldRecord(
+      operation: handoffOperation, nextAction: progress.nextAction)
+    {
+      installConf = await recordInstallConf(
+        configuration: configuration,
+        plan: prepared.review.plan,
+        authorization: authorization,
+        encrypt: encryptLinuxDisk
+      )
+      if operation == .install {
+        InstallationTimingHistory.recordCompleted(
+          seconds: ProcessInfo.processInfo.systemUptime - executionStarted)
+      }
     }
-    return completion
+    return Self.completionDisplay(progress, installConf: installConf)
   }
 
   // MARK: Display mapping
@@ -459,19 +539,23 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   }
 
   static func completionDisplay(
-    _ progress: InstallerExecutionProgress
+    _ progress: InstallerExecutionProgress,
+    installConf: InstallConfHandoff = .recorded
   ) -> CompletionDisplay {
     let handoff: HandoffDisplay?
+    let warning = PlainLanguage.installConfWarning(installConf)
     switch progress.nextAction {
     case .enterRecovery:
       handoff = HandoffDisplay(
         headline: PlainLanguage.recoveryHeadline,
-        steps: PlainLanguage.recoverySteps(for: progress.requiredHumanSteps)
+        steps: PlainLanguage.recoverySteps(for: progress.requiredHumanSteps),
+        warning: warning
       )
     case .attachInstallationMedia:
       handoff = HandoffDisplay(
         headline: PlainLanguage.mediaHeadline,
-        steps: PlainLanguage.recoverySteps(for: progress.requiredHumanSteps)
+        steps: PlainLanguage.recoverySteps(for: progress.requiredHumanSteps),
+        warning: warning
       )
     default:
       handoff = nil
@@ -481,7 +565,8 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       nextAction: progress.nextAction,
       headline: progress.nextAction == .verifyInstalledSystem
         ? PlainLanguage.doneHeadline : PlainLanguage.recoveryHeadline,
-      subheadline: PlainLanguage.nextActionMessage(progress.nextAction),
+      subheadline: PlainLanguage.nextActionMessage(
+        progress.nextAction, installConf: installConf),
       verified: PlainLanguage.doneVerifiedRows,
       handoff: handoff
     )
