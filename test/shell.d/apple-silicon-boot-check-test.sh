@@ -50,7 +50,11 @@ esac
 SH
 cat >"$stub_bin/lsinitcpio" <<'SH'
 #!/bin/bash
-[[ $1 == -l && -f $2 ]] || exit 1
+if [[ "$1" == "-a" && -f "$2" ]]; then
+  cat "${TEST_INITRAMFS_ANALYZE:-$TEST_INITRAMFS_LIST.analyze}"
+  exit 0
+fi
+[[ "$1" == "-l" && -f "$2" ]] || exit 1
 cat "$TEST_INITRAMFS_LIST"
 SH
 # mount copies what it would mount and remembers whether that mount is
@@ -110,6 +114,10 @@ case "$*" in
     ;;
   *) exit 1 ;;
 esac
+SH
+cat >"$stub_bin/lsblk" <<'SH'
+#!/bin/bash
+exit 0
 SH
 chmod +x "$stub_bin"/*
 
