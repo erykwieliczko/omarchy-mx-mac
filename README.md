@@ -7,13 +7,15 @@ Run Omarchy on Apple Silicon through Arch Linux ARM and Asahi Linux.
 [![License](https://img.shields.io/github/license/maralcbr/omarchy-mx-mac)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/maralcbr/omarchy-mx-mac?style=social)](https://github.com/maralcbr/omarchy-mx-mac/stargazers)
 
-See the [changelog](CHANGELOG.md) for release history and validation notes.
+Read the **[Omarchy MX Mac manual](https://maralcbr.github.io/omarchy-mx-mac/)** for
+installation, channels, the architecture of the fork and how it is tested. See
+the [changelog](CHANGELOG.md) for release history and validation notes.
 
 Omarchy 4 (Quattro) is the maintained release.
 
 | What you have | What to do |
 | --- | --- |
-| A Mac with no Omarchy on it | Download the app below and install. It defaults to **Stable**. Run `omarchy update` afterwards. |
+| A Mac with no Omarchy on it | Download the app below, choose **Stable** in *Release Channel*, and install. Run `omarchy update` afterwards. |
 | A Mac you want on the Aurora kernel | Same app, choose **RC** in *Release Channel*. |
 | An existing Omarchy 4 install | Run `omarchy update`. |
 | An existing Omarchy 3 install | Run `omarchy update`. It moves you to Omarchy 4. |
@@ -30,8 +32,9 @@ Omarchy 4 (Quattro) is the maintained release.
 > and the 16-inch M2 Max; other models are untested rather than excluded, so try
 > RC on yours and report what you find.
 >
-> A Mac keeps the kernel it was installed with: an Asahi Mac stays on Stable and
-> an Aurora Mac stays on RC. Pick the channel at install time.
+> A Mac keeps the kernel family it was installed with: an Asahi Mac stays on
+> Asahi, and an Aurora Mac can move only between the Aurora Stable and RC lanes.
+> Pick the channel at install time.
 
 <details>
 <summary>Version numbers</summary>
@@ -41,14 +44,15 @@ Two things carry versions here, and they do not move together:
 - **Packages** — the current stable version is `4.0.4-mac.1`. This is what
   `omarchy update` gives you, and it advances with every release.
 - **Fresh-install images** — what the macOS app writes to disk. Currently
-  `4.0.3-mac.1` (Stable, Asahi kernel) and `4.0.3-mac.2` (RC, Aurora kernel).
+  `4.0.3-mac.1` (Stable, Asahi kernel) and `4.0.3-mac.4` (RC, Aurora kernel).
   Each image is rebuilt and re-qualified only when it needs to be, so images
   trail the package version. The first `omarchy update` after an install closes
   the gap.
 
-The `-mac.N` suffix on an image names the build lane, not the maturity:
-`-mac.1` and `-mac.2` are the same upstream Omarchy 4.0.3 built against
-different kernels. A higher suffix is not a newer release.
+The `-mac.N` suffix counts Mac image builds of one upstream release; it does not
+name a channel or a kernel. `-mac.1` (Stable) and `-mac.4` (RC) are both
+upstream Omarchy 4.0.3. A higher suffix is a later Mac build, not a newer
+Omarchy.
 
 Omarchy `3.8.4-mac.4` is the last Omarchy 3 release. It is no longer developed;
 existing installations update to Omarchy 4 in place.
@@ -63,9 +67,8 @@ from Applications.
 **[Download Omarchy MX Mac Installer for macOS](https://downloads.aicodelabs.com.au/installer/stable/Omarchy-MX-Mac-Installer.pkg)**
 
 That link always serves the current installer (2.0.7 today), signed with
-Developer ID, notarized by Apple, and stapled. The app offers the **Release
-candidate** channel by default; **Stable** is available from *Release Channel*
-in the menu bar. It fetches the latest signed release from
+Developer ID, notarized by Apple, and stapled. Choose **Stable** or **Release
+candidate** from *Release Channel* in the menu bar before installing. It fetches the latest signed release from
 the selected channel each time you prepare an installation. Matching cached files are verified and
 reused instead of downloaded again. The existing installation screens remain the
 same, and the privileged worker runs only for the installation session.
@@ -144,9 +147,11 @@ available.
 
 ## Release Details
 
-The RC app currently installs signed image `os-v4.0.3-mac.1.20260913` (Omarchy
-4.0.3, Asahi). It follows the latest signed catalog for the channel you select; cached
-files are reused only when their size and SHA-256 match that catalog.
+The **Release candidate** channel currently installs signed image
+`os-v4.0.3-mac.4.20260921-rc` (Omarchy 4.0.3, Aurora); **Stable** installs
+`os-v4.0.3-mac.1.20260913` (Omarchy 4.0.3, Asahi), which the rest of this section
+describes. The app follows the latest signed catalog for the channel you select;
+cached files are reused only when their size and SHA-256 match that catalog.
 
 Omarchy 4.0.3 brings upstream security fixes and AI integrations, Apple Silicon
 migration support, and ARM OpenClaw/Perplexity integration while retaining Mac
@@ -157,7 +162,7 @@ through `omarchy update`.
 [Stable packages](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-stable-83973903b7deb9b56ce75f02b432fba0561d6293)
 and [runtime channel 32](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-32)
 carry the accepted `4.0.3.r6962.ga67d7f7-1` runtime/settings pair embedded in
-this RC image. The release includes greeter password masking and focus fixes,
+the Stable image. The release includes greeter password masking and focus fixes,
 Apple DRM readiness handling, and the initramfs static-device race fix.
 
 See [4.0.3 release notes](docs/releases/v4.0.3-mac.1.md).
@@ -203,6 +208,7 @@ complete output and open a verified bug report with the commands above.
 
 ## Releases And Support
 
+- [Omarchy MX Mac manual](https://maralcbr.github.io/omarchy-mx-mac/)
 - [Latest product release and validation notes](https://github.com/maralcbr/omarchy-mx-mac/releases/latest)
 - [Current signed installer and package channel](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-35)
 - [Issues](https://github.com/maralcbr/omarchy-mx-mac/issues)

@@ -1,0 +1,71 @@
+---
+title: Channels and updates
+description: What stable and rc deliver, which kernel each carries, and how updates reach an installed Mac.
+section: Using it
+---
+
+A channel decides two things: which signed image a new install writes, and which kernel an installed Mac follows. Macs are offered two, `stable` and `rc`.
+
+| Channel | What a new install gets today | Who it is for |
+| --- | --- | --- |
+| `stable` | `os-v4.0.3-mac.1.20260913`, the Asahi kernel | Daily drivers that do not need more than one external display |
+| `rc` | `os-v4.0.3-mac.4.20260921-rc`, the Aurora kernel | Macs that need external displays over USB4, the camera or newer hardware support |
+
+<div class="note" markdown="1">
+The two channels are at different points in the fork's history. `rc` is built by the current image pipeline. `stable` is the older payload from September 13 and predates several of the packages described in [How an install works]({{page:install-flow}}). A stable Mac picks those up on its first `omarchy update`, not during the install.
+</div>
+
+## Kernels
+
+Two kernels exist. `linux-asahi` comes from the Asahi Linux project through the `[asahi-alarm]` repository. `linux-aurora` is built here from [aurora-silicon/linux](https://github.com/aurora-silicon/linux) and adds DisplayPort alt-mode and USB4 external monitors, variable refresh rate, the camera signal processor and the always-on processor.
+
+An installed Mac is therefore in one of three states, and the updater refuses any other combination:
+
+| Channel | Kernel | Meaning |
+| --- | --- | --- |
+| `stable` | `linux-asahi` | A legacy Asahi Mac, including everything installed from the current stable image |
+| `stable` | `linux-aurora` | An Aurora Mac on the pinned stable lane |
+| `rc` | `linux-aurora` | An Aurora Mac on the release-candidate pin |
+
+The fork is moving the stable channel onto Aurora and retiring the Asahi kernel once Aurora has had enough hardware time. Existing Macs are migrated rather than stranded. Until that finishes, "stable" describes a channel, not a single kernel.
+
+There is a third Aurora lane, `edge`, which floats on the upstream branch head. It is for lab Macs. The installer does not offer it and `omarchy-channel-set` refuses it on a Mac.
+
+## Picking a channel
+
+Choose explicitly in the installer's **Release Channel** menu before installing, rather than relying on what it shows first. Choosing saves the preference, which is what the download follows. The same preference can be set beforehand:
+
+```bash
+defaults write com.omarchy.mx.installer ReleaseChannel stable
+```
+
+**Choose at install time, because the kernel family stays.** A Mac installed on the Asahi kernel stays on it, and the switch command refuses: moving between kernel families is not available. A Mac on the Aurora kernel can move between the Aurora lanes, `stable` and `rc`, with the ordinary Omarchy command, which records the request, takes the update lock and runs an update that moves the kernel and proves it boots:
+
+```bash
+omarchy-channel-set rc
+```
+
+The Mac's own record lives in `/var/lib/omarchy/apple-silicon-channel`, and the installed kernel is named in `/usr/share/omarchy/apple-silicon-kernel`. A lane switch is a request until an update has proven the new kernel boots; only then is it recorded as done.
+
+## How an update arrives
+
+`omarchy update` behaves as it does on x86, with two Apple-specific steps in front:
+
+1. **Runtime bundle.** `omarchy-update-asahi-bundle` reads the runtime channel pointer, verifies the release descriptor, the six-package manifest, the checksums and the signatures, then installs `omarchy-keyring`, `omarchy-settings-dev`, `omarchy-dev`, `omarchy-nvim`, `quickshell-git` and `ttf-jetbrains-mono-nerd-basic` as one transaction.
+2. **Package repository.** `omarchy-update-asahi-repository` points `[omarchy]` at the current promoted package channel. Rollbacks of the package or release sequence are refused.
+3. **Everything else** comes from the live Arch Linux ARM and Asahi mirrors, as upstream.
+
+A snapper snapshot is taken before the package sync. `snapper list` shows it. On a lab Mac with `/var/lib/omarchy/snapshot-restore.enabled`, `omarchy-snapshot restore <number>` reboots into a writable clone of a snapshot.
+
+When a new kernel is installed the updater rebuilds the initramfs, refreshes m1n1 and the device trees, runs the boot check and offers a reboot.
+
+## What is signed, and by what
+
+| Artefact | Key |
+| --- | --- |
+| Packages in `[omarchy]` | The ARM repository signing subkey |
+| Runtime bundle and release descriptors | The Omarchy MX Mac release key, `5983B1CA…5959` |
+| Channel catalogs read by the installer | One Ed25519 key that never leaves the owner's Keychain |
+| Installer app and `.pkg` | Apple Developer ID `T2C384FJBD`, notarized |
+
+Only four keys on the download host are ever rewritten: each channel's `catalog.signed.json` and `channel.json`, and each channel's installer `.pkg` and `installer.json`. Everything under `releases/` is immutable and held by a bucket lock.
