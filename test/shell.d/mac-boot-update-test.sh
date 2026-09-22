@@ -28,7 +28,9 @@ cat >"$stub_bin/omarchy-hw-apple-silicon" <<'SH'
 #!/bin/bash
 exit 0
 SH
-chmod +x "$stub_bin/omarchy-hw-apple-silicon"
+printf '#!/bin/bash\nexit 0\n' >"$stub_bin/grub-probe"
+printf '#!/bin/bash\nexit 0\n' >"$stub_bin/grub-mkconfig"
+chmod +x "$stub_bin/omarchy-hw-apple-silicon" "$stub_bin/grub-probe" "$stub_bin/grub-mkconfig"
 ln -s "$ROOT/bin/omarchy-mac-limine-active" "$stub_bin/omarchy-mac-limine-active"
 ln -s "$ROOT/bin/omarchy-mac-limine-cmdline" "$stub_bin/omarchy-mac-limine-cmdline"
 
@@ -51,11 +53,21 @@ pass "a GRUB Mac regenerates GRUB only"
 printf 'ESP_PATH="/boot/efi"\nKERNEL_CMDLINE[default]="stale"\n' >"$limine_default"
 : >"$calls"
 run || fail "boot update on a Limine Mac succeeds"
-[[ $(cat "$calls") == $'limine-update \nomarchy-mac-limine-deploy ' ]] ||
-  fail "a Limine Mac rebuilds Limine and deploys it, and never runs update-grub" "$(cat "$calls")"
+[[ $(cat "$calls") == $'update-grub \nlimine-update \nomarchy-mac-limine-deploy ' ]] ||
+  fail "a Limine Mac still refreshes the GRUB image it carries, then rebuilds and deploys Limine" "$(cat "$calls")"
 grep -Fxq 'KERNEL_CMDLINE[default]="root=UUID=root-uuid rw rootflags=subvol=@ rd.luks.name=abc=root quiet splash"' "$limine_default" ||
   fail "the Limine command line is re-derived from GRUB's defaults before limine-update" "$(cat "$limine_default")"
 pass "a Limine Mac rebuilds Limine from GRUB's defaults file"
+
+# An image that never shipped GRUB: update-grub still ships with asahi-scripts,
+# so the absence of GRUB's own tools is what must stop the refresh.
+mv "$stub_bin/grub-probe" "$test_tmp/grub-probe.away"
+: >"$calls"
+run || fail "boot update succeeds without GRUB installed"
+[[ $(cat "$calls") == $'limine-update \nomarchy-mac-limine-deploy ' ]] ||
+  fail "without GRUB the boot update only rebuilds and deploys Limine" "$(cat "$calls")"
+mv "$test_tmp/grub-probe.away" "$stub_bin/grub-probe"
+pass "a Mac with no GRUB needs none"
 
 : >"$calls"
 FAIL_limine_update=1 run && fail "a failed limine-update fails the boot update"
