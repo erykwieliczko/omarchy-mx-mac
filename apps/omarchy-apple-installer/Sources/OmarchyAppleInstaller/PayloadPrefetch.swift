@@ -114,8 +114,10 @@
       setState(.downloading(completed: completed, total: total))
     }
 
+    /// Only a running download moves to verifying; a late hop after the
+    /// download finished, failed or was cancelled is ignored.
     public func reportVerifying() {
-      if case .cancelled = state {
+      guard case .downloading = state else {
         return
       }
       setState(.verifying)
@@ -420,7 +422,8 @@
     private var runningDigest: String?
     private var latest: PayloadPrefetchState = .idle
     private var observers: [UUID: @Sendable (PayloadPrefetchState) -> Void] = [:]
-    private var waiters: [CheckedContinuation<Void, any Error>] = []
+    private var waiters: [UUID: CheckedContinuation<Void, any Error>] = [:]
+    private var cancelEpoch: UInt64 = 0
 
     public convenience init() {
       self.init(
@@ -495,9 +498,9 @@
           return
         }
 
-        self.publish(.verifying)
+        self.publish(.verifying, generation: generation)
         if self.matchesPinned(artifact, canonical) {
-          self.publish(.verified)
+          self.publish(.verified, generation: generation)
           return
         }
 
@@ -512,7 +515,7 @@
             attributes: [.posixPermissions: 0o700]
           )
         } catch {
-          self.publish(.failed(String(describing: error)))
+          self.publish(.failed(String(describing: error)), generation: generation)
           return
         }
 
@@ -521,16 +524,15 @@
           freeSpace: self.makeFreeSpace(work),
           keepAwake: self.makeKeepAwake(),
           onState: { [weak self] state in
-            guard let self, self.lock.withLock({ self.generation == generation }) else {
-              return
-            }
-            self.publish(state)
+            self?.publish(state, generation: generation)
           }
         )
-        self.lock.withLock {
-          guard self.generation == generation else { return }
+        let current = self.lock.withLock { () -> Bool in
+          guard self.generation == generation else { return false }
           self.controller = controller
+          return true
         }
+        guard current else { return }
 
         let required = self.requiredFreeBytes(artifact.expectedSizeBytes)
         await controller.start(requiredBytes: required) {
@@ -555,9 +557,9 @@
       progress: @escaping @Sendable (PayloadPrefetchState) -> Void
     ) async throws {
       let token = UUID()
-      let current: PayloadPrefetchState = lock.withLock {
+      let (current, epoch) = lock.withLock { () -> (PayloadPrefetchState, UInt64) in
         observers[token] = progress
-        return latest
+        return (latest, cancelEpoch)
       }
       defer { lock.withLock { observers[token] = nil } }
       progress(current)
@@ -571,22 +573,39 @@
       default:
         break
       }
-      try await withCheckedThrowingContinuation { continuation in
-        lock.lock()
-        switch latest {
-        case .verified:
-          lock.unlock()
-          continuation.resume()
-        case .failed(let message):
-          lock.unlock()
-          continuation.resume(throwing: PayloadPrefetchError.failed(message))
-        case .cancelled:
-          lock.unlock()
-          continuation.resume(throwing: PayloadPrefetchError.cancelled)
-        default:
-          waiters.append(continuation)
-          lock.unlock()
+      // A watcher that stops watching leaves the shared download running.
+      try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation {
+          (continuation: CheckedContinuation<Void, any Error>) in
+          lock.lock()
+          if Task.isCancelled {
+            lock.unlock()
+            continuation.resume(throwing: CancellationError())
+            return
+          }
+          if cancelEpoch != epoch {
+            lock.unlock()
+            continuation.resume(throwing: PayloadPrefetchError.cancelled)
+            return
+          }
+          switch latest {
+          case .verified:
+            lock.unlock()
+            continuation.resume()
+          case .failed(let message):
+            lock.unlock()
+            continuation.resume(throwing: PayloadPrefetchError.failed(message))
+          case .cancelled:
+            lock.unlock()
+            continuation.resume(throwing: PayloadPrefetchError.cancelled)
+          default:
+            waiters[token] = continuation
+            lock.unlock()
+          }
         }
+      } onCancel: {
+        let waiter = lock.withLock { waiters.removeValue(forKey: token) }
+        waiter?.resume(throwing: CancellationError())
       }
     }
 
@@ -594,10 +613,11 @@
       lock.lock()
       latest = .idle
       runningDigest = nil
+      cancelEpoch &+= 1
       let existing = controller
       controller = nil
       generation = UUID()
-      let pending = waiters
+      let pending = Array(waiters.values)
       waiters.removeAll()
       let observers = Array(self.observers.values)
       lock.unlock()
@@ -612,29 +632,35 @@
       }
     }
 
-    private func publish(_ state: PayloadPrefetchState) {
+    /// Checks and publishes under one lock hold, so a replaced or cancelled
+    /// download can never write its result into the current one.
+    private func publish(_ state: PayloadPrefetchState, generation: UUID) {
       let observers: [@Sendable (PayloadPrefetchState) -> Void]
       let pending: [CheckedContinuation<Void, any Error>]
       lock.lock()
+      guard self.generation == generation else {
+        lock.unlock()
+        return
+      }
       latest = state
       observers = Array(self.observers.values)
       switch state {
       case .verified:
-        pending = waiters
+        pending = Array(waiters.values)
         waiters.removeAll()
         lock.unlock()
         for waiter in pending {
           waiter.resume()
         }
       case .failed(let message):
-        pending = waiters
+        pending = Array(waiters.values)
         waiters.removeAll()
         lock.unlock()
         for waiter in pending {
           waiter.resume(throwing: PayloadPrefetchError.failed(message))
         }
       case .cancelled:
-        pending = waiters
+        pending = Array(waiters.values)
         waiters.removeAll()
         lock.unlock()
         for waiter in pending {

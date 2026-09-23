@@ -33,7 +33,6 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   var payloadPrefetchState: PayloadPrefetchState {
     prefetch.currentState()
   }
-
   // MARK: Fail-closed gates
 
   var installationBlocked: Bool {

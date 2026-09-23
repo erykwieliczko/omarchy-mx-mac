@@ -92,6 +92,11 @@
     /// visible with its controls disabled instead of showing the download
     /// screen again.
     private var isReplanning = false
+    /// Identifies the running payload download watcher. A size change re-plans
+    /// the same payload, so the download keeps going across it.
+    private var prefetchID = UUID()
+    private var isObservingPrefetch = false
+    private var prefetchWatcher: Task<Void, Never>?
 
     public init(environment: any InstallerEnvironment) {
       self.environment = environment
@@ -214,7 +219,7 @@
       guard !isBusy && !isExecuting && !hasExecutionStarted else { return }
       operationID = UUID()
       let currentOperation = operationID
-      resetForPlanPreparation()
+      resetForPlanPreparation(keepingPrefetch: isReplanning)
       lastOmarchyBytes = omarchyBytes
       if !isReplanning {
         phase = .preparingPlan(AssetProgressUpdate(stage: .fetchingCatalog))
@@ -245,6 +250,14 @@
             }
           lastPrepared = (plan, lastUpdate)
           phase = hold ? .planPrepared(plan, lastUpdate) : .planReview(plan, acknowledged: false)
+          if isReplanning {
+            // The re-plan may have replaced or restarted the download. Watch it
+            // afresh so no result from the old watcher counts for this plan.
+            forgetPrefetchWatcher()
+            if environment.payloadPrefetchRequired {
+              prefetchState = environment.payloadPrefetchState
+            }
+          }
           startPrefetchIfNeeded()
         case .existingInstallChoice(let options):
           // Never replace, never install alongside: say what was found and
@@ -629,22 +642,43 @@
       if case .verified = prefetchState {
         return
       }
-      let currentOperation = operationID
-      Task { @MainActor in
+      guard !isObservingPrefetch else { return }
+      isObservingPrefetch = true
+      let currentPrefetch = UUID()
+      prefetchID = currentPrefetch
+      prefetchWatcher = Task { @MainActor in
+        defer {
+          if self.prefetchID == currentPrefetch { self.isObservingPrefetch = false }
+        }
         do {
           try await environment.prefetchPayload { [weak self] state in
             Task { @MainActor in
-              guard let self, self.operationID == currentOperation else { return }
+              // A progress hop queued behind completion must not undo it.
+              guard let self, self.prefetchID == currentPrefetch, self.isObservingPrefetch
+              else { return }
               self.prefetchState = state
             }
           }
-          guard self.operationID == currentOperation else { return }
+          guard self.prefetchID == currentPrefetch else { return }
           prefetchState = .verified
         } catch {
-          guard self.operationID == currentOperation else { return }
+          guard self.prefetchID == currentPrefetch else { return }
           prefetchState = .failed(String(describing: error))
         }
       }
+    }
+
+    private func forgetPrefetchWatcher() {
+      prefetchWatcher?.cancel()
+      prefetchWatcher = nil
+      prefetchID = UUID()
+      isObservingPrefetch = false
+      prefetchState = environment.payloadPrefetchRequired ? .idle : .verified
+    }
+
+    private func stopPrefetch() {
+      forgetPrefetchWatcher()
+      environment.cancelPayloadPrefetch()
     }
 
     // MARK: Reset cascades
@@ -665,12 +699,13 @@
       lastHost = nil
       encryptLinuxDisk = true
       environment.setEncryptLinuxDisk(true)
-      prefetchState = environment.payloadPrefetchRequired ? .idle : .verified
-      environment.cancelPayloadPrefetch()
+      stopPrefetch()
     }
 
-    /// Mirrors the field resets of `prepareSignedPlan()`.
-    private func resetForPlanPreparation() {
+    /// Mirrors the field resets of `prepareSignedPlan()`. A size change keeps
+    /// the payload download: the payload does not depend on the size, and the
+    /// environment reuses an in-flight download of the same digest.
+    private func resetForPlanPreparation(keepingPrefetch: Bool) {
       isEditingSize = false
       environment.discardApproval()
       stagingProgress = [:]
@@ -679,8 +714,9 @@
       hasExecutionStarted = false
       recoveryRetryAvailable = false
       isExecuting = false
-      prefetchState = environment.payloadPrefetchRequired ? .idle : .verified
-      environment.cancelPayloadPrefetch()
+      if !keepingPrefetch {
+        stopPrefetch()
+      }
     }
   }
   /// Receipt is synchronous even when UI delivery needs a main-actor hop.

@@ -7,21 +7,14 @@
   @testable import OmarchyInstallerUXCore
 
   final class ReleaseChannelPreferenceTests: XCTestCase {
-    private var suiteName = ""
-    private var defaults = UserDefaults.standard
+    private var store = ReleaseChannelPreference.Store()
 
-    override func setUpWithError() throws {
-      suiteName = "omarchy-channel-\(UUID().uuidString)"
-      defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-    }
-
-    override func tearDown() {
-      defaults.removePersistentDomain(forName: suiteName)
-      super.tearDown()
+    override func setUp() {
+      store = ReleaseChannelPreference.Store()
     }
 
     func testAnUnsetPreferenceUsesTheDescriptorDefault() {
-      let preference = ReleaseChannelPreference(defaults: defaults)
+      let preference = ReleaseChannelPreference(store: store)
 
       XCTAssertNil(preference.stored)
       XCTAssertEqual(preference.resolve(descriptorDefault: .stable), .stable)
@@ -29,7 +22,7 @@
     }
 
     func testSelectingBetaIsRemembered() {
-      let preference = ReleaseChannelPreference(defaults: defaults)
+      let preference = ReleaseChannelPreference(store: store)
 
       preference.select(.rc)
 
@@ -38,7 +31,7 @@
     }
 
     func testClearingThePreferenceReturnsToTheDefault() {
-      let preference = ReleaseChannelPreference(defaults: defaults)
+      let preference = ReleaseChannelPreference(store: store)
       preference.select(.rc)
 
       preference.select(nil)
@@ -47,20 +40,21 @@
       XCTAssertEqual(preference.resolve(descriptorDefault: .stable), .stable)
     }
 
-    func testAnUnknownStoredValueFallsBackToTheDefault() {
-      // A hand-edited or stale preference must never leave the app reading a
-      // channel this build does not know.
-      defaults.set("nightly", forKey: ReleaseChannelPreference.defaultsKey)
-      let preference = ReleaseChannelPreference(defaults: defaults)
+    func testAPickIsNotSavedAcrossLaunches() {
+      // A saved pick once kept a Mac opening on RC; the choice must not reach
+      // UserDefaults, where the next launch or another instance would read it.
+      let legacy = UserDefaults.standard.object(forKey: "ReleaseChannel") as? String
+      ReleaseChannelPreference(store: store).select(.rc)
 
-      XCTAssertNil(preference.stored)
-      XCTAssertEqual(preference.resolve(descriptorDefault: .stable), .stable)
+      XCTAssertEqual(ReleaseChannelPreference(store: store).stored, .rc)
+      XCTAssertNil(ReleaseChannelPreference(store: ReleaseChannelPreference.Store()).stored)
+      XCTAssertEqual(UserDefaults.standard.object(forKey: "ReleaseChannel") as? String, legacy)
     }
 
     func testAFreshLaunchShowsAndFetchesTheBundledDefault() throws {
       let configuration = try InstallerReleaseConfigurationLocator().load(
         from: Self.packageRoot.appendingPathComponent("Release", isDirectory: true))
-      let preference = ReleaseChannelPreference(defaults: defaults)
+      let preference = ReleaseChannelPreference(store: store)
 
       XCTAssertNil(preference.stored)
       XCTAssertEqual(preference.resolve(configuration: configuration), configuration.defaultChannel)
@@ -71,7 +65,7 @@
         from: Self.packageRoot.appendingPathComponent("Release", isDirectory: true))
       let other = try XCTUnwrap(
         ReleaseChannel.allCases.first { $0 != configuration.defaultChannel })
-      let preference = ReleaseChannelPreference(defaults: defaults)
+      let preference = ReleaseChannelPreference(store: store)
 
       preference.select(other)
 
