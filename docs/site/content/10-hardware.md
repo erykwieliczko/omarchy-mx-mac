@@ -31,11 +31,11 @@ The current image admits no M3 or M4 Mac.
 | Machine | Role |
 | --- | --- |
 | MacBook Pro 14" 2021, M1 Pro, `apple,j314s` | Full regression on every release. Aurora kernel, Limine integration testing. |
-| MacBook Pro 16" 2023, M2 Max, `apple,j416c` | Multi-display work: five displays through HDMI and USB4. Image builds and VM acceptance. |
+| MacBook Pro 16" 2023, M2 Max, `apple,j416c` | Multi-display work: five displays through HDMI and USB4. VM acceptance host for packages and images (images are built on GitHub). |
 
 ## What works
 
-<span class="status ok">works</span> on both kernels unless noted. <span class="status partial">Aurora only</span> needs the Aurora kernel, which every new install has; Macs on the legacy Asahi kernel lack it. <span class="status wip">known issue</span> is tracked.
+<span class="status ok">works</span> on both kernels unless noted. <span class="status partial">Aurora only</span> needs the Aurora kernel, which every new install has; Macs on the legacy Asahi kernel lack it. The `stable` lane runs rc's kernel until its first own build; that build's base lacks USB4 and the third and fourth external displays, so `rc` will then be the lane for them. <span class="status wip">known issue</span> is tracked.
 
 | Area | Status | Notes |
 | --- | --- | --- |

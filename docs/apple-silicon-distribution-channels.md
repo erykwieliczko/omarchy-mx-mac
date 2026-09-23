@@ -44,13 +44,13 @@ tooling or the app.
 
 ## Channel model
 
-Decided 2026-09-17. `stable` and `rc` have followed it since 2026-09-18;
-`edge` is not published yet. The runtime side of `edge` (an rc Mac opting in
+Decided 2026-09-17. `stable` and `rc` have followed it since 2026-09-18.
+`edge` is a kernel lane for lab Macs and is never an installer channel. The runtime side of `edge` (an rc Mac opting in
 and out) is described [below](#the-edge-lane-on-an-installed-mac).
 
 | Channel | Kernel | How it moves |
 | --- | --- | --- |
-| `stable` | `linux-aurora` from `aurora-silicon/linux` branch `aurora-stable`, **pinned** to `77cb8f24` (decided 2026-09-20; the Asahi kernel stays only on Macs that still run it, as the legacy `stable:linux-asahi` record) | Moves only when `aurora-stable` advances and `bin/mac-aurora-pin` (omarchy-pkgs) repins it. That base has no Thunderbolt/USB4 and no `dcpext2`/`dcpext3`: on stable an M2 Max has no USB4 devices and at most two external displays; `rc` and `edge` carry them. Installer catalog notes for the stable channel must say so. |
+| `stable` | `linux-aurora` from `aurora-silicon/linux` branch `aurora-stable`, **pinned** to `77cb8f24` (decided 2026-09-20; the Asahi kernel stays only on Macs that still run it, as the legacy `stable:linux-asahi` record). No `aurora-stable-packages` release exists yet, so `default/aurora-stable-release` is a placeholder naming rc's qualified `aurora-packages-3caea469`: until the first stable build, a stable Mac runs the rc kernel. | Moves only when `aurora-stable` advances and `bin/mac-aurora-pin` (omarchy-pkgs) repins it. That base has no Thunderbolt/USB4 and no `dcpext2`/`dcpext3`: once the first stable build lands, an M2 Max on stable has no USB4 devices and at most two external displays; `rc` and `edge` carry them. Installer catalog notes for the stable channel must say so from then on. |
 | `rc` | `linux-aurora` from `aurora-silicon/linux` branch `aurora-wip`, **pinned** to a commit qualified on real hardware | Moves only when a new pin passes hardware qualification. |
 | `edge` | `linux-aurora` from `aurora-wip`, **floating** on the branch head | Follows each new build. |
 
@@ -66,6 +66,14 @@ The rename happened on 2026-09-18:
   installer instead of silently installing Aurora.
 - `rc-aurora` stays as an alias of `rc` for installers built before the
   rename, which list it by that name.
+
+On 2026-09-23 the Limine image `os-v4.0.3-mac.5.20260923-rc` (Aurora kernel,
+engine v0.9.2-omarchy.17, catalog sequence 1790127482, `apple,j314s` and
+`apple,j416c` only) went to `rc` and `rc-aurora`, and the same day was promoted
+to `stable` with `--no-prune`, so `os-v4.0.3-mac.1.20260913` (Asahi, 22 models)
+stays on R2 for rollback. All three channels serve one catalog. The image
+carries the 4.0.4 runtime; the `4.0.3` in its tag is a naming slip. Installer
+2.0.9 is the download on both `installer/stable` and `installer/rc`.
 
 Installed Macs are unaffected. Each one records its channel and its kernel
 (`stable:linux-aurora` or `rc:linux-aurora` by lane; `stable:linux-asahi` is the
@@ -553,16 +561,11 @@ generator, so cutting a release never edits a script.
 
 ### Switch a Mac to the rc channel
 
-From the app, use *Release Channel* in the menu bar. From a terminal:
-
-```bash
-defaults write com.omarchy.mx.installer ReleaseChannel rc
-```
-
-`defaults delete com.omarchy.mx.installer ReleaseChannel` returns to the
-descriptor default. An unknown value is ignored rather than honoured. Each
-channel records the release it last accepted separately, so moving back to
-stable is not treated as a downgrade.
+From the app, use *Release Channel* in the menu bar before the download starts.
+Since installer 2.0.9 the choice lives in memory only: every launch opens on the
+descriptor default (`stable`), and `defaults write … ReleaseChannel` has no
+effect. Each channel records the release it last accepted separately, so moving
+back to stable is not treated as a downgrade.
 
 ### Remove what nothing references
 
@@ -620,8 +623,11 @@ A snapshot is never modified; a new date is a new prefix. It is not under
 prune` never touches `mirror/`: a snapshot stays until it is removed by hand, and
 the one the current rc and stable payloads were built against must stay.
 
-Who reads it: `omarchy-iso/configs/pacman-online-arm.conf` (the payload build) and
-`test/vm/asahi-fresh` (the acceptance guest). Installed Macs do not: they keep
+Who reads it: the Mac image build (`bin/mac-image-inputs` and
+`bin/build-mac-image` in omarchy-pkgs, which resolve one dated snapshot per run),
+`test/vm/asahi-fresh` (package acceptance) and `test/vm/mac-image` (image
+acceptance, for its generic guest kernel). Images before 2026-09-22 were built by
+`omarchy-iso/configs/pacman-online-arm.conf`. Installed Macs do not: they keep
 the live mirrors, as `pacman-online-installed-arm.conf` says, and `omarchy update`
 reports a mirror mid-transition as exactly that rather than as a failure.
 
