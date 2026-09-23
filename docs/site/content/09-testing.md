@@ -102,7 +102,7 @@ A person at a real Mac, following a checklist that covers platform identity, des
 
 After any boot following a kernel or boot-file change, a cold boot and further remote checks are required: the boot check, no failed units, the vendor firmware service finished, the monitors the session really has, and a tone played through the speakers and captured on the microphone to prove audio end to end. The checklist also lists known harmless messages, so noise is not read as regression.
 
-Two Macs carry this: a 14-inch MacBook Pro with M1 Pro for the full regression, and a 16-inch MacBook Pro with M2 Max for multi-display work. The catalog admits far more machines than that.
+Two Macs carry this: a 14-inch MacBook Pro with M1 Pro for the full regression, and a 16-inch MacBook Pro with M2 Max for multi-display work. The current catalog admits exactly these two; the earlier Asahi stable image admitted 22.
 
 ## What the release gates actually enforce
 
@@ -137,4 +137,4 @@ Hardware evidence is plain text: date, model, pass or fail or not-tested, the co
 - **The graphical suite never runs in CI**, so a desktop regression waits for someone to run it.
 - **Some suites run in no workflow at all.** In the package repository, 13 of 43 test scripts, including the one covering the encryption path.
 - **A green headless run can contain skips**, because the runtime probes pass when no compositor is present.
-- **Unified kernel images are not inspected** by the fresh-install harness, which will matter more as the Limine path lands.
+- **Unified kernel images are not inspected** by the fresh-install harness, which matters now that the current image boots through Limine.
