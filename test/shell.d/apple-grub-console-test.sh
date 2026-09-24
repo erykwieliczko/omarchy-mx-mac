@@ -47,6 +47,9 @@ run_leaf() {
   OMARCHY_GRUB_FONT="$tmp/fonts/omarchy.pf2" OMARCHY_GRUB_THEME_DIR="$tmp/themes/omarchy" \
   OMARCHY_GRUB_THEME_SOURCE="$theme" OMARCHY_GRUB_FONT_SOURCE_DIR="$tmp/liberation" \
   OMARCHY_GRUB_LINUX_SCRIPT="$tmp/grub.d/10_linux" OMARCHY_GRUB_BACKUP_DIR="$tmp/backups" \
+  OMARCHY_MKINITCPIO_CONF="${MKINITCPIO_CONF:-$ROOT/test/fixtures/mkinitcpio/systemd.conf}" \
+  OMARCHY_MKINITCPIO_CONF_DIR="$tmp/mkinitcpio.conf.d" OMARCHY_MKINITCPIO_PRESET_DIR="$tmp/presets" \
+  OMARCHY_MKINITCPIO_KERNEL=linux-asahi \
     bash -euo pipefail -c 'source "$1"' _ "$leaf" >"$tmp/out" 2>&1
 }
 
@@ -124,6 +127,54 @@ run_leaf || fail "duplicate assignments are handled: $(<"$tmp/out")"
 grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=x-systemd.device-timeout=0"' "$tmp/grub" ||
   fail "the effective (last, single-quoted) value is the one extended: $(<"$tmp/grub")"
 pass "the leaf leaves one authoritative assignment carrying the effective value"
+
+# The root-device wait is a systemd option. A systemd initramfs merges every
+# rootflags=, so the wait joins a rootflags= the line already has; mkinitcpio's
+# busybox init keeps only the last one, which would drop 10_linux's
+# rootflags=subvol=@, so there the wait never goes on and an old one comes off.
+printf 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=compress=zstd"\n' >"$tmp/grub"
+run_leaf || fail "a Mac rootflags= is handled: $(<"$tmp/out")"
+grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=compress=zstd,x-systemd.device-timeout=0"' "$tmp/grub" ||
+  fail "the wait joins the Mac's own rootflags=: $(<"$tmp/grub")"
+run_leaf || fail "a merged wait is idempotent: $(<"$tmp/out")"
+[[ $(grep -c 'x-systemd.device-timeout=0' "$tmp/grub") == 1 ]] || fail "the merged wait is not added twice: $(<"$tmp/grub")"
+pass "on a systemd initramfs the wait never adds a second rootflags= of its own"
+
+busybox="$ROOT/test/fixtures/mkinitcpio/busybox-encrypt.conf"
+printf 'GRUB_CMDLINE_LINUX=""\nGRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 cryptdevice=UUID=0422663f-9969-4953-900f-b342703b7e84:root:allow-discards"\n' >"$tmp/grub"
+MKINITCPIO_CONF=$busybox run_leaf || fail "a busybox Mac runs the leaf: $(<"$tmp/out")"
+! grep -Fq 'x-systemd.device-timeout' "$tmp/grub" || fail "a busybox initramfs gets no second rootflags=: $(<"$tmp/grub")"
+grep -Fxq 'GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 cryptdevice=UUID=0422663f-9969-4953-900f-b342703b7e84:root:allow-discards plymouth.ignore-serial-consoles"' "$tmp/grub" ||
+  fail "the busybox Mac keeps its cryptdevice=: $(<"$tmp/grub")"
+printf 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=x-systemd.device-timeout=0 rootflags=noatime,x-systemd.device-timeout=0"\n' >"$tmp/grub"
+MKINITCPIO_CONF=$busybox run_leaf || fail "a busybox Mac with the wait runs the leaf: $(<"$tmp/out")"
+grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=noatime"' "$tmp/grub" ||
+  fail "the wait comes off a busybox Mac's line: $(<"$tmp/grub")"
+pass "a busybox initramfs gets no root-device wait, and loses one it had"
+
+# The HOOKS mkinitcpio builds with include the drop-ins: the omarchy-mac-boot
+# drop-in turns a stock busybox line into a systemd one.
+mkdir -p "$tmp/mkinitcpio.conf.d"
+printf 'HOOKS=(base udev block filesystems)\n' >"$tmp/stock.conf"
+printf 'HOOKS=(base systemd block filesystems)\n' >"$tmp/mkinitcpio.conf.d/91-test.conf"
+printf 'GRUB_CMDLINE_LINUX="zswap.enabled=0"\n' >"$tmp/grub"
+MKINITCPIO_CONF="$tmp/stock.conf" run_leaf || fail "drop-ins resolve: $(<"$tmp/out")"
+grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0 rootflags=x-systemd.device-timeout=0"' "$tmp/grub" ||
+  fail "a drop-in that makes the initramfs systemd keeps the wait: $(<"$tmp/grub")"
+# Drop-ins apply in version order, as mkinitcpio sorts them: a local
+# 100-*.conf comes after 91-*.conf and puts the busybox line back.
+printf 'HOOKS=(base udev block encrypt filesystems)\n' >"$tmp/mkinitcpio.conf.d/100-local.conf"
+printf 'GRUB_CMDLINE_LINUX="zswap.enabled=0"\n' >"$tmp/grub"
+MKINITCPIO_CONF="$tmp/stock.conf" run_leaf || fail "version-ordered drop-ins resolve: $(<"$tmp/out")"
+grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0"' "$tmp/grub" || fail "100-local.conf is applied after 91-test.conf: $(<"$tmp/grub")"
+# A preset that names its configuration (-c) builds without the drop-ins.
+rm "$tmp/mkinitcpio.conf.d/100-local.conf"
+mkdir -p "$tmp/presets"
+printf 'PRESETS=(default)\nALL_kver=/boot/vmlinuz-linux-asahi\nALL_config=%s\n' "$busybox" >"$tmp/presets/linux-asahi.preset"
+MKINITCPIO_CONF="$tmp/stock.conf" run_leaf || fail "a preset configuration resolves: $(<"$tmp/out")"
+grep -Fxq 'GRUB_CMDLINE_LINUX="zswap.enabled=0"' "$tmp/grub" || fail "the preset's configuration, without drop-ins, decides: $(<"$tmp/grub")"
+rm -rf "$tmp/mkinitcpio.conf.d" "$tmp/presets"
+pass "the initramfs kind comes from the preset, mkinitcpio.conf and its drop-ins in mkinitcpio's order"
 
 # A failed update-grub leaves the regeneration owed.
 printf '#!/bin/bash\necho update-grub >>"$CALL_LOG"; exit 1\n' >"$tmp/bin/update-grub"
