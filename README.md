@@ -72,10 +72,10 @@ privileged helper, which performs the disk work.
 The owner confirmed an end-to-end installation on the M2 Max with an earlier
 installer and image. The previous image, `os-v4.0.3-mac.5.20260923-rc`, passed VM
 acceptance. The current image, `os-v4.0.4-mac.1.20260924-rc`, comes from the same
-image lane but has had no VM acceptance or physical install recorded of its own. The app also saves
-credential-free diagnostic logs across reboots in
+image lane but has had no VM acceptance or physical install recorded of its own. Installer builds after
+2.0.9 save credential-free logs of engine errors in
 `~/Library/Logs/Omarchy MX Mac Installer/` and root-worker diagnostics in
-`/var/db/com.omarchy.mx.installer/diagnostics/`.
+`/var/db/com.omarchy.mx.installer/diagnostics/`; 2.0.9 writes neither.
 
 You can verify the downloaded package before opening it with:
 
@@ -159,12 +159,12 @@ The image embeds the `4.0.4.r7081.gca187b0-1` runtime and settings from
 [runtime channel 57](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-57),
 on top of the
 [stable packages](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-stable-2949b88ccfc303e3c423106eafa68c9088ab6eea).
-Installed Macs have since moved on: since 2026-09-24 `omarchy update` brings
-them to the `4.0.4.r7094.g16eaa2f-1` runtime from
-[runtime channel 58](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-58)
+Installed Macs have since moved on: since 2026-09-25 `omarchy update` brings
+them to the `4.0.4.r7099.gb8ed395-1` runtime from
+[runtime channel 59](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-59)
 and the packages of
-[package channel 14](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-14)
-([notes](docs/releases/asahi-quattro-channel-58.md)).
+[package channel 15](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-15)
+([notes](docs/releases/asahi-quattro-channel-59.md)).
 The app follows the latest signed catalog for the channel you select; cached
 files are reused only when their size and SHA-256 match that catalog.
 
@@ -223,7 +223,7 @@ complete output and open a verified bug report with the commands above.
 - [Omarchy MX Mac manual](https://omarchy-mx-mac.org/)
 - [Latest product release and validation notes](https://github.com/maralcbr/omarchy-mx-mac/releases/latest)
 - [Installer download (Stable)](https://downloads.aicodelabs.com.au/installer/stable/Omarchy-MX-Mac-Installer.pkg)
-- [Current runtime channel 58](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-58) and [package channel 14](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-14) ([notes](docs/releases/asahi-quattro-channel-58.md))
+- [Current runtime channel 59](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-59) and [package channel 15](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-15) ([notes](docs/releases/asahi-quattro-channel-59.md))
 - [Issues](https://github.com/maralcbr/omarchy-mx-mac/issues)
 - [Discussions](https://github.com/maralcbr/omarchy-mx-mac/discussions)
 
