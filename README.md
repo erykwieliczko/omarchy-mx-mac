@@ -15,18 +15,19 @@ Omarchy 4 (Quattro) is the maintained release.
 
 | What you have | What to do |
 | --- | --- |
-| A MacBook Pro 14" M1 Pro or 16" M2 Max with no Omarchy on it | Download the app below and install; it opens on **Stable**. Run `omarchy update` afterwards. |
-| Any other Mac | Not admitted by the current image; the app refuses it before touching the disk. |
+| One of the 22 admitted M1 or M2 models with no Omarchy on it | Download the app below and install; it opens on **Stable**. Run `omarchy update` afterwards. |
+| Any other Mac, including every M3 and M4 | Not admitted by the current image; the app refuses it before touching the disk. |
 | An existing Omarchy 4 install | Run `omarchy update`. |
 | An existing Omarchy 3 install | Run `omarchy update`. It moves you to Omarchy 4. |
 
 > [!NOTE]
-> **Stable and RC install the same image today.** On 2026-09-23 the RC image
-> (`os-v4.0.3-mac.5.20260923-rc`: Aurora kernel, Limine boot menu) was promoted
-> to Stable. The channels now differ only in the kernel lane the Mac follows
-> afterwards. The Aurora kernel (`aurora-silicon/linux`) is pinned to a commit
-> qualified on the 14-inch M1 Pro and the 16-inch M2 Max, and the image admits
-> only those two models.
+> **Stable and RC install the same image today.** Since 2026-09-24 both
+> channels write `os-v4.0.4-mac.1.20260924-rc` (Aurora kernel, Limine boot menu)
+> on all 22 M1 and M2 models the earlier Asahi image admitted. The channels
+> differ only in the kernel lane the Mac follows afterwards. The Aurora kernel
+> (`aurora-silicon/linux`) is pinned to a commit qualified on the 14-inch M1 Pro
+> and the 16-inch M2 Max; the other 20 models are admitted without their own
+> hardware qualification.
 >
 > A Mac keeps the kernel family it was installed with: a Mac installed from the
 > earlier Asahi stable image stays on Asahi, and an Aurora Mac can move only
@@ -40,9 +41,8 @@ Two things carry versions here, and they do not move together:
 - **Packages** — the current stable version is `4.0.4-mac.1`. This is what
   `omarchy update` gives you, and it advances with every release.
 - **Fresh-install images** — what the macOS app writes to disk. Currently
-  `os-v4.0.3-mac.5.20260923-rc` on both channels (Aurora kernel, Limine). It
-  already carries Omarchy 4.0.4 (`4.0.4.r7069.g59ee15f-1`); the `4.0.3` in its
-  tag is a naming slip in the signed catalog, not the version inside. Images are
+  `os-v4.0.4-mac.1.20260924-rc` on both channels (Aurora kernel, Limine),
+  carrying Omarchy 4.0.4 from runtime `asahi-quattro-ca187b0a`. Images are
   rebuilt only when they need to be, and the first `omarchy update` after an
   install brings the Mac to the current packages.
 
@@ -70,8 +70,9 @@ reused instead of downloaded again. The package also installs the app's
 privileged helper, which performs the disk work.
 
 The owner confirmed an end-to-end installation on the M2 Max with an earlier
-installer and image. The current image, `os-v4.0.3-mac.5.20260923-rc`, passed VM
-acceptance but has not had a physical install recorded yet. The app also saves
+installer and image. The previous image, `os-v4.0.3-mac.5.20260923-rc`, passed VM
+acceptance. The current image, `os-v4.0.4-mac.1.20260924-rc`, comes from the same
+image lane but has had no VM acceptance or physical install recorded of its own. The app also saves
 credential-free diagnostic logs across reboots in
 `~/Library/Logs/Omarchy MX Mac Installer/` and root-worker diagnostics in
 `/var/db/com.omarchy.mx.installer/diagnostics/`.
@@ -126,8 +127,8 @@ hardware integration, and updates for Apple Silicon:
   kernel is installed.
 
 Hardware support depends on Asahi Linux and the Aurora kernel. The current image
-admits only the MacBook Pro 14" M1 Pro and 16" M2 Max; Macs installed from the
-earlier Asahi image cover more M1 and M2 models.
+admits the 22 M1 and M2 models the earlier Asahi image did; only the MacBook Pro
+14" M1 Pro and 16" M2 Max are qualified on hardware. No M3 or M4 Mac is admitted.
 
 ## Mac Screenshot Shortcuts
 
@@ -148,15 +149,16 @@ available.
 
 The current release is **Omarchy MX Mac 4.0.4-mac.1**, based on upstream
 Omarchy 4.0.4. Both installer channels write signed image
-`os-v4.0.3-mac.5.20260923-rc` (Aurora kernel, Limine boot menu), which carries
-the 4.0.4 runtime; it was promoted from Release candidate to **Stable** on
-2026-09-23. Existing Macs receive 4.0.4 through `omarchy update`. Macs installed
+`os-v4.0.4-mac.1.20260924-rc` (Aurora kernel, Limine boot menu) on 22 M1 and M2
+models since 2026-09-24. It replaced `os-v4.0.3-mac.5.20260923-rc`, which admitted
+only two models. Existing Macs receive 4.0.4 through `omarchy update`. Macs installed
 from the earlier Asahi Stable image, `os-v4.0.3-mac.1.20260913`, keep the Asahi
 kernel.
 
-[Stable packages](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-stable-2949b88ccfc303e3c423106eafa68c9088ab6eea)
-and [runtime channel 56](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-56)
-carry the `4.0.4.r7069.g59ee15f-1` runtime and settings embedded in the image.
+The image embeds the `4.0.4.r7081.gca187b0-1` runtime and settings from
+[runtime channel 57](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-57),
+on top of the
+[stable packages](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-stable-2949b88ccfc303e3c423106eafa68c9088ab6eea).
 The app follows the latest signed catalog for the channel you select; cached
 files are reused only when their size and SHA-256 match that catalog.
 
@@ -206,7 +208,7 @@ complete output and open a verified bug report with the commands above.
 - [Omarchy MX Mac manual](https://maralcbr.github.io/omarchy-mx-mac/)
 - [Latest product release and validation notes](https://github.com/maralcbr/omarchy-mx-mac/releases/latest)
 - [Installer download (Stable)](https://downloads.aicodelabs.com.au/installer/stable/Omarchy-MX-Mac-Installer.pkg)
-- [Current runtime channel 56](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-56) and [package channel 13](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-13)
+- [Current runtime channel 57](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-quattro-channel-57) and [package channel 13](https://github.com/maralcbr/omarchy-pkgs/releases/tag/asahi-packages-channel-13)
 - [Issues](https://github.com/maralcbr/omarchy-mx-mac/issues)
 - [Discussions](https://github.com/maralcbr/omarchy-mx-mac/discussions)
 
