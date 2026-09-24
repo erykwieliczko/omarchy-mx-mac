@@ -122,6 +122,27 @@ This copies `$OMARCHY_PATH/config/hypr/hyprland.lua` to `~/.config/hypr/hyprland
 is interpolated into both paths and only checked with `[[ -e ]]`, so pass a plain relative path: a
 name containing `..` resolves and copies, landing outside `~/.config` rather than being rejected.
 
+# Documentation
+
+Documentation under `docs/` and the `README.md` is part of every change. A change
+or release is not finished until the docs describe what now ships.
+
+- Every change: update the docs its behavior touches (install flow, packages,
+  commands, channels, boot, hardware support) in the same commit or pull request.
+  If nothing needs updating, say so in the pull request description.
+- Every release: add or update the release notes under `docs/releases/`, the
+  `README.md` links under "Releases And Support" (current channel tag), and
+  `docs/apple-silicon-deployment.md` when the release process changed.
+- The manual at <https://maralcbr.github.io/omarchy-mx-mac/> is built from
+  `docs/site/` (see `docs/site/README.md`). User-facing changes update its pages.
+- Package map: run `scripts/package-map` and commit the regenerated
+  `docs/site/content/13-package-map.md` whenever `install/omarchy-*-asahi.packages`
+  change, a package enters or leaves a channel, or a release is cut. Run
+  `scripts/package-map --check` before a release; it fails when the page is stale.
+  Never edit that page by hand; change the knowledge tables at the top of the script.
+  `.github/workflows/package-map.yml` also refreshes it every Monday 06:00 Brisbane:
+  it commits to `main` only when the live data changed, and redeploys the manual every run.
+
 # Apple Silicon work
 
 Read the matching guide before acting:
