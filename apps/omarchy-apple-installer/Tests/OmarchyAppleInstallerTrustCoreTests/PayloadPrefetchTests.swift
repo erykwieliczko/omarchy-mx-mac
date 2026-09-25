@@ -71,6 +71,266 @@
       await controller.cancel()
     }
 
+    private static let unmetered = InstallerNetworkPathSnapshot(
+      isSatisfied: true, isExpensive: false, isConstrained: false)
+
+    private func flakyController(
+      delays: [Duration] = [.zero, .zero]
+    ) -> PayloadPrefetchController {
+      PayloadPrefetchController(
+        network: MockNetworkPath(Self.unmetered),
+        freeSpace: MockFreeSpace(bytes: 8_000_000_000),
+        keepAwake: MockKeepAwake(),
+        retryDelays: delays,
+        sleep: { _ in }
+      )
+    }
+
+    // Issue #257: one dropped connection during the 3.9 GB download ended the
+    // prefetch for good, leaving Install disabled.
+    func testRetriesADroppedConnectionThenVerifies() async throws {
+      let attempts = RecordingBox<Int>()
+      let controller = flakyController()
+      await controller.start(requiredBytes: 100) {
+        attempts.append(1)
+        if attempts.values.count == 1 {
+          throw URLError(.networkConnectionLost)
+        }
+      }
+      try await controller.waitUntilVerified()
+      let state = await controller.currentState()
+      XCTAssertEqual(state, .verified)
+      XCTAssertEqual(attempts.values.count, 2)
+    }
+
+    func testRetriesServerErrorsButNotForever() async throws {
+      let attempts = RecordingBox<Int>()
+      let controller = flakyController(delays: [.zero, .zero])
+      await controller.start(requiredBytes: 100) {
+        attempts.append(1)
+        throw ArtifactStageError.unexpectedHTTPStatus(503)
+      }
+      do {
+        try await controller.waitUntilVerified()
+        XCTFail("Expected the retries to run out")
+      } catch {}
+      XCTAssertEqual(attempts.values.count, 3)
+      let state = await controller.currentState()
+      XCTAssertEqual(state, .failed("The download server answered HTTP 503."))
+    }
+
+    func testADigestMismatchFailsAtOnceAndSaysSo() async throws {
+      let attempts = RecordingBox<Int>()
+      let controller = flakyController()
+      await controller.start(requiredBytes: 100) {
+        attempts.append(1)
+        throw ArtifactStageError.digestMismatch(expected: "sha256:aa", actual: "sha256:bb")
+      }
+      do {
+        try await controller.waitUntilVerified()
+        XCTFail("Expected a digest failure")
+      } catch {}
+      XCTAssertEqual(attempts.values.count, 1)
+      let state = await controller.currentState()
+      guard case .failed(let reason) = state else {
+        return XCTFail("Expected failed, got \(state)")
+      }
+      XCTAssertTrue(reason.contains("does not match the signed release"), reason)
+      XCTAssertTrue(reason.contains("sha256:bb"), reason)
+    }
+
+    func testARetryThatGetsFurtherEarnsAFreshBudget() async throws {
+      let attempts = RecordingBox<Int>()
+      let box = ControllerBox()
+      let controller = flakyController(delays: [.zero])
+      box.controller = controller
+      await controller.start(requiredBytes: 100) {
+        attempts.append(1)
+        let attempt = attempts.values.count
+        if attempt <= 2 {
+          await box.controller?.reportDownload(completed: UInt64(attempt * 10), total: 100)
+          throw URLError(.networkConnectionLost)
+        }
+      }
+      try await controller.waitUntilVerified()
+      XCTAssertEqual(attempts.values.count, 3)
+    }
+
+    func testCancellingDuringTheBackoffStopsTheDownload() async throws {
+      let attempts = RecordingBox<Int>()
+      let controller = PayloadPrefetchController(
+        network: MockNetworkPath(Self.unmetered),
+        freeSpace: MockFreeSpace(bytes: 8_000_000_000),
+        keepAwake: MockKeepAwake(),
+        retryDelays: [.seconds(30)]
+      )
+      await controller.start(requiredBytes: 100) {
+        attempts.append(1)
+        throw URLError(.timedOut)
+      }
+      try await Task.sleep(for: .milliseconds(80))
+      var state = await controller.currentState()
+      guard case .paused = state else {
+        return XCTFail("Expected paused during the backoff, got \(state)")
+      }
+      await controller.cancel()
+      do {
+        try await controller.waitUntilVerified()
+        XCTFail("Expected cancellation")
+      } catch let error as PayloadPrefetchError {
+        XCTAssertEqual(error, .cancelled)
+      }
+      try await Task.sleep(for: .milliseconds(40))
+      state = await controller.currentState()
+      XCTAssertEqual(state, .cancelled)
+      XCTAssertEqual(attempts.values.count, 1)
+    }
+
+    func testARetryCreditsOnlyBytesTheStagerKept() async throws {
+      let freeSpace = MutableFreeSpace(bytes: 100)
+      let box = ControllerBox()
+      let controller = PayloadPrefetchController(
+        network: MockNetworkPath(Self.unmetered),
+        freeSpace: freeSpace,
+        keepAwake: MockKeepAwake(),
+        retryDelays: [.zero],
+        sleep: { _ in },
+        retainedBytes: { 0 }
+      )
+      box.controller = controller
+      await controller.start(requiredBytes: 100) {
+        await box.controller?.reportDownload(completed: 60, total: 100)
+        freeSpace.bytes = 50
+        throw URLError(.networkConnectionLost)
+      }
+      do {
+        try await controller.waitUntilVerified()
+        XCTFail("Expected the retry to need the full space again")
+      } catch let error as PayloadPrefetchError {
+        guard case .insufficientSpace(let required, _) = error else {
+          return XCTFail("Expected insufficientSpace, got \(error)")
+        }
+        XCTAssertEqual(required, 100)
+      }
+    }
+
+    func testTryAgainRestartsAFailedDownloadAndReclaimsItsDirectory() async throws {
+      let data = Data("retry-payload".utf8)
+      let artifact = try pinnedPayload(data)
+      let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "prefetch-retry-\(UUID().uuidString)", isDirectory: true)
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: root) }
+      let canonical = root.appendingPathComponent(artifact.fileName)
+      let attempts = RecordingBox<URL>()
+      let orchestrator = PayloadPrefetchOrchestrator(
+        makeNetwork: { MockNetworkPath(Self.unmetered) },
+        makeKeepAwake: { MockKeepAwake() },
+        makeFreeSpace: { _ in MockFreeSpace(bytes: 8_000_000_000) },
+        matchesPinned: { VerifiedArtifactStager().matches($0, at: $1) },
+        requiredFreeBytes: { VerifiedArtifactStager.requiredFreeBytes(forPayloadSize: $0) },
+        stage: { artifact, directory, _ in
+          attempts.append(directory)
+          if attempts.values.count == 1 {
+            try Data("left-behind part".utf8).write(
+              to: directory.appendingPathComponent("part-1"))
+            throw ArtifactStageError.digestMismatch(expected: "sha256:aa", actual: "sha256:bb")
+          }
+          let file = directory.appendingPathComponent(artifact.fileName)
+          try data.write(to: file)
+          return StagedInstallerArtifact(
+            artifact: artifact, fileURL: file, reusedExistingFile: false)
+        }
+      )
+      let payload = StagedInstallerArtifact(
+        artifact: artifact, fileURL: canonical, reusedExistingFile: false)
+      orchestrator.begin(payload: payload)
+      do {
+        try await orchestrator.waitUntilVerified { _ in }
+        XCTFail("Expected the first attempt to fail")
+      } catch {}
+      guard case .failed(let reason) = orchestrator.currentState() else {
+        return XCTFail("Expected failed, got \(orchestrator.currentState())")
+      }
+      XCTAssertTrue(reason.contains("does not match the signed release"), reason)
+      let abandoned = try XCTUnwrap(attempts.values.first)
+      XCTAssertTrue(FileManager.default.fileExists(atPath: abandoned.path))
+
+      orchestrator.begin(payload: payload)
+      try await orchestrator.waitUntilVerified { _ in }
+      XCTAssertEqual(orchestrator.currentState(), .verified)
+      XCTAssertEqual(attempts.values.count, 2)
+      XCTAssertFalse(FileManager.default.fileExists(atPath: abandoned.path))
+      XCTAssertEqual(try Data(contentsOf: canonical), data)
+    }
+
+    func testANewWindowLeavesAnotherWindowsDownloadAlone() async throws {
+      let data = Data("shared-payload".utf8)
+      let artifact = try pinnedPayload(data)
+      let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "prefetch-windows-\(UUID().uuidString)", isDirectory: true)
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: root) }
+      let canonical = root.appendingPathComponent(artifact.fileName)
+      let firstDirectory = RecordingBox<URL>()
+      func orchestrator(
+        _ stage: @escaping PayloadPrefetchOrchestrator.StageHandler
+      ) -> PayloadPrefetchOrchestrator {
+        PayloadPrefetchOrchestrator(
+          makeNetwork: { MockNetworkPath(Self.unmetered) },
+          makeKeepAwake: { MockKeepAwake() },
+          makeFreeSpace: { _ in MockFreeSpace(bytes: 8_000_000_000) },
+          matchesPinned: { _, _ in false },
+          requiredFreeBytes: { VerifiedArtifactStager.requiredFreeBytes(forPayloadSize: $0) },
+          stage: stage
+        )
+      }
+      let windowA = orchestrator { _, directory, _ in
+        try Data("part".utf8).write(to: directory.appendingPathComponent("part-1"))
+        firstDirectory.append(directory)
+        try await Task.sleep(for: .seconds(30))
+        throw CancellationError()
+      }
+      let windowB = orchestrator { artifact, directory, _ in
+        let file = directory.appendingPathComponent(artifact.fileName)
+        try data.write(to: file)
+        return StagedInstallerArtifact(
+          artifact: artifact, fileURL: file, reusedExistingFile: false)
+      }
+      let payload = StagedInstallerArtifact(
+        artifact: artifact, fileURL: canonical, reusedExistingFile: false)
+      windowA.begin(payload: payload)
+      for _ in 0..<200 where firstDirectory.values.isEmpty {
+        try await Task.sleep(for: .milliseconds(10))
+      }
+      let busy = try XCTUnwrap(firstDirectory.values.first)
+      windowB.begin(payload: payload)
+      try await windowB.waitUntilVerified { _ in }
+      XCTAssertTrue(
+        FileManager.default.fileExists(atPath: busy.appendingPathComponent("part-1").path))
+      windowA.cancel()
+    }
+
+    func testFailureReasonsNameTheCheck() {
+      XCTAssertTrue(
+        PayloadPrefetchFailure.reason(
+          for: PayloadPrefetchError.insufficientSpace(
+            requiredBytes: 7_750_765_576, availableBytes: 1_000_000_000)
+        ).hasPrefix("Not enough free space"))
+      XCTAssertTrue(
+        PayloadPrefetchFailure.reason(for: URLError(.timedOut))
+          .hasPrefix("The download was interrupted"))
+      XCTAssertTrue(PayloadPrefetchFailure.isTransient(URLError(.timedOut)))
+      XCTAssertTrue(
+        PayloadPrefetchFailure.isTransient(ArtifactStageError.unexpectedHTTPStatus(0)))
+      XCTAssertFalse(
+        PayloadPrefetchFailure.isTransient(ArtifactStageError.unexpectedHTTPStatus(404)))
+      XCTAssertFalse(
+        PayloadPrefetchFailure.isTransient(
+          ArtifactStageError.sizeMismatch(expected: 1, actual: 2)))
+      XCTAssertFalse(PayloadPrefetchFailure.isTransient(URLError(.cancelled)))
+    }
+
     func testFailsWhenTheVolumeIsTooSmall() async throws {
       let controller = PayloadPrefetchController(
         network: MockNetworkPath(
@@ -342,7 +602,8 @@
           }
           let file = directory.appendingPathComponent(artifact.fileName)
           try Data("payload".utf8).write(to: file)
-          return StagedInstallerArtifact(artifact: artifact, fileURL: file, reusedExistingFile: false)
+          return StagedInstallerArtifact(
+            artifact: artifact, fileURL: file, reusedExistingFile: false)
         }
       )
       orchestrator.begin(
@@ -487,6 +748,10 @@
     }
 
     func availableBytes() throws -> UInt64 { bytes }
+  }
+
+  private final class ControllerBox: @unchecked Sendable {
+    var controller: PayloadPrefetchController?
   }
 
   private final class MockKeepAwake: InstallerKeepAwakeHolding, @unchecked Sendable {

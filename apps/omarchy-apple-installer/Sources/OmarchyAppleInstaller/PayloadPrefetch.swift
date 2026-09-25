@@ -47,6 +47,71 @@
     case failed(String)
   }
 
+  /// Sorts prefetch errors into ones a later attempt can get past and says,
+  /// in one sentence, what went wrong. The sentence is what the failed strip
+  /// shows, so a report names the real check instead of a generic message.
+  public enum PayloadPrefetchFailure {
+    private static let transientURLErrors: Set<URLError.Code> = [
+      .timedOut,
+      .networkConnectionLost,
+      .notConnectedToInternet,
+      .cannotConnectToHost,
+      .cannotFindHost,
+      .dnsLookupFailed,
+      .resourceUnavailable,
+      .dataNotAllowed,
+      .internationalRoamingOff,
+      .callIsActive,
+      .backgroundSessionWasDisconnected,
+      .badServerResponse,
+    ]
+
+    /// Network faults and server-side hiccups. Size and digest mismatches,
+    /// space, and staging conflicts are not retried.
+    public static func isTransient(_ error: any Error) -> Bool {
+      if let urlError = error as? URLError {
+        return transientURLErrors.contains(urlError.code)
+      }
+      if case ArtifactStageError.unexpectedHTTPStatus(let status) = error {
+        return status == 0 || status == 408 || status == 429 || (500...599).contains(status)
+      }
+      return false
+    }
+
+    public static func reason(for error: any Error) -> String {
+      switch error {
+      case PayloadPrefetchError.failed(let message):
+        return message
+      case PayloadPrefetchError.insufficientSpace(let required, let available):
+        return "Not enough free space: the download needs \(bytes(required)) and "
+          + "\(bytes(available)) is free."
+      case PayloadPrefetchError.meteredNetwork:
+        return "The download needs Wi-Fi or Ethernet without Low Data Mode."
+      case PayloadPrefetchError.cancelled:
+        return "The download was stopped."
+      case ArtifactStageError.digestMismatch(let expected, let actual):
+        return "The downloaded file does not match the signed release "
+          + "(expected \(expected), got \(actual))."
+      case ArtifactStageError.sizeMismatch(let expected, let actual):
+        return "The downloaded file does not match the signed release "
+          + "(expected \(expected) bytes, got \(actual))."
+      case ArtifactStageError.unexpectedHTTPStatus(let status):
+        return "The download server answered HTTP \(status)."
+      case ArtifactStageError.destinationConflict(let name):
+        return "A different copy of \(name) is already in the installer's staging folder."
+      case let urlError as URLError:
+        return "The download was interrupted: \(urlError.localizedDescription)"
+      default:
+        return "The download failed: \(String(describing: error))"
+      }
+    }
+
+    private static func bytes(_ value: UInt64) -> String {
+      ByteCountFormatter.string(
+        fromByteCount: Int64(clamping: value), countStyle: .file)
+    }
+  }
+
   public enum PayloadPrefetchState: Equatable, Sendable {
     case idle
     case waitingForUnmeteredNetwork
@@ -68,16 +133,34 @@
     private var state: PayloadPrefetchState = .idle
     private var runTask: Task<Void, Error>?
     private var waiters: [CheckedContinuation<Void, Error>] = []
+    private let retryDelays: [Duration]
+    private let sleep: @Sendable (Duration) async throws -> Void
+    private let retainedBytes: (@Sendable () -> UInt64)?
+
+    /// A multi-gigabyte download on Wi-Fi meets dropped connections and stalls.
+    /// Each is retried after these delays; the count starts again once a retry
+    /// gets further than the one before.
+    public static let defaultRetryDelays: [Duration] = [
+      .seconds(2), .seconds(5), .seconds(15), .seconds(30), .seconds(60),
+    ]
 
     public init(
       network: any InstallerNetworkPathObserving,
       freeSpace: any InstallerFreeSpaceChecking,
       keepAwake: any InstallerKeepAwakeHolding,
+      retryDelays: [Duration] = PayloadPrefetchController.defaultRetryDelays,
+      sleep: @escaping @Sendable (Duration) async throws -> Void = {
+        try await Task.sleep(for: $0)
+      },
+      retainedBytes: (@Sendable () -> UInt64)? = nil,
       onState: @escaping @Sendable (PayloadPrefetchState) -> Void = { _ in }
     ) {
       self.network = network
       self.freeSpace = freeSpace
       self.keepAwake = keepAwake
+      self.retryDelays = retryDelays
+      self.sleep = sleep
+      self.retainedBytes = retainedBytes
       self.onState = onState
     }
 
@@ -151,6 +234,8 @@
     ) async throws {
       var completed: UInt64 = 0
       var total: UInt64 = requiredBytes
+      var transientFailures = 0
+      var furthestFailure: UInt64 = 0
       while !Task.isCancelled {
         if case .cancelled = state {
           return
@@ -174,18 +259,21 @@
         }
         do {
           let available = try freeSpace.availableBytes()
-          let requiredNow = requiredBytes > completed ? requiredBytes - completed : 0
+          // An interrupted transfer starts again from zero; only files the
+          // stager kept (verified parts) already occupy their share.
+          let credited = retainedBytes.map { min(completed, $0()) } ?? completed
+          let requiredNow = requiredBytes > credited ? requiredBytes - credited : 0
           if available < requiredNow {
             let error = PayloadPrefetchError.insufficientSpace(
               requiredBytes: requiredNow,
               availableBytes: available
             )
-            setState(.failed(String(describing: error)))
+            setState(.failed(PayloadPrefetchFailure.reason(for: error)))
             failWaiters(error)
             return
           }
         } catch {
-          setState(.failed(String(describing: error)))
+          setState(.failed(PayloadPrefetchFailure.reason(for: error)))
           failWaiters(error)
           return
         }
@@ -220,7 +308,31 @@
           failWaiters(PayloadPrefetchError.cancelled)
           return
         } catch {
-          setState(.failed(String(describing: error)))
+          if case .cancelled = state {
+            return
+          }
+          if case .downloading(let current, let knownTotal) = state {
+            completed = current
+            total = knownTotal
+          }
+          if PayloadPrefetchFailure.isTransient(error) {
+            if completed > furthestFailure {
+              transientFailures = 0
+              furthestFailure = completed
+            }
+            if transientFailures < retryDelays.count {
+              let delay = retryDelays[transientFailures]
+              transientFailures += 1
+              setState(.paused(completed: completed, total: total))
+              do {
+                try await sleep(delay)
+              } catch {
+                break
+              }
+              continue
+            }
+          }
+          setState(.failed(PayloadPrefetchFailure.reason(for: error)))
           failWaiters(error)
           return
         }
@@ -424,6 +536,10 @@
     private var observers: [UUID: @Sendable (PayloadPrefetchState) -> Void] = [:]
     private var waiters: [UUID: CheckedContinuation<Void, any Error>] = [:]
     private var cancelEpoch: UInt64 = 0
+    /// Work directories this orchestrator created for earlier generations.
+    /// Another window's orchestrator shares the staging folder, so only
+    /// these are ever reclaimed.
+    private var ownedWorkDirectories: [URL] = []
 
     public convenience init() {
       self.init(
@@ -494,10 +610,21 @@
         if let predecessor {
           await predecessor.cancel()
         }
-        guard self.lock.withLock({ self.generation == generation }) else {
-          return
+        // Earlier generations of this orchestrator have been told to stop and
+        // nothing they produce is published any more, so their directories
+        // are reclaimed before the space check; otherwise every Try again
+        // would count a failed run's parts as used. The generation check and
+        // the removal share one lock hold, so a replaced task can never
+        // delete its successor's directory.
+        let stillCurrent = self.lock.withLock { () -> Bool in
+          guard self.generation == generation else { return false }
+          for directory in self.ownedWorkDirectories {
+            try? FileManager.default.removeItem(at: directory)
+          }
+          self.ownedWorkDirectories.removeAll()
+          return true
         }
-
+        guard stillCurrent else { return }
         self.publish(.verifying, generation: generation)
         if self.matchesPinned(artifact, canonical) {
           self.publish(.verified, generation: generation)
@@ -515,7 +642,17 @@
             attributes: [.posixPermissions: 0o700]
           )
         } catch {
-          self.publish(.failed(String(describing: error)), generation: generation)
+          self.publish(
+            .failed(PayloadPrefetchFailure.reason(for: error)), generation: generation)
+          return
+        }
+        let owned = self.lock.withLock { () -> Bool in
+          guard self.generation == generation else { return false }
+          self.ownedWorkDirectories.append(work)
+          return true
+        }
+        guard owned else {
+          try? FileManager.default.removeItem(at: work)
           return
         }
 
@@ -523,6 +660,7 @@
           network: self.makeNetwork(),
           freeSpace: self.makeFreeSpace(work),
           keepAwake: self.makeKeepAwake(),
+          retainedBytes: { Self.regularFileBytes(in: work) },
           onState: { [weak self] state in
             self?.publish(state, generation: generation)
           }
@@ -674,6 +812,21 @@
       for observer in observers {
         observer(state)
       }
+    }
+
+    static func regularFileBytes(in directory: URL) -> UInt64 {
+      guard
+        let entries = try? FileManager.default.contentsOfDirectory(
+          at: directory, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey])
+      else { return 0 }
+      var total: UInt64 = 0
+      for entry in entries {
+        guard let values = try? entry.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+          values.isRegularFile == true, let size = values.fileSize, size > 0
+        else { continue }
+        total &+= UInt64(size)
+      }
+      return total
     }
 
     private func promote(_ staged: URL, to canonical: URL) throws {
