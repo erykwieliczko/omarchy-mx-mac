@@ -1,17 +1,11 @@
 #if os(macOS)
   import Foundation
 
-  /// Whether the pre-installed privileged helper is available.
-  ///
-  /// The helper is a plain system `LaunchDaemon` that the installer package
-  /// installs into `/Library/LaunchDaemons` and loads at package-install time,
-  /// under the package's single administrator prompt. The app never registers,
-  /// approves, or gates on Login Items: it only reports whether the daemon is
-  /// present so the flow stays locked when the package has not been run.
+  /// Whether this app contains the helper needed for administrator approval.
   public enum InstallerHelperServiceStatus: Equatable, Sendable {
-    /// The system daemon is installed; its mach service is reachable.
+    /// The bundled helper is available; launching still requires approval.
     case enabled
-    /// The system daemon is not installed. The installer package must be run.
+    /// This app bundle is incomplete.
     case notInstalled
   }
 
@@ -28,11 +22,8 @@
       self.controller = controller
     }
 
-    /// The shipping controller: a synchronous check for the system daemon the
-    /// package installed. No SMAppService registration or Login Items approval
-    /// is ever involved.
-    public static func preinstalledSystemDaemon() -> Self {
-      Self(controller: SystemLaunchDaemonController())
+    public static func bundledHelper() -> Self {
+      Self(controller: BundledHelperController())
     }
 
     public var status: InstallerHelperServiceStatus {
@@ -40,16 +31,11 @@
     }
   }
 
-  /// Reports the helper as reachable when its LaunchDaemon plist is present at
-  /// the canonical system path. Existence is a synchronous `stat`, so it is
-  /// safe to read from the main actor and never blocks on an XPC probe.
-  private struct SystemLaunchDaemonController:
+  private struct BundledHelperController:
     InstallerHelperServiceControlling
   {
     var status: InstallerHelperServiceStatus {
-      FileManager.default.fileExists(
-        atPath: InstallerProductIdentity.systemLaunchDaemonPath
-      ) ? .enabled : .notInstalled
+      TemporaryInstallerHelper.bundledHelperAvailable() ? .enabled : .notInstalled
     }
   }
 #endif

@@ -39,6 +39,7 @@
     private let removalDisks: any RemovalDiskOperating
     private let removalAdminValidator: @Sendable (MachineOwnerAuthorization) throws -> Void
     private let espDisks: any InstallConfESPDiskOperating
+    private let developmentOverride: DevelopmentMachineOverride?
     private var isExecuting = false
     private var completedInstallPlan: CompletedEngineInstallPlan?
     private var installConfConsumed = false
@@ -49,7 +50,8 @@
       workingDirectory: URL,
       executor: any ImportedEngineHandoffExecuting,
       credentialValidator: any MachineOwnerCredentialValidating =
-        OpenDirectoryMachineOwnerCredentialValidator()
+        OpenDirectoryMachineOwnerCredentialValidator(),
+      developmentOverride: DevelopmentMachineOverride? = nil
     ) {
       self.workingDirectory = workingDirectory
       self.executor = executor
@@ -58,6 +60,7 @@
       removalDisks = MacRemovalDiskOperator()
       removalAdminValidator = requireRemovalAdministrator
       espDisks = DiskutilInstallConfESPOperator()
+      self.developmentOverride = developmentOverride
     }
 
     init(
@@ -74,11 +77,13 @@
       self.removalDisks = removalDisks
       self.removalAdminValidator = removalAdminValidator
       self.espDisks = espDisks
+      developmentOverride = nil
     }
 
     public func removal(
       ticketID: UUID?, confirmation: String, authorization: MachineOwnerAuthorization?
     ) async throws -> OmarchyRemovalReply {
+      guard developmentOverride == nil else { throw ClosedEngineHelperError.invalidOperation }
       guard !isExecuting else { throw ClosedEngineHelperError.busy }
       try requireNoInterruptedRemoval()
       isExecuting = true
@@ -353,21 +358,34 @@
     NSObject, ClosedEngineXPCService
   {
     private let server: ClosedEngineHelperServer
+    private let lifetime: TemporaryHelperLifetime?
 
-    public init(server: ClosedEngineHelperServer) {
+    public init(server: ClosedEngineHelperServer, lifetime: TemporaryHelperLifetime? = nil) {
       self.server = server
+      self.lifetime = lifetime
     }
 
     public func ping(reply: @escaping @Sendable (Bool) -> Void) {
-      reply(true)
+      reply(lifetime?.handshake() ?? true)
+    }
+
+    public func finishSession(reply: @escaping @Sendable (Bool) -> Void) {
+      lifetime?.finish()
+      reply(lifetime != nil)
     }
 
     public func removal(
       ticket: String, confirmation: String, machineOwner: String, password: Data,
       reply: @escaping @Sendable (Data?, NSError?) -> Void
     ) {
+      guard lifetime?.begin() ?? true else {
+        reply(nil, EngineXPCErrorBridge.serviceError(for: ClosedEngineHelperError.busy))
+        return
+      }
+      let lifetime = lifetime
       let server = server
       Task {
+        defer { lifetime?.end() }
         do {
           guard ticket.isEmpty || UUID(uuidString: ticket) != nil,
             confirmation.utf8.count <= 256
@@ -395,6 +413,11 @@
       password: Data,
       reply: @escaping @Sendable (Data?, NSError?) -> Void
     ) {
+      guard lifetime?.begin() ?? true else {
+        reply(nil, EngineXPCErrorBridge.serviceError(for: ClosedEngineHelperError.busy))
+        return
+      }
+      let lifetime = lifetime
       // NSXPCConnection.current() is only valid synchronously inside the
       // exported method, so the client proxy is captured before the Task.
       let client =
@@ -406,6 +429,7 @@
       let sink = client.map(XPCJournalProgressSink.init(client:))
       let server = server
       Task {
+        defer { lifetime?.end() }
         do {
           guard let operation = EngineHandoffOperation(rawValue: operation)
           else {
@@ -437,8 +461,14 @@
       password: Data,
       reply: @escaping @Sendable (Data?, NSError?) -> Void
     ) {
+      guard lifetime?.begin() ?? true else {
+        reply(nil, EngineXPCErrorBridge.serviceError(for: ClosedEngineHelperError.busy))
+        return
+      }
+      let lifetime = lifetime
       let server = server
       Task {
+        defer { lifetime?.end() }
         do {
           let authorization = try MachineOwnerAuthorization(
             username: machineOwner,
@@ -470,10 +500,15 @@
   {
     private let clientCodeSigningRequirement: String
     private let endpoint: ClosedEngineXPCServiceEndpoint
+    private let ownerPID: Int32?
+    private let ownerUID: UInt32?
 
     public init(
       clientCodeSigningRequirement: String,
-      server: ClosedEngineHelperServer
+      server: ClosedEngineHelperServer,
+      ownerPID: Int32? = nil,
+      ownerUID: UInt32? = nil,
+      lifetime: TemporaryHelperLifetime? = nil
     ) throws {
       guard
         EngineCodeSigningRequirement.isValid(
@@ -483,13 +518,17 @@
         throw ClosedEngineHelperError.invalidClientRequirement
       }
       self.clientCodeSigningRequirement = clientCodeSigningRequirement
-      endpoint = ClosedEngineXPCServiceEndpoint(server: server)
+      self.ownerPID = ownerPID
+      self.ownerUID = ownerUID
+      endpoint = ClosedEngineXPCServiceEndpoint(server: server, lifetime: lifetime)
     }
 
     public func listener(
       _ listener: NSXPCListener,
       shouldAcceptNewConnection connection: NSXPCConnection
     ) -> Bool {
+      if let ownerPID, connection.processIdentifier != ownerPID { return false }
+      if let ownerUID, connection.effectiveUserIdentifier != ownerUID { return false }
       connection.setCodeSigningRequirement(clientCodeSigningRequirement)
       connection.remoteObjectInterface = NSXPCInterface(
         with: ClosedEngineProgressClient.self

@@ -1,0 +1,367 @@
+{
+  "schema": 1,
+  "source": {
+    "url": "https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-75212/A2A24B94-1FC1-45A3-93F7-C51B02AF1F4D/UniversalMac_26.6.2_25G83_Restore.ipsw",
+    "size_bytes": 19772231540,
+    "sha256": "885503b7f4b06609e9a512f2befd40f59730640a3f1233e3892d60affdd51c95"
+  },
+  "system_image": {
+    "member": "094-96884-092.dmg.aea",
+    "size_bytes": 10334765056,
+    "sha256": "c7c4412996590bb9f75256fb988bb0cf9e8b8ba645346e89443590197741e9c8",
+    "decoded": {
+      "size_bytes": 13142851584,
+      "sha256": "ae2ad529b9f51152e14f636ccabf93d5c8fc06ed3fba8d84e57736758f87e66f"
+    }
+  },
+  "member_offset": 1358425788,
+  "zip_header": {
+    "offset": 1358425717,
+    "size": 71,
+    "sha256": "a4daf7a1262a5a9d0240bf8fdf4b9b389f278c93017b703921c04844ac04311f"
+  },
+  "prefix": {
+    "offset": 0,
+    "size": 2724,
+    "sha256": "a947a7ab231798e738bee6202884f0d0afdc082f2ccef181fe55bb65ee6a67ae"
+  },
+  "headers": [
+    {
+      "offset": 74117120,
+      "size": 18464,
+      "sha256": "85cc0eceb392c594fc62e191791bd06e8fb1ca6083a5663e9ff90b99f8f8e50c",
+      "cluster": 1,
+      "expected_mac": "d1451259b0631b47747b2f49796a3f2d967e13947c758a1dc569a67bf0b53d99"
+    },
+    {
+      "offset": 3091705542,
+      "size": 18464,
+      "sha256": "978b4b3dbabc78b69c5c37aba2671644be50ba5701b5b9f0d207bdfefd0d3710",
+      "cluster": 17,
+      "expected_mac": "5ff4a4ecaa4b61319f9862b9af0d1c38e505e969f4228bb21b597214a5d1e667"
+    }
+  ],
+  "segments": {
+    "413": {
+      "offset": 81394494,
+      "size": 164332,
+      "sha256": "7f90f4b6fd3f507680dcd33572d8b302b314f5ee7f1317ab91671abcb0ab4ae5"
+    },
+    "419": {
+      "offset": 82362312,
+      "size": 189013,
+      "sha256": "4a4ee282e8ab9e3bb54b853c9ecfe5661a7e92f6fa46c7899dcc3d9fc1cdad05"
+    },
+    "424": {
+      "offset": 83326658,
+      "size": 224771,
+      "sha256": "fe589f180d09c4f9af7e59e4d2acb5e54e24e2ee0f94fd678a908c980d15dd5f"
+    },
+    "4491": {
+      "offset": 3223346805,
+      "size": 591507,
+      "sha256": "7e85d2828fdfa124697b62831b3f1cdbaee9978a30cff83e1d4d3c098ab7eda8"
+    },
+    "4492": {
+      "offset": 3223938312,
+      "size": 117047,
+      "sha256": "7f7ae4d51adc2b46c032976fe6c52433a47b88d8fbe783d3ea32b5f8f9fc8a44"
+    },
+    "4493": {
+      "offset": 3224055359,
+      "size": 130781,
+      "sha256": "e75faf74be0a0106374a127bb58c9477618ce2ff40a7732921d05fa969bd5406"
+    },
+    "4494": {
+      "offset": 3224186140,
+      "size": 792826,
+      "sha256": "dfb6942795bf045f250fabaf7e958981debceaa3e4ae459a025bf04adda36796"
+    },
+    "4495": {
+      "offset": 3224978966,
+      "size": 963393,
+      "sha256": "fdc572c5fcb98f62283764f0a8c63aabfde14453e63d0f6313d60a91b125f781"
+    }
+  },
+  "files": [
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_W7932_2.bin",
+      "name": "sunrise/IZUBA_W7932_2.bin",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "aa9ca3443279aa2878ca8275e69829d429fa8856ca74b84da1f65f7c2da989d4",
+      "sha256": "aa9ca3443279aa2878ca8275e69829d429fa8856ca74b84da1f65f7c2da989d4",
+      "size": 1190788,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "0b4aa2309c201b820909f668b6f92a9c7ac0f31ad1fc978dc7161c1baec5a852",
+          "spans": [
+            {
+              "offset": 445516600,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 706279,
+          "sha256": "374383368d06d7d1b3f93d024e7b61af4687c19762e5e97093ca5b08e1f21046",
+          "spans": [
+            {
+              "offset": 4712529920,
+              "size": 706279
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_WIFI_MT7932_patch_mcu_1_2_hdr.bin",
+      "name": "sunrise/IZUBA_WIFI_MT7932_patch_mcu_1_2_hdr.bin",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "60e37f53dbc6d757c2a23fb125e53b0b04c0104be5315910885955d0f6b57379",
+      "sha256": "60e37f53dbc6d757c2a23fb125e53b0b04c0104be5315910885955d0f6b57379",
+      "size": 33568,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "386f603b741801bc7e4b2bf50f9605ab1e8647c85732af5cb7c367e632372726",
+          "spans": [
+            {
+              "offset": 445515708,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 21823,
+          "sha256": "4331974517c352bb5dae33efb50e153448350b15e70394081ae9385c0d13318a",
+          "spans": [
+            {
+              "offset": 4713635840,
+              "size": 21823
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_PPR_MT7932.bin",
+      "name": "sunrise/IZUBA_PPR_MT7932.bin",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "5b3193034aed2b73be88dc8074699992a04c0e450d051d52af44489093b9b1e8",
+      "sha256": "5b3193034aed2b73be88dc8074699992a04c0e450d051d52af44489093b9b1e8",
+      "size": 412,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "7b50c777d06a54592cf542b7fed6e854c8bc89e3784af6d8440300b18a638064",
+          "spans": [
+            {
+              "offset": 434089968,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 231,
+          "sha256": "b5e7f59d9147fe958b28c461624541389e89304d57b4d05ccbbe592a137fd153",
+          "spans": [
+            {
+              "offset": 4709732352,
+              "size": 231
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_wifi.cfg",
+      "name": "sunrise/IZUBA_wifi.cfg",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "9f1adcb329c47a25421cad3ede473e1fdf41edb36f295f17f021d2689430899d",
+      "sha256": "9f1adcb329c47a25421cad3ede473e1fdf41edb36f295f17f021d2689430899d",
+      "size": 1696,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "348797ceb7e6b1982288791f17984bc571e78edcab58aebc9b61cd03b8eee62e",
+          "spans": [
+            {
+              "offset": 439463632,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 1150,
+          "sha256": "4fd1ff9f39f332bbcf751aaaa2339f3a2d185ce48ebee12f9d70b611f3169259",
+          "spans": [
+            {
+              "offset": 4713746432,
+              "size": 1150
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_db.dat",
+      "name": "sunrise/IZUBA_db.dat",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "a61e0b70cbc9a381fc41ff9afa8f036cbd032cadad66209134d4a5adfa18c8b2",
+      "sha256": "a61e0b70cbc9a381fc41ff9afa8f036cbd032cadad66209134d4a5adfa18c8b2",
+      "size": 133959,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "774dbc727550249f4a5d80daa049240e47150069d7fd9036ae6625895527710d",
+          "spans": [
+            {
+              "offset": 439463844,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 6924,
+          "sha256": "653e403baec5dce23ff79129d6f055981162a3f1065bb965349a4dc5c27da3c2",
+          "spans": [
+            {
+              "offset": 4713738240,
+              "size": 6924
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_TxPwrLimit_MT79x1.dat",
+      "name": "sunrise/IZUBA_TxPwrLimit_MT79x1.dat",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "03ee51df5231d131c1976f1d2ea7f81a1396988e63a132a318a9893e8ef5ec38",
+      "sha256": "03ee51df5231d131c1976f1d2ea7f81a1396988e63a132a318a9893e8ef5ec38",
+      "size": 20104839,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "eca8bddb3d86e250d53b74945a937cb106d6aa66d4bd0de91e372d01ff11e2d7",
+          "spans": [
+            {
+              "offset": 445517372,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 1609773,
+          "sha256": "671b2fa04892331bf821fb5d5aedb610f5ed98ab6d28477a3ed6f4c3dfbd10de",
+          "spans": [
+            {
+              "offset": 4710907904,
+              "size": 1609773
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_TxPwrLimit_SAR.dat",
+      "name": "sunrise/IZUBA_TxPwrLimit_SAR.dat",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "d8dc9dfff2ad2d1ddf301d892e60c93f476603992f71de9e742194a395ca850d",
+      "sha256": "d8dc9dfff2ad2d1ddf301d892e60c93f476603992f71de9e742194a395ca850d",
+      "size": 153930,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "1c04fdcafdd795cf5f8a962119901adfe48cf511e9bd90861c5a9c8f0ad2da0f",
+          "spans": [
+            {
+              "offset": 445517120,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 3550,
+          "sha256": "890660984140cf6a228d4945ac8eb768c8055c8adb4f0c31032dc0464371d847",
+          "spans": [
+            {
+              "offset": 4712521728,
+              "size": 3550
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_TxPwrLimit_2gCommonPath.dat",
+      "name": "sunrise/IZUBA_TxPwrLimit_2gCommonPath.dat",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "43185e334cb074b9c89b71aa6440d5d22cc45e9d8dc1fdc66c8a4933f2376b6c",
+      "sha256": "43185e334cb074b9c89b71aa6440d5d22cc45e9d8dc1fdc66c8a4933f2376b6c",
+      "size": 48957,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "888e1d176dafb05311e55f023fd7b6b505d12d4eea8e3e93f4af54cc71c4d912",
+          "spans": [
+            {
+              "offset": 445517100,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 1546,
+          "sha256": "35c807addbf95b7dbb118e860a7f6b4a84c0600f4499deaffe660219933a3c5b",
+          "spans": [
+            {
+              "offset": 4710899712,
+              "size": 1546
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "System/Library/DriverExtensions/com.apple.AppleSunriseWLAN.dext/IZUBA/IZUBA_TxPwrLimit_SDB.dat",
+      "name": "sunrise/IZUBA_TxPwrLimit_SDB.dat",
+      "transform": "identity",
+      "compressed": true,
+      "raw_sha256": "042906f4b23f05d82f211549b22f195a57d3437b137009fda0a0e40935abbfd0",
+      "sha256": "042906f4b23f05d82f211549b22f195a57d3437b137009fda0a0e40935abbfd0",
+      "size": 1119,
+      "storage": [
+        {
+          "size": 16,
+          "sha256": "1491c29a1269c51be9ee1921faae4047b71439af78a68f76ac5b6c414d89d912",
+          "spans": [
+            {
+              "offset": 445516872,
+              "size": 16
+            }
+          ]
+        },
+        {
+          "size": 290,
+          "sha256": "7e4f4a36a9f62e9dd671eca0b4bae124129e1e4955377ec0d0116e8d8e5ab3e3",
+          "spans": [
+            {
+              "offset": 4712525824,
+              "size": 290
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

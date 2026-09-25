@@ -21,11 +21,18 @@
     case deviceUnsupported = 3
     /// The plan, request, or identity failed an integrity check.
     case planIntegrity = 4
+    /// The Neo Recovery image requires a newer host system firmware.
+    case neoSystemFirmwareUpdateRequired = 5
 
     /// Exact final-exception messages raised before the first mutation by
     /// `omarchy_execution.admit_execution`, `omarchy_runtime` and the Asahi
     /// adapter preflight. Anything not listed stays unclassified.
     static func classify(exception: String, message: String) -> EngineFailureReason {
+      if exception == "SystemFirmwareUpdateRequiredError",
+        message == "Update macOS to 26.6.2 or later"
+      {
+        return .neoSystemFirmwareUpdateRequired
+      }
       guard knownExceptionTypes.contains(exception) else {
         return .unclassified
       }

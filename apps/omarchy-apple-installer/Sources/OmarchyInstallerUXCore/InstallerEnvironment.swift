@@ -23,6 +23,7 @@
     /// identifier (`apple,j504`), its model identifier (`Mac15,3`), and the
     /// device identifiers the signed catalog admits when it could be read.
     public let unsupportedModel: UnsupportedModelDisplay?
+    public let developmentOverrideActive: Bool
 
     public init(
       chipAndSpace: String,
@@ -30,7 +31,8 @@
       blockingReason: String? = nil,
       existingInstalls: [ExistingInstallDisplay] = [],
       spaceShortfall: InstallerAllocationRecommendationError? = nil,
-      unsupportedModel: UnsupportedModelDisplay? = nil
+      unsupportedModel: UnsupportedModelDisplay? = nil,
+      developmentOverrideActive: Bool = false
     ) {
       self.chipAndSpace = chipAndSpace
       self.supported = supported
@@ -38,6 +40,7 @@
       self.existingInstalls = existingInstalls
       self.spaceShortfall = spaceShortfall
       self.unsupportedModel = unsupportedModel
+      self.developmentOverrideActive = developmentOverrideActive
     }
   }
 

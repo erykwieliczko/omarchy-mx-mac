@@ -1,11 +1,11 @@
 # Removing an existing Omarchy installation
 
-Use **Installation → Remove Omarchy…** while no installation or download is
+Use **Advanced → Uninstall Omarchy…** (also in the **Installation** menu) while no installation or download is
 running. The app displays the capacity returned to macOS and requires the exact
 phrase `delete omarchy installation and data`, plus a macOS administrator account
 and password. There is no Return-key shortcut for the destructive button.
 
-Removal uses the signed privileged helper directly. It does not download an OS,
+Removal starts the bundled temporary privileged helper after macOS administrator approval. It does not download an OS,
 engine, IPSW or catalog. The helper owns a five-minute, single-use plan; the client
 sends an opaque ticket, never disk identifiers or commands. Cancellation performs
 no disk mutation. Credentials are not written to the removal journal.
@@ -62,7 +62,25 @@ foreign/replayed tickets, interrupted-helper restart and concurrent install/remo
 rejection. The running UI was checked for disabled near-match confirmation,
 enabled exact confirmation, success and light/dark appearance.
 
-Physical removal has not been executed for this feature. The M1 Thunderbolt route
-was unavailable during development. Before a physical test, deploy both the new
-app and helper, check the current disk layout and obtain explicit authorization
-for that removal run. Keep the app closed when preparing the M1 for manual use.
+Physical validation must check the before/after partition UUIDs, macOS capacity,
+and the completed removal journal, in addition to the app's success screen.
+The desktop app is a standalone bundle; no persistent helper package is needed.
+
+### Physical check: 2026-09-25
+
+On the authorized 251 GB Apple M1 test Mac, the ad-hoc standalone Desktop app
+completed removal through VNC using **Advanced → Uninstall Omarchy…**. It returned
+124,067,512,320 bytes, growing macOS from 121,039,683,584 to 245,107,195,904 bytes.
+The root-owned removal journal reached `complete`. Independent disk readback
+confirmed unchanged macOS, Apple ISC and Apple Recovery partition UUIDs/offsets,
+and unchanged protected APFS container/volume UUIDs. All four Omarchy partitions
+were gone. The temporary helper and staging directory exited/vanished afterwards.
+
+Before deletion, cancelling administrator approval created no service; cancelling
+a reviewed removal stopped the temporary helper without disk changes, and a new
+review started successfully. The running UI showed the success message. No new
+Omarchy installation was attempted; installation testing remains with the owner.
+
+The same implementation passed 451 debug and 445 release Swift tests, strict
+formatting, 37 focused Python tests, packaging checks and ad-hoc signature
+verification. The CI runner excludes only the physical-Mac identity assertion.

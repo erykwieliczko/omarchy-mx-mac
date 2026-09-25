@@ -1,0 +1,4 @@
+github.com/go-compressions/lzfse v0.3.0 h1:slxIjY9HeG2llJSoXTwTnQ+u/iKMbr2WHUwaNAl/2yI=
+github.com/go-compressions/lzfse v0.3.0/go.mod h1:geg9IRFbMNHPgbm8xNwF3AnYTsldTX9YptJ0DOWzYv8=
+github.com/klauspost/compress v1.18.5 h1:/h1gH5Ce+VWNLSWqPzOVn6XBO+vJbCNGvjoaGBFW2IE=
+github.com/klauspost/compress v1.18.5/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=

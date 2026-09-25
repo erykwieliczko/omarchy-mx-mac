@@ -1,0 +1,14 @@
+[Unit]
+Description=Enable the MacBook Neo radio devices after root and firmware are ready
+Wants=omarchy-vendor-firmware.service
+After=local-fs.target omarchy-vendor-firmware.service
+Before=NetworkManager.service
+ConditionPathExists=/aurora/current/kernel.release
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/modprobe j700_radio_overlay
+
+[Install]
+WantedBy=multi-user.target

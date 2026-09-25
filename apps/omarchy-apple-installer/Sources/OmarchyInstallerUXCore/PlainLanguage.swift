@@ -352,6 +352,16 @@
         ? "No disk changes were made."
         : "The installer couldn’t confirm whether disk changes started."
       switch notice.reason {
+      case .neoSystemFirmwareUpdateRequired:
+        return FailureDisplay(
+          headline: "Update macOS to 26.6.2 or later",
+          plainDetail:
+            "This Mac needs newer system firmware to start the selected Recovery version."
+            + (unchanged ? " No disk changes were made." : ""),
+          technicalDetail: technicalDetail,
+          remedy:
+            "Open System Settings → General → Software Update. Install macOS 26.6.2 or later, restart your Mac, then reopen this installer."
+        )
       case .approvedSpaceChanged:
         return FailureDisplay(
           headline: "The space available for Omarchy changed",
@@ -408,10 +418,9 @@
 
     public static let retry = "Try again"
 
-    /// Shown when the pre-installed system daemon is missing. The remedy is to
-    /// run the installer package again — never to open Login Items.
+    /// An incomplete standalone app cannot start its temporary helper.
     public static let helperNotInstalled =
-      "The system installation service is missing. Run the Omarchy installer package again, then reopen this app."
+      "The bundled installation service is missing. Replace this app with a fresh copy, then reopen it."
 
     public static let engineUnavailable =
       "This build is missing the required validation engine. Installation is unavailable."
@@ -436,6 +445,24 @@
       retryRecoveryAvailable: Bool = false
     ) -> FailureDisplay {
       let technical = String(describing: error)
+      if let execution = error as? PinnedAsahiEngineExecutionError,
+        case .engineFailed(let report) = execution
+      {
+        return engineFailure(report.notice, technicalDetail: technical)
+      }
+      if let submission = error as? EngineXPCSubmissionError,
+        case .engineFailed(let notice) = submission,
+        notice.reason == .neoSystemFirmwareUpdateRequired
+      {
+        return engineFailure(notice, technicalDetail: technical)
+      }
+      if let bootstrap = error as? InstallerHelperBootstrapError {
+        return FailureDisplay(
+          headline: "Administrator approval is needed",
+          plainDetail: bootstrap.message,
+          technicalDetail: technical,
+          retryRecoveryAvailable: retryRecoveryAvailable)
+      }
 
       if retryRecoveryAvailable {
         return FailureDisplay(

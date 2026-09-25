@@ -17,6 +17,7 @@ struct OmarchyRemovalSheet: View {
   @State private var submitted = false
   @State private var completed = false
   @State private var message = "Checking for an existing Omarchy installation…"
+  @State private var helperConnection: InstallerHelperConnection?
   @State private var client: AuthenticatedEngineXPCSubmitter?
   #if DEBUG
     @State private var scenario = RemovalPreviewScenario.success
@@ -98,8 +99,16 @@ struct OmarchyRemovalSheet: View {
       HStack(spacing: 12) {
         Spacer()
         Button(submitted || ticket == nil ? "Close" : "Cancel") {
-          password = ""
-          onClose()
+          Task {
+            busy = true
+            password = ""
+            if let helperConnection {
+              await TemporaryInstallerHelper.shared.finish(helperConnection)
+              self.helperConnection = nil
+            }
+            busy = false
+            onClose()
+          }
         }
         .omarchySecondaryButton()
         .keyboardShortcut(.cancelAction)
@@ -120,7 +129,12 @@ struct OmarchyRemovalSheet: View {
     .background(OmarchyTheme.window)
     .interactiveDismissDisabled(busy)
     .task { await prepare() }
-    .onDisappear { password = "" }
+    .onDisappear {
+      password = ""
+      if let helperConnection {
+        Task { await TemporaryInstallerHelper.shared.finish(helperConnection) }
+      }
+    }
     .onChange(of: busy) { _, value in onBusyChanged(value) }
   }
 
@@ -156,17 +170,17 @@ struct OmarchyRemovalSheet: View {
       }
     #endif
     do {
-      let configuration = try InstallerReleaseConfigurationLocator().loadFromMainBundle()
-      let submitter = try AuthenticatedEngineXPCSubmitter(
-        machServiceName: configuration.helperMachServiceName,
-        helperCodeSigningRequirement: configuration.helperCodeSigningRequirement)
+      let connection = try await TemporaryInstallerHelper.shared.start()
+      helperConnection = connection
+      let submitter = try connection.submitter()
       client = submitter
       let reply = try await submitter.removal()
       ticket = reply.ticket
       message = reply.message
     } catch {
       message =
-        "The removal helper is unavailable. Install the current app and helper, then try again. No disk changes were made."
+        (error as? InstallerHelperBootstrapError)?.message
+        ?? "The removal service could not be reached. No removal request was sent. Close this window and try again."
     }
   }
 
@@ -206,6 +220,10 @@ struct OmarchyRemovalSheet: View {
       completed = reply.completed
       if reply.requiresReview { onRequiresReview() }
       message = reply.message
+      if let helperConnection {
+        await TemporaryInstallerHelper.shared.finish(helperConnection)
+        self.helperConnection = nil
+      }
     } catch {
       connectionLost()
     }

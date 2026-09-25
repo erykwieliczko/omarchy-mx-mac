@@ -68,7 +68,7 @@ Simulation proves presentation and session behavior. It does not prove hardware 
 
 ## Removal
 
-Choose **Installation → Remove Omarchy…** to dry-test removal independently of
+Choose **Advanced → Uninstall Omarchy…** to dry-test removal independently of
 installation. The popup's **Removal test** selector covers nine outcomes. Type
 `delete omarchy installation and data` exactly to enable removal. No real password
 is requested in simulation. See [Removal.md](Removal.md) for the supported disk

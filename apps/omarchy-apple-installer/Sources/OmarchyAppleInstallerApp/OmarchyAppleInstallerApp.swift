@@ -68,9 +68,13 @@ struct OmarchyAppleInstallerApp: App {
   /// nothing planned against one channel is installed from the other.
   @State private var liveSession: InstallerSession?
   @State private var showsRemoval = false
+  @State private var advanced = false
   @State private var removalNeedsReview = false
   @State private var simulationDark = true
   @State private var generation = UUID()
+  @State private var developmentOverrideEnabled = false
+  @State private var selectedDevelopmentProfile = "apple,j413"
+  @State private var activeDevelopmentProfile: String?
 
   private var isSimulation: Bool {
     #if DEBUG
@@ -101,7 +105,8 @@ struct OmarchyAppleInstallerApp: App {
 
   private var liveContent: some View {
     OnePageInstallerView(
-      environment: InstallerEnvironmentFactory.make(), channel: channel,
+      environment: InstallerEnvironmentFactory.make(developmentProfileID: activeDevelopmentProfile),
+      channel: channel,
       onSessionAvailable: { liveSession = $0 })
   }
 
@@ -127,7 +132,87 @@ struct OmarchyAppleInstallerApp: App {
             #endif
           }
         } else {
-          installerContent
+          VStack(spacing: 0) {
+            if let activeDevelopmentProfile {
+              Text(
+                "Development override: \(profileName(activeDevelopmentProfile)) firmware and configuration"
+              )
+              .font(.callout.bold())
+              .foregroundStyle(OmarchyTheme.accent)
+              .multilineTextAlignment(.center)
+              .padding(.horizontal, 24)
+              .padding(.top, 12)
+            }
+            Picker("Installer tab", selection: $advanced) {
+              Text("Install").tag(false)
+              Text("Advanced").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 240)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
+            .disabled(showsRemoval || liveSession?.canChangeChannel != true)
+            ZStack {
+              installerContent
+                .opacity(advanced ? 0 : 1)
+                .allowsHitTesting(!advanced)
+                .disabled(advanced)
+                .accessibilityHidden(advanced)
+              VStack(alignment: .leading, spacing: 18) {
+                Text("Advanced").font(.title2.bold())
+                if DevelopmentMachineOverride.isAvailable && !isSimulation {
+                  Toggle("Install anyway on an unsupported Mac", isOn: $developmentOverrideEnabled)
+                    .font(.headline)
+                    .disabled(liveSession?.canChangeChannel != true)
+                    .accessibilityIdentifier("development-machine-override")
+                    .onChange(of: developmentOverrideEnabled) { _, enabled in
+                      if !enabled { applyDevelopmentProfile(nil) }
+                    }
+                  if developmentOverrideEnabled {
+                    Text(
+                      "Development only. Uses the selected Mac’s firmware and installer configuration. The resulting installation may not boot."
+                    )
+                    .fixedSize(horizontal: false, vertical: true)
+                    Picker("Mac configuration", selection: $selectedDevelopmentProfile) {
+                      ForEach(DevelopmentMachineProfile.available) { profile in
+                        Text("\(profileName(profile.id)) · \(profile.id)").tag(profile.id)
+                      }
+                    }
+                    .disabled(liveSession?.canChangeChannel != true)
+                    .accessibilityIdentifier("development-machine-profile")
+                    Button("Use selected profile") {
+                      applyDevelopmentProfile(selectedDevelopmentProfile)
+                    }
+                    .omarchySecondaryButton()
+                    .disabled(
+                      liveSession?.canChangeChannel != true
+                        || activeDevelopmentProfile == selectedDevelopmentProfile
+                    )
+                    .accessibilityIdentifier("development-machine-apply")
+                  }
+                  Divider()
+                }
+                Text("Uninstall Omarchy").font(.headline)
+                Text(
+                  "Remove Omarchy and all files stored in it, and return its disk space to macOS. Your macOS files and Apple Recovery will be kept."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+                Button("Uninstall Omarchy…") { showsRemoval = true }
+                  .omarchySecondaryButton()
+                  .disabled(liveSession?.canChangeChannel != true)
+                  .accessibilityIdentifier("advanced-uninstall")
+                Spacer()
+              }
+              .padding(32)
+              .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+              .foregroundStyle(OmarchyTheme.text)
+              .opacity(advanced ? 1 : 0)
+              .allowsHitTesting(advanced)
+              .disabled(!advanced)
+              .accessibilityHidden(!advanced)
+            }
+          }
         }
       }
       .id(generation)
@@ -159,7 +244,7 @@ struct OmarchyAppleInstallerApp: App {
     .windowStyle(.hiddenTitleBar)
     .commands {
       CommandMenu("Installation") {
-        Button("Remove Omarchy…") { showsRemoval = true }
+        Button("Uninstall Omarchy…") { showsRemoval = true }
           .disabled(removalNeedsReview || showsRemoval || liveSession?.canChangeChannel != true)
       }
       CommandMenu(PlainLanguage.channelMenuTitle) {
@@ -186,5 +271,19 @@ struct OmarchyAppleInstallerApp: App {
         channel = selected
       }
     )
+  }
+
+  private func profileName(_ identifier: String) -> String {
+    identifier == "apple,j700"
+      ? "MacBook Neo (26.6.2; Aurora J700 kernel)"
+      : MacModelNames.name(for: identifier) ?? identifier
+  }
+
+  private func applyDevelopmentProfile(_ identifier: String?) {
+    guard liveSession?.canChangeChannel == true else { return }
+    liveSession?.cancelPrefetchOnQuit()
+    liveSession = nil
+    activeDevelopmentProfile = identifier
+    generation = UUID()
   }
 }

@@ -1,0 +1,15 @@
+[Unit]
+Description=Install the verified Aurora Silicon kernel store
+DefaultDependencies=no
+IgnoreOnIsolate=yes
+Requires=sysroot.mount
+Wants=omarchy-vendorfw.service
+After=sysroot.mount omarchy-vendorfw.service
+Before=initrd-fs.target initrd-switch-root.target initrd-switch-root.service
+OnFailure=emergency.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/aurora/bootstrap
+RemainAfterExit=yes
+TimeoutStartSec=infinity

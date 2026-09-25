@@ -6,6 +6,25 @@
   @testable import OmarchyInstallerUXCore
 
   final class PlainLanguageTests: XCTestCase {
+    func testFirmwareUpdateHasAnActionableMessageInsteadOfPasswordRetry() {
+      let notice = EngineFailureNotice(
+        reason: .neoSystemFirmwareUpdateRequired, exitStatus: 1,
+        diskUnchanged: false, summary: "Update macOS to 26.6.2 or later")
+      let errors: [any Error] = [
+        EngineXPCSubmissionError.engineFailed(notice),
+        PinnedAsahiEngineExecutionError.engineFailed(
+          EngineFailureReport(notice: notice, redactedStandardErrorTail: "")),
+      ]
+      for error in errors {
+        let display = PlainLanguage.failure(for: error, retryRecoveryAvailable: true)
+        XCTAssertEqual(display.headline, "Update macOS to 26.6.2 or later")
+        XCTAssertTrue(
+          display.remedy?.contains("System Settings → General → Software Update") == true)
+        XCTAssertFalse(display.retryRecoveryAvailable)
+        XCTAssertFalse(display.plainDetail.contains("No disk changes"))
+      }
+    }
+
     func testChannelBadgesDistinguishStableAndRC() {
       XCTAssertEqual(PlainLanguage.badge(for: .stable), "Stable")
       XCTAssertEqual(PlainLanguage.badge(for: .rc), "Release candidate")

@@ -354,7 +354,7 @@
       process.standardOutput = output
       process.standardError = error
 
-      try process.run()
+      try HelperSubprocessLifetime.shared.run(process)
       let outputData = output.fileHandleForReading.readDataToEndOfFile()
       _ = error.fileHandleForReading.readDataToEndOfFile()
       process.waitUntilExit()

@@ -1,0 +1,75 @@
+#!/bin/bash
+set -euo pipefail
+trap 'status=$?; if (( status != 0 )); then exit 100; fi' EXIT
+
+store=/aurora/current
+name=aurora-silicon-dirtyroom-J700
+[[ -f $store/kernel.release && -f $store/Image ]] || exit 0
+release=$(cat "$store/kernel.release")
+[[ $release == *-aurora-silicon-dirtyroom-j700.* ]] || exit 100
+[[ -d /usr/lib/modules/$release ]] || exit 100
+esp=/boot/efi
+[[ -f $esp/limine.conf ]] || exit 100
+scratch=$(mktemp -d "$store/.boot-update.XXXXXX")
+staged_uki=""
+menu=""
+published=false
+had_previous=false
+uki="$esp/EFI/Linux/omarchy_$name.efi"
+cleanup() {
+  local status=$?
+  if (( status != 0 )) && [[ $published == true ]]; then
+    if [[ $had_previous == true ]]; then
+      cp "$scratch/previous.efi" "$uki"
+    else
+      rm -f "$uki"
+    fi
+    cp "$scratch/previous-menu" "$esp/limine.conf"
+  fi
+  [[ -z $staged_uki ]] || rm -f "$staged_uki"
+  [[ -z $menu ]] || rm -f "$menu"
+  rm -rf "$scratch"
+  if (( status != 0 )); then exit 100; fi
+}
+trap cleanup EXIT
+
+# Limine invokes post hooks under its lock. Nested entry-tool calls must not
+# acquire that lock again or recurse through hooks.
+limine-entry-tool --get-cmdline "$name" --no-mutex --no-hooks | tail -n 1 >"$scratch/cmdline"
+[[ -s $scratch/cmdline ]] || exit 100
+cmdline=$(cat "$scratch/cmdline")
+for argument in idle=nop arm64.nowfxt firmware_class.path=/vendorfw; do
+  [[ " $cmdline " == *" $argument "* ]] || cmdline+=" $argument"
+done
+printf '%s\n' "$cmdline" >"$scratch/cmdline"
+/usr/bin/mkinitcpio --kernel "$release" --generate "$scratch/initramfs.img" \
+  --uki "$scratch/kernel.efi" --cmdline "$scratch/cmdline" \
+  --skiphooks autodetect,kms --nopost || exit 100
+[[ -s $scratch/kernel.efi ]] || exit 100
+mkdir -p "$esp/EFI/Linux"
+cp "$esp/limine.conf" "$scratch/previous-menu"
+if [[ -f $uki ]]; then
+  cp "$uki" "$scratch/previous.efi"
+  had_previous=true
+fi
+staged_uki=$(mktemp "$esp/EFI/Linux/.aurora-new.XXXXXX")
+cp "$scratch/kernel.efi" "$staged_uki"
+cmp "$scratch/kernel.efi" "$staged_uki"
+mv -f "$staged_uki" "$uki"
+published=true
+limine-entry-tool --add-uki "$name" "$uki" \
+  --comment "Aurora Silicon J700: $release" --no-mutex --no-hooks || exit 100
+mv "$scratch/initramfs.img" "$store/initramfs.img"
+cp "$scratch/cmdline" "$store/cmdline"
+
+# Named defaults survive insertion of snapshots and the first-boot menu reset.
+awk -v selected="Omarchy/$name" '
+  /^default_entry:/ { if (!seen++) print "default_entry: " selected; next }
+  { print }
+  END { if (!seen) print "default_entry: " selected }
+' "$esp/limine.conf" >"$scratch/limine.conf"
+# Copy to the same filesystem before rename so readers never see half a menu.
+menu=$(mktemp "$esp/.aurora-menu.XXXXXX")
+cat "$scratch/limine.conf" >"$menu"
+mv -f "$menu" "$esp/limine.conf"
+sync -f "$esp/limine.conf"

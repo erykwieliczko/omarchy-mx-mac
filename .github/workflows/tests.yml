@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      apple_installer:
+        description: Run only the macOS installer checks
+        type: boolean
+        default: false
 
 concurrency:
   group: source-tests-${{ github.workflow }}-${{ github.ref }}
@@ -17,6 +22,7 @@ jobs:
   # The shell suite is dealt across the matrix by `test/shell --shard K/N`; N is
   # the number of matrix entries, so adding an entry re-deals every file.
   source-test-shards:
+    if: ${{ !inputs.apple_installer }}
     name: Source test shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -68,7 +74,7 @@ jobs:
   source-tests:
     name: Source test suites
     needs: source-test-shards
-    if: always()
+    if: ${{ always() && !inputs.apple_installer }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -80,3 +86,23 @@ jobs:
             echo "Source test shards finished with: $SHARDS_RESULT" >&2
             exit 1
           fi
+
+  apple-installer:
+    if: ${{ inputs.apple_installer }}
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/omarchy-apple-installer
+    steps:
+      - uses: actions/checkout@v7
+      - name: Swift format
+        run: xcrun swift-format lint --strict -r Sources Tests
+      # Hosted runners expose virtual hardware. Live hardware inspection is
+      # checked on the physical Mac; all fixture-based rejection tests run here.
+      - name: Debug tests
+        run: swift test --configuration debug --jobs 10 --skip MacHostInspectionTests.testLiveInspectionIsReadOnlyAndReturnsCoherentHostState
+      - name: Release tests
+        run: swift test --configuration release --jobs 10 --skip MacHostInspectionTests.testLiveInspectionIsReadOnlyAndReturnsCoherentHostState
+      - name: Engine tests
+        run: python3 -m unittest discover -s Engine/tests

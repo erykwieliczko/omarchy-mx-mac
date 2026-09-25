@@ -94,9 +94,12 @@
         scene.contains(
           "@State private var channel = ReleaseChannelPreference().resolveFromMainBundle()\n"))
       XCTAssertTrue(
-        scene.contains("environment: InstallerEnvironmentFactory.make(), channel: channel,"))
+        scene.contains(
+          "InstallerEnvironmentFactory.make(developmentProfileID: activeDevelopmentProfile)"))
+      XCTAssertTrue(scene.contains("channel: channel,"))
       XCTAssertFalse(scene.contains("channel = ."))
-      XCTAssertTrue(download.contains("ReleaseChannelPreference().resolve(configuration: configuration)"))
+      XCTAssertTrue(
+        download.contains("ReleaseChannelPreference().resolve(configuration: configuration)"))
     }
 
     private static var packageRoot: URL {

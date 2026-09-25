@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+
+release='@KERNEL_RELEASE@'
+payload_sha='@PAYLOAD_SHA256@'
+store_id="$release-${payload_sha:0:12}"
+store="/sysroot/aurora/releases/$store_id"
+[[ $(uname -r) == "$release" ]] || exit 1
+[[ -w /sysroot ]] || exit 1
+if [[ -f $store/.installed && $(cat "$store/.installed") == "$payload_sha" ]]; then
+  exit 0
+fi
+
+esp=$(mktemp -d /run/aurora-esp.XXXXXX)
+stage=""
+mounted=()
+esp_mounted=false
+cleanup() {
+  local i
+  for (( i=${#mounted[@]}-1; i>=0; i-- )); do
+    umount -R "${mounted[i]}" || true
+  done
+  if [[ $esp_mounted == true ]]; then umount "$esp" || true; fi
+  rmdir "$esp" || true
+  [[ -z $stage ]] || rm -rf "$stage"
+}
+trap cleanup EXIT
+esp_uuid=$(tr -d '\0' </proc/device-tree/chosen/asahi,efi-system-partition)
+esp_uuid=${esp_uuid,,}
+[[ $esp_uuid =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]
+mount -t vfat -o ro "/dev/disk/by-partuuid/$esp_uuid" "$esp"
+esp_mounted=true
+payload="$esp/aurora/kernel/$release/root.tar.zst"
+printf '%s  %s\n' "$payload_sha" "$payload" | sha256sum -c -
+mkdir -p /sysroot/aurora/releases
+stage=$(mktemp -d /sysroot/aurora/releases/.unpack.XXXXXX)
+# The digest is compiled into this initramfs. The payload is built from regular
+# files only, with a fixed relative inventory, and is checked before extraction.
+tar --zstd --extract --file "$payload" --directory "$stage" --no-same-owner
+[[ $(cat "$stage/kernel.release") == "$release" && -f $stage/Image ]]
+if [[ -e $store ]]; then
+  [[ -f $store/.payload-sha256 && $(cat "$store/.payload-sha256") == "$payload_sha" ]]
+  rm -rf "$stage"
+else
+  printf '%s\n' "$payload_sha" >"$stage/.payload-sha256"
+  mv "$stage" "$store"
+fi
+stage=""
+(cd "$store" && sha256sum -c files.sha256)
+umount "$esp"
+esp_mounted=false
+modules="/sysroot/usr/lib/modules/$release"
+if [[ -e $modules || -L $modules ]]; then
+  [[ -L $modules && $(readlink "$modules") == "/aurora/releases/$store_id/modules" ]]
+else
+  ln -s "/aurora/releases/$store_id/modules" "$modules"
+fi
+ln -sfn ../Image "$store/modules/vmlinuz"
+ln -sfn "releases/$store_id" /sysroot/aurora/.selected-new
+mv -Tf /sysroot/aurora/.selected-new /sysroot/aurora/current
+install -Dm0755 "$store/runtime/boot-update" /sysroot/etc/boot/hooks/post.d/80-aurora-silicon-j700
+install -Dm0644 "$store/runtime/aurora-kernel.conf" /sysroot/etc/mkinitcpio.conf.d/96-aurora-kernel.conf
+install -Dm0644 "$store/runtime/aurora-j700-radio.service" /sysroot/etc/systemd/system/aurora-j700-radio.service
+mkdir -p /sysroot/etc/systemd/system/multi-user.target.wants
+ln -sfn ../aurora-j700-radio.service /sysroot/etc/systemd/system/multi-user.target.wants/aurora-j700-radio.service
+
+# Encryption may have rebuilt the stock entry before sysroot was mounted.
+# Use its current root/LUKS arguments for the new kernel before switch-root.
+for filesystem in dev proc sys run; do
+  if mountpoint -q "/sysroot/$filesystem"; then continue; fi
+  mkdir -p "/sysroot/$filesystem"
+  mount --rbind "/$filesystem" "/sysroot/$filesystem"
+  mount --make-rslave "/sysroot/$filesystem"
+  mounted+=("/sysroot/$filesystem")
+done
+mkdir -p /sysroot/boot
+if ! mountpoint -q /sysroot/boot; then
+  mount /dev/disk/by-uuid/4f4d5801-424f-4f54-8000-000000000001 /sysroot/boot
+  mounted+=(/sysroot/boot)
+fi
+mkdir -p /sysroot/boot/efi
+if ! mountpoint -q /sysroot/boot/efi; then
+  mount -t vfat "/dev/disk/by-partuuid/$esp_uuid" /sysroot/boot/efi
+  mounted+=(/sysroot/boot/efi)
+fi
+chroot /sysroot /usr/bin/omarchy-mac-limine-cmdline
+chroot /sysroot /etc/boot/hooks/post.d/80-aurora-silicon-j700
+printf '%s\n' "$payload_sha" >"$store/.installed"
+sync -f "$store/.installed"

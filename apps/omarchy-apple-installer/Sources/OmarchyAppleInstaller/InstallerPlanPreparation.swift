@@ -73,9 +73,9 @@
     private let planner: any InstallerPlanExecuting
     private let reviewCoordinator: InstallerPlanReviewCoordinator
 
-    public init() {
+    public init(developmentOverride: DevelopmentMachineOverride? = nil) {
       trustCore = AppleInstallerTrustCore()
-      planner = PinnedAsahiEngineExecutor()
+      planner = PinnedAsahiEngineExecutor(developmentOverride: developmentOverride)
       reviewCoordinator = InstallerPlanReviewCoordinator()
     }
 

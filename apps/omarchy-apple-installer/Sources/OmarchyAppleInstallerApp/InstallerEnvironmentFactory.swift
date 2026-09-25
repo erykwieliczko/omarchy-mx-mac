@@ -7,6 +7,7 @@ import OmarchyInstallerUXCore
 /// compiles to `nil` and the preview type is not in the binary at all.
 enum InstallerEnvironmentFactory {
   static func make(
+    developmentProfileID: String? = nil,
     environment: [String: String] = ProcessInfo.processInfo.environment
   ) -> any InstallerEnvironment {
     #if DEBUG
@@ -17,6 +18,6 @@ enum InstallerEnvironmentFactory {
         )
       }
     #endif
-    return LiveInstallerEnvironment()
+    return LiveInstallerEnvironment(developmentProfileID: developmentProfileID)
   }
 }

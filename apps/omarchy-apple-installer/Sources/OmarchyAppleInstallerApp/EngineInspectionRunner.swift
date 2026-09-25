@@ -2,6 +2,7 @@ import Foundation
 import OmarchyAppleInstallerTrustCore
 
 struct EngineInspectionRunner: Sendable {
+  var developmentOverride: DevelopmentMachineOverride? = nil
   func inspect() async throws -> EngineInspectionResult {
     let scratch = try scratchDirectory()
     let archive = try ValidationEngineArtifactLocator().locate()
@@ -18,10 +19,11 @@ struct EngineInspectionRunner: Sendable {
     _ archive: PinnedAsahiEngineArchive,
     in scratch: URL
   ) async throws -> EngineInspectionResult {
-    let transcript = try await PinnedAsahiEngineExecutor().inspect(
-      archive,
-      in: scratch
-    )
+    let transcript = try await PinnedAsahiEngineExecutor(developmentOverride: developmentOverride)
+      .inspect(
+        archive,
+        in: scratch
+      )
     return EngineInspectionResult(
       transcript: transcript,
       validated: try AppleInstallerTrustCore()

@@ -286,7 +286,9 @@
         try disks.mount(identity.partitionIdentifier, at: mountPoint)
         mounted = true
       } catch {
-        try? fileManager.removeItem(at: mountPoint)
+        // A failed mount verification may leave a filesystem attached here.
+        // Never recursively remove its contents while cleaning up the directory.
+        _ = Darwin.rmdir(mountPoint.path)
         throw InstallConfESPError.mountFailed
       }
       defer {
@@ -393,7 +395,28 @@
     }
 
     func mount(_ identifier: String, at mountPoint: URL) throws {
-      _ = try run(["mount", "-mountPoint", mountPoint.path, identifier])
+      let before = try plist(["info", "-plist", identifier])
+      guard before["DeviceIdentifier"] as? String == identifier else {
+        throw InstallConfESPError.mountFailed
+      }
+      // The engine leaves its ESP mounted in /Volumes. diskutil mount can
+      // succeed without moving an existing mount to the requested directory.
+      if let existing = before["MountPoint"] as? String, !existing.isEmpty {
+        try unmount(identifier)
+      }
+      do {
+        _ = try run(["mount", "-mountPoint", mountPoint.path, identifier])
+        let mounted = try plist(["info", "-plist", identifier])
+        guard mounted["DeviceIdentifier"] as? String == identifier,
+          mounted["WritableVolume"] as? Bool == true,
+          let actual = mounted["MountPoint"] as? String,
+          URL(fileURLWithPath: actual).resolvingSymlinksInPath().standardizedFileURL.path
+            == mountPoint.resolvingSymlinksInPath().standardizedFileURL.path
+        else { throw InstallConfESPError.mountFailed }
+      } catch {
+        try? unmount(identifier)
+        throw InstallConfESPError.mountFailed
+      }
     }
 
     func unmount(_ identifier: String) throws {
@@ -423,7 +446,7 @@
       process.standardOutput = pipe
       process.standardError = FileHandle.nullDevice
       process.standardInput = FileHandle.nullDevice
-      try process.run()
+      try HelperSubprocessLifetime.shared.run(process)
       let result = pipe.fileHandleForReading.readDataToEndOfFile()
       process.waitUntilExit()
       guard process.terminationReason == .exit, process.terminationStatus == 0 else {

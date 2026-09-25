@@ -1,0 +1,18 @@
+Apple extraction modules, Neo Wi-Fi converters, restore-image tool and 25G83
+input pins copied from the owner's repository:
+/home/council/omarchy/omarchy-mx-mac/apps/omarchy-apple-installer/Engine/cleanroom
+
+Only development_neo.py is the adapter for this legacy engine. The normal
+installer never packages or loads these modules. Only selecting MacBook Neo
+uses them; M1/M2 profile execution remains on its original firmware path.
+
+The Neo selection retains the original signed OS image. The separate pinned
+Aurora bundle provides J700 bootloaders, kernel and initramfs. This development
+candidate is not a claim of physical boot qualification. See Packaging/kernel.
+Apple Recovery and vendor firmware use the exact J700 26.6.2 / 25G83 pins.
+Neo inspection checks for SFR 25.7.83.0.0,0 or later and asks the user to
+update macOS to 26.6.2 or later before proceeding. Apple's BootabilityService
+rejected older SFR with SFRUpdateRequired (BYErrorDomain 105) on the test Neo.
+Both Apple RestoreVersion plists must still match the pinned version.
+M1/M2 selections retain their existing Apple input and compatibility paths.
+No Apple firmware bytes or keys are included in the app.

@@ -65,9 +65,8 @@ if "$derive" "$app_absolute" "$test_tmp/absolute.plist" /Applications >/dev/null
 fi
 pass "derivation fails closed on missing, escaping, or absolute helper paths"
 
-! grep -Eq 'launchctl bootstrap system "\$PLIST" 2>/dev/null \|\|' "$pkg_dir/scripts/postinstall" ||
-  fail "postinstall no longer hides launchctl bootstrap failures"
-grep -Fq 'exit 1' "$pkg_dir/scripts/postinstall" || fail "postinstall fails the package when the daemon cannot load"
-grep -Fq 'derive-daemon-plist' "$pkg_dir/build-pkg.sh" || fail "build-pkg.sh derives the daemon plist"
-grep -Fq 'daemon Program must be an absolute path' "$pkg_dir/build-pkg.sh" || fail "build-pkg.sh fails on a non-absolute daemon Program"
-pass "the package builder and postinstall fail closed on an unloadable daemon"
+! rg -q 'launchctl (bootstrap|bootout)' "$pkg_dir/scripts/postinstall" ||
+  fail "package installation must not replace a running privileged session"
+! rg -q 'root/Library/LaunchDaemons|derive-daemon-plist' "$pkg_dir/build-pkg.sh" ||
+  fail "the standalone app package must not install a persistent helper"
+pass "optional package leaves temporary helper ownership with the app"

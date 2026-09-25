@@ -81,7 +81,7 @@
       let result = try AppleSiliconHostInspector().inspect()
 
       XCTAssertTrue(result.identity.model.hasPrefix("Mac"))
-      XCTAssertTrue(result.identity.chip.hasPrefix("Apple M"))
+      XCTAssertTrue(result.identity.chip.hasPrefix("Apple "))
       XCTAssertTrue(result.identity.deviceIdentifier.hasPrefix("apple,j"))
       XCTAssertFalse(result.macOSVersion.isEmpty)
       XCTAssertTrue(result.storage.isInternal)

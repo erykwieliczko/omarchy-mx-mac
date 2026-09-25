@@ -12,6 +12,7 @@
       configuration: InstallerReleaseConfiguration,
       handoffDirectory: URL,
       machineOwnerAuthorization: MachineOwnerAuthorization,
+      helperConnection: InstallerHelperConnection? = nil,
       journalProgress: (@Sendable (Data) -> Void)? = nil
     ) async throws -> InstallerExecutionProgress {
       try await execute(
@@ -20,6 +21,7 @@
         configuration: configuration,
         handoffDirectory: handoffDirectory,
         machineOwnerAuthorization: machineOwnerAuthorization,
+        helperConnection: helperConnection,
         operation: .install,
         journalProgress: journalProgress
       )
@@ -31,6 +33,7 @@
       configuration: InstallerReleaseConfiguration,
       handoffDirectory: URL,
       machineOwnerAuthorization: MachineOwnerAuthorization,
+      helperConnection: InstallerHelperConnection? = nil,
       journalProgress: (@Sendable (Data) -> Void)? = nil
     ) async throws -> InstallerExecutionProgress {
       try await execute(
@@ -39,6 +42,7 @@
         configuration: configuration,
         handoffDirectory: handoffDirectory,
         machineOwnerAuthorization: machineOwnerAuthorization,
+        helperConnection: helperConnection,
         operation: .retryRecoveryAuthorization,
         journalProgress: journalProgress
       )
@@ -50,13 +54,14 @@
       configuration: InstallerReleaseConfiguration,
       handoffDirectory: URL,
       machineOwnerAuthorization: MachineOwnerAuthorization,
+      helperConnection: InstallerHelperConnection?,
       operation: EngineHandoffOperation,
       journalProgress: (@Sendable (Data) -> Void)?
     ) async throws -> InstallerExecutionProgress {
       let submitter = try AuthenticatedEngineXPCSubmitter(
-        machServiceName: configuration.helperMachServiceName,
+        machServiceName: helperConnection?.serviceName ?? configuration.helperMachServiceName,
         helperCodeSigningRequirement:
-          configuration.helperCodeSigningRequirement,
+          helperConnection?.requirement ?? configuration.helperCodeSigningRequirement,
         journalProgress: journalProgress
       )
       // Nothing leaves the app until the helper has answered.

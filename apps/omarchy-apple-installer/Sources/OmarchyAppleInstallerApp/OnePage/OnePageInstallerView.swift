@@ -58,7 +58,7 @@ struct OnePageInstallerView: View {
         }
       }
     }
-    .frame(height: min(contentHeight, 680))
+    .frame(height: min(contentHeight, maximumContentHeight))
     .onPreferenceChange(InstallerContentHeight.self) { height in
       if height > 0 { contentHeight = height }
     }
@@ -127,6 +127,11 @@ struct OnePageInstallerView: View {
     }
   }
 
+  private var maximumContentHeight: CGFloat {
+    // Leave space for the development banner, tabs, and window chrome on laptops.
+    min(680, max(300, (NSScreen.main?.visibleFrame.height ?? 800) - 120))
+  }
+
   // MARK: Header — this Mac in one line
 
   @ViewBuilder
@@ -139,7 +144,9 @@ struct OnePageInstallerView: View {
         if isBlocked {
           StatusBadge(text: PlainLanguage.blockedBadge, kind: .blocked)
         } else {
-          StatusBadge(text: PlainLanguage.supportedBadge, kind: .ok)
+          StatusBadge(
+            text: host.developmentOverrideActive ? "Development" : PlainLanguage.supportedBadge,
+            kind: .ok)
         }
         if let channel {
           StatusBadge(text: PlainLanguage.badge(for: channel), kind: .ok)
@@ -421,7 +428,7 @@ struct OnePageInstallerView: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, 2)
       Text(
-        "To remove it and return its space to macOS, choose Installation → Remove Omarchy from the menu bar."
+        "To remove it and return its space to macOS, choose Advanced → Uninstall Omarchy."
       )
       .font(OmarchyTheme.body)
       .foregroundStyle(OmarchyTheme.secondaryText)

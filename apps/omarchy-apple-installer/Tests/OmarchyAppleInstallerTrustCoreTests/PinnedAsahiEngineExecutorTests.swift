@@ -366,35 +366,51 @@
     func testRecoveryAuthorizationFailureRequiresExactRetryCheckpoint()
       async throws
     {
-      let targetEvidence = Data("target-readback".utf8)
-      let installedEvidence = Data("installed-readback".utf8)
-      let transcript = recoveryRetryTranscript(
-        targetEvidence: targetEvidence,
-        installedEvidence: installedEvidence
-      )
-      let fixture = try makeFixture(
-        exitCode: 17,
-        transcript: transcript,
-        checkpointEvidence: [
-          "apfs-target-prepared": targetEvidence,
-          "stub-and-esp-installed": installedEvidence,
-        ]
-      )
-      defer { try? FileManager.default.removeItem(at: fixture.root) }
-      let executor = PinnedAsahiEngineExecutor(effectiveUserID: { 0 })
+      for needsUpdate in [false, true] {
+        let targetEvidence = Data("target-readback".utf8)
+        let installedEvidence = Data("installed-readback".utf8)
+        let transcript = recoveryRetryTranscript(
+          targetEvidence: targetEvidence,
+          installedEvidence: installedEvidence
+        )
+        let fixture = try makeFixture(
+          exitCode: 17,
+          transcript: transcript,
+          checkpointEvidence: [
+            "apfs-target-prepared": targetEvidence,
+            "stub-and-esp-installed": installedEvidence,
+          ],
+          standardError: needsUpdate
+            ? Data(
+              "development_neo.SystemFirmwareUpdateRequiredError: Update macOS to 26.6.2 or later\n"
+                .utf8)
+            : Data()
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let executor = PinnedAsahiEngineExecutor(effectiveUserID: { 0 })
 
-      await assertThrowsErrorAsync(
-        try await executor.execute(
-          fixture.package,
-          authorization: try machineOwnerAuthorization()
-        )
-      ) {
-        XCTAssertEqual(
-          $0 as? PinnedAsahiEngineExecutionError,
-          .recoveryAuthorizationFailed
-        )
+        await assertThrowsErrorAsync(
+          try await executor.execute(
+            fixture.package,
+            authorization: try machineOwnerAuthorization()
+          )
+        ) {
+          if needsUpdate {
+            guard case .engineFailed(let report) = $0 as? PinnedAsahiEngineExecutionError else {
+              return XCTFail("Expected firmware update failure, got \($0)")
+            }
+            let bridged = EngineXPCErrorBridge.submissionError(
+              EngineXPCErrorBridge.serviceError(
+                for: PinnedAsahiEngineExecutionError.engineFailed(report)))
+            XCTAssertEqual(report.notice.reason, .neoSystemFirmwareUpdateRequired)
+            XCTAssertEqual(bridged, .engineFailed(report.notice))
+            XCTAssertFalse(RecoveryAuthorizationRetryPolicy.isEligible(after: bridged))
+          } else {
+            XCTAssertEqual($0 as? PinnedAsahiEngineExecutionError, .recoveryAuthorizationFailed)
+          }
+        }
+        XCTAssertTrue(try executionEntries(in: fixture.root).isEmpty)
       }
-      XCTAssertTrue(try executionEntries(in: fixture.root).isEmpty)
     }
 
     func testReplaceTranscriptIsRejectedByRecoveryRetryCheckpoint() {

@@ -1,0 +1,15 @@
+#!/bin/bash
+build() {
+  local program
+  for program in bash tar zstd sha256sum install mktemp readlink sync chroot mount umount mountpoint uname cat tr mkdir rmdir rm mv ln; do
+    add_binary "/usr/bin/$program"
+  done
+  add_file /usr/lib/aurora/bootstrap
+  add_file /usr/lib/systemd/system/aurora-bootstrap.service
+  add_symlink /usr/lib/systemd/system/initrd.target.requires/aurora-bootstrap.service ../aurora-bootstrap.service
+  add_symlink /usr/lib/systemd/system/initrd-switch-root.target.requires/aurora-bootstrap.service ../aurora-bootstrap.service
+  add_file /usr/lib/aurora/switch-root.conf /usr/lib/systemd/system/initrd-switch-root.service.d/aurora-bootstrap.conf
+}
+help() {
+  echo 'Install the pinned Neo kernel store before the first switch to the real root.'
+}

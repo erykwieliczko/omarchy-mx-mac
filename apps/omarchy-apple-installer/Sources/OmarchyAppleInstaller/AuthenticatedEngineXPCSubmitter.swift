@@ -9,6 +9,8 @@
     /// seconds instead of leaving a request queued forever.
     func ping(reply: @escaping @Sendable (Bool) -> Void)
 
+    func finishSession(reply: @escaping @Sendable (Bool) -> Void)
+
     func removal(
       ticket: String, confirmation: String, machineOwner: String, password: Data,
       reply: @escaping @Sendable (Data?, NSError?) -> Void
@@ -129,6 +131,36 @@
       }
       guard answered else {
         throw EngineXPCSubmissionError.helperUnresponsive
+      }
+    }
+
+    public func finishSession() async throws {
+      let connection = makeConnection()
+      let handle = SendableXPCConnection(connection)
+      let timer = Task {
+        try await Task.sleep(for: .seconds(3))
+        handle.invalidate()
+      }
+      defer {
+        timer.cancel()
+        handle.invalidate()
+      }
+      let _: Bool = try await withCheckedThrowingContinuation { continuation in
+        let gate = EngineXPCPingGate(continuation: continuation)
+        connection.invalidationHandler = {
+          gate.resume(throwing: EngineXPCSubmissionError.connectionFailed)
+        }
+        connection.interruptionHandler = connection.invalidationHandler
+        connection.activate()
+        guard
+          let proxy = connection.remoteObjectProxyWithErrorHandler({ _ in
+            gate.resume(throwing: EngineXPCSubmissionError.connectionFailed)
+          }) as? ClosedEngineXPCService
+        else {
+          gate.resume(throwing: EngineXPCSubmissionError.connectionFailed)
+          return
+        }
+        proxy.finishSession { gate.resume(returning: $0) }
       }
     }
 

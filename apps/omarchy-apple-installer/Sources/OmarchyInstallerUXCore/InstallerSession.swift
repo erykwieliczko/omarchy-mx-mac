@@ -541,6 +541,17 @@
       plan: PlanDisplay?,
       helper: HelperDisplay
     ) {
+      if error is InstallerHelperBootstrapError {
+        if context.kind == .install {
+          hasExecutionStarted = false
+          refusedPlan = plan
+        }
+        retrySheet = .hidden
+        phase = .failed(
+          PlainLanguage.failure(
+            for: error, retryRecoveryAvailable: recoveryRetryAvailable))
+        return
+      }
       if let submission = error as? EngineXPCSubmissionError,
         submission == .machineOwnerCredentialsRejected
       {

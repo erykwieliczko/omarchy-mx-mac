@@ -12,8 +12,15 @@ import OmarchyInstallerUXCore
 /// model, and no credential is ever stored here.
 final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable {
   private let lock = NSLock()
+  private let requestedDevelopmentProfileID: String?
+  private var developmentOverride: DevelopmentMachineOverride?
+  private var physicalIdentity: AppleMacIdentity?
+
+  init(developmentProfileID: String? = nil) {
+    requestedDevelopmentProfileID = developmentProfileID
+  }
   private let helperService =
-    InstallerHelperServiceManager.preinstalledSystemDaemon()
+    InstallerHelperServiceManager.bundledHelper()
 
   private var hostInspection: AppleSiliconHostInspection?
   private var engineInspection: ValidatedEngineTranscript?
@@ -65,15 +72,25 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   // MARK: Inspection
 
   func inspect() async throws -> HostDisplay {
-    let host = try await Task.detached(priority: .userInitiated) {
+    let physicalHost = try await Task.detached(priority: .userInitiated) {
       try AppleSiliconHostInspector().inspect()
     }.value
+    let profileID = DevelopmentMachineOverride.resolvedProfileID(
+      requested: requestedDevelopmentProfileID,
+      physicalDeviceIdentifier: physicalHost.identity.deviceIdentifier)
+    let developmentOverride = try profileID.map {
+      try DevelopmentMachineOverride(
+        profileID: $0, physicalDeviceIdentifier: physicalHost.identity.deviceIdentifier)
+    }
+    let host = try developmentOverride?.applying(to: physicalHost) ?? physicalHost
 
     var engine: ValidatedEngineTranscript?
     var transcript: Data?
     var engineFailure: String?
+    var actionableFailure: EngineFailureNotice?
     do {
-      let inspection = try await EngineInspectionRunner().inspect()
+      let inspection = try await EngineInspectionRunner(developmentOverride: developmentOverride)
+        .inspect()
       guard
         inspection.validated.deviceIdentifier == host.identity.deviceIdentifier
       else {
@@ -87,12 +104,22 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     } catch InstallerAppError.hostChanged {
       // engineFailure already set above.
     } catch {
-      engineFailure =
-        "The disk compatibility check failed. Installation is unavailable. Details: \(String(describing: error))"
+      if let execution = error as? PinnedAsahiEngineExecutionError,
+        case .engineFailed(let report) = execution,
+        report.notice.reason == .neoSystemFirmwareUpdateRequired
+      {
+        actionableFailure = report.notice
+        engineFailure = report.notice.summary
+      } else {
+        engineFailure =
+          "The disk compatibility check failed. Installation is unavailable. Details: \(String(describing: error))"
+      }
     }
 
     lock.withLock {
       hostInspection = host
+      self.developmentOverride = developmentOverride
+      physicalIdentity = physicalHost.identity
       engineInspection = engine
       engineInspectionTranscript = transcript
       engineInspectionFailure = engineFailure
@@ -102,6 +129,9 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       releaseConfiguration = nil
     }
     cancelPayloadPrefetch()
+    if let actionableFailure {
+      throw EngineXPCSubmissionError.engineFailed(actionableFailure)
+    }
 
     var unsupportedModel: UnsupportedModelDisplay?
     let modelRefused =
@@ -214,7 +244,10 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       expectedDigest: stagedEngine.artifact.expectedDigest,
       expectedSizeBytes: stagedEngine.artifact.expectedSizeBytes
     )
-    let signedInspection = try await EngineInspectionRunner().inspect(archive)
+    let developmentOverride = lock.withLock { self.developmentOverride }
+    let signedInspection = try await EngineInspectionRunner(
+      developmentOverride: developmentOverride
+    ).inspect(archive)
     guard
       signedInspection.validated.deviceIdentifier
         == host.identity.deviceIdentifier,
@@ -245,20 +278,22 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     let candidate = recommendation.candidate
     let requestedLengthBytes = recommendation.requestedLengthBytes
 
-    let prepared = try await InstallerPlanPreparationCoordinator()
-      .prepareExecution(
-        InstallerPlanPreparationRequest(
-          host: host,
-          release: release,
-          configuration: configuration,
-          inspectionTranscript: signedInspection.transcript,
-          candidate: candidate,
-          requestedLengthBytes: requestedLengthBytes,
-          validationTime: validationTime,
-          previouslyAcceptedCatalog: previouslyAcceptedCatalog,
-          scratchDirectory: workspace.scratch
-        )
+    let prepared = try await InstallerPlanPreparationCoordinator(
+      developmentOverride: developmentOverride
+    )
+    .prepareExecution(
+      InstallerPlanPreparationRequest(
+        host: host,
+        release: release,
+        configuration: configuration,
+        inspectionTranscript: signedInspection.transcript,
+        candidate: candidate,
+        requestedLengthBytes: requestedLengthBytes,
+        validationTime: validationTime,
+        previouslyAcceptedCatalog: previouslyAcceptedCatalog,
+        scratchDirectory: workspace.scratch
       )
+    )
 
     lock.withLock {
       preparedPlan = prepared
@@ -371,7 +406,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
   }
 
   private func recordInstallConf(
-    configuration: InstallerReleaseConfiguration,
+    helperConnection: InstallerHelperConnection,
     plan: ValidatedEnginePlan,
     authorization: MachineOwnerAuthorization,
     encrypt: Bool
@@ -381,10 +416,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       return .notRecorded
     }
     do {
-      let submitter = try AuthenticatedEngineXPCSubmitter(
-        machServiceName: configuration.helperMachServiceName,
-        helperCodeSigningRequirement: configuration.helperCodeSigningRequirement
-      )
+      let submitter = try helperConnection.submitter()
       let helper = AuthorizedInstallConfESPHelper(
         submitter: submitter,
         authorization: authorization
@@ -419,7 +451,9 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
 
     // Re-inspection identity match: the Mac that is about to be written to
     // must still be the Mac the plan was bound to.
-    let currentHost = try AppleSiliconHostInspector().inspect()
+    let physicalHost = try AppleSiliconHostInspector().inspect()
+    let developmentOverride = lock.withLock { self.developmentOverride }
+    let currentHost = try developmentOverride?.applying(to: physicalHost) ?? physicalHost
     guard
       currentHost.identity.deviceIdentifier == host.identity.deviceIdentifier
     else {
@@ -427,6 +461,29 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
     }
 
     let workspace = try installerWorkspace()
+    let helperConnection = try await TemporaryInstallerHelper.shared.start(
+      developmentOverride: developmentOverride)
+    do {
+      let result = try await executeWithHelper(
+        operation: operation, authorization: authorization, encryptLinuxDisk: encryptLinuxDisk,
+        journal: journal, prepared: prepared, approval: approval, configuration: configuration,
+        handoffDirectory: workspace.handoff, helperConnection: helperConnection,
+        executionStarted: executionStarted)
+      await TemporaryInstallerHelper.shared.finish(helperConnection)
+      return result
+    } catch {
+      await TemporaryInstallerHelper.shared.finish(helperConnection)
+      throw error
+    }
+  }
+
+  private func executeWithHelper(
+    operation: InstallOperationKind, authorization: MachineOwnerAuthorization,
+    encryptLinuxDisk: Bool, journal: @escaping @Sendable (Data) -> Void,
+    prepared: PreparedInstallerPlanExecution, approval: CandidateBoundPlanApproval,
+    configuration: InstallerReleaseConfiguration, handoffDirectory: URL,
+    helperConnection: InstallerHelperConnection, executionStarted: TimeInterval
+  ) async throws -> CompletionDisplay {
     let coordinator = InstallerExecutionCoordinator()
     let progress: InstallerExecutionProgress
     do {
@@ -436,8 +493,9 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
           prepared,
           approval: approval,
           configuration: configuration,
-          handoffDirectory: workspace.handoff,
+          handoffDirectory: handoffDirectory,
           machineOwnerAuthorization: authorization,
+          helperConnection: helperConnection,
           journalProgress: journal
         )
       case .retryRecoveryAuthorization:
@@ -445,8 +503,9 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
           prepared,
           approval: approval,
           configuration: configuration,
-          handoffDirectory: workspace.handoff,
+          handoffDirectory: handoffDirectory,
           machineOwnerAuthorization: authorization,
+          helperConnection: helperConnection,
           journalProgress: journal
         )
       }
@@ -461,7 +520,7 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       operation: handoffOperation, nextAction: progress.nextAction)
     {
       installConf = await recordInstallConf(
-        configuration: configuration,
+        helperConnection: helperConnection,
         plan: prepared.review.plan,
         authorization: authorization,
         encrypt: encryptLinuxDisk
@@ -491,8 +550,10 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
 
     let existing = Self.existingInstalls(in: engine)
     let space = existing.isEmpty ? Self.spaceCheck(engine: engine, host: host) : nil
+    let identity = lock.withLock { physicalIdentity } ?? host.identity
+    let displayName = identity.deviceIdentifier == "apple,j700" ? "MacBook Neo" : identity.chip
     var chipAndSpace =
-      "\(host.identity.chip) · \(PlainLanguage.bytes(host.storage.containerFreeBytes)) free"
+      "\(displayName) · \(PlainLanguage.bytes(host.storage.containerFreeBytes)) free"
     if case .fits(let maximumBytes) = space {
       chipAndSpace += " · up to \(PlainLanguage.bytes(maximumBytes)) for Omarchy"
     }
@@ -503,7 +564,8 @@ final class LiveInstallerEnvironment: InstallerEnvironment, @unchecked Sendable 
       blockingReason: blockingReason(host: host, engineFailure: engineFailure),
       existingInstalls: existing,
       spaceShortfall: space?.shortfall,
-      unsupportedModel: unsupportedModel
+      unsupportedModel: unsupportedModel,
+      developmentOverrideActive: lock.withLock { developmentOverride != nil }
     )
   }
 

@@ -383,6 +383,25 @@
       XCTAssertEqual(environment.executeCount, 2)
     }
 
+    func testBootstrapCancellationAllowsFreshInspection() async throws {
+      let environment = MockInstallerEnvironment()
+      environment.executeResults = [.failure(InstallerHelperBootstrapError.authorizationCancelled)]
+      let session = InstallerSession(environment: environment)
+      await session.inspect()
+      await session.continueToPlan()
+      session.continueToPlanReview()
+      session.setAcknowledged(true)
+      session.approve()
+      session.presentInstallCredentials()
+      await session.submit(try authorization())
+      XCTAssertFalse(session.hasExecutionStarted)
+      XCTAssertTrue(session.canInspect)
+      guard case .failed(let failure) = session.phase else {
+        return XCTFail("Expected a pre-submission failure")
+      }
+      XCTAssertTrue(failure.plainDetail.contains("No operation was submitted"))
+    }
+
     func testNonCredentialFailureKeepsTheOneShotLatch() async throws {
       let environment = MockInstallerEnvironment()
       environment.executeResults = [

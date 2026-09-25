@@ -33,6 +33,14 @@ marketing_version="${OMARCHY_APP_VERSION:-2.0.10}"
 build_number="${OMARCHY_APP_BUILD_NUMBER:-27}"
 signing_identity="${OMARCHY_APP_SIGNING_IDENTITY:--}"
 team_identifier="${OMARCHY_TEAM_ID:-}"
+development_mode="${OMARCHY_DEVELOPMENT:-0}"
+development_arguments=()
+if [[ $development_mode == "1" ]]; then
+  [[ $signing_identity == "-" ]] || fail "development overrides require ad-hoc signing"
+  development_arguments=(-Xswiftc -DOMARCHY_DEVELOPMENT)
+elif [[ $development_mode != "0" ]]; then
+  fail "OMARCHY_DEVELOPMENT must be 0 or 1"
+fi
 
 [[ $marketing_version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9]+)*$ ]] \
   || fail "OMARCHY_APP_VERSION has an invalid format"
@@ -156,7 +164,7 @@ swift_tool="$(xcrun --find swift)"
   cd "$package_directory"
   "$swift_tool" build \
     --configuration release \
-    --jobs "$build_jobs"
+    --jobs "$build_jobs" "${development_arguments[@]}"
 )
 binary_directory="$({
   cd "$package_directory"
@@ -191,6 +199,26 @@ if [[ $sealed_catalog_available == "true" ]]; then
     "$resources/Release/catalog.json.sig"
 fi
 install -m 0444 "$engine_source" "$resources/Engine/artifacts/$engine_file_name"
+if [[ $development_mode == "1" ]]; then
+  neo_source="$package_directory/Engine/development/neo"
+  neo_resources="$resources/Development/neo"
+  mkdir -p "$neo_resources"
+  cp -R "$neo_source/." "$neo_resources/"
+  find "$neo_resources" -type d -name __pycache__ -exec rm -rf {} +
+  if [[ -n ${OMARCHY_NEO_DECODER:-} ]]; then
+    install -m 0755 "$OMARCHY_NEO_DECODER" "$neo_resources/restore-image-tool"
+  else
+    (
+      cd "$neo_source/restore-image"
+      CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -o "$neo_resources/restore-image-tool" .
+    )
+  fi
+  [[ $(lipo -archs "$neo_resources/restore-image-tool") == "arm64" ]] \
+    || fail "Neo decoder must be a macOS arm64 executable"
+  codesign --force --sign - --timestamp=none "$neo_resources/restore-image-tool"
+  [[ $("$neo_resources/restore-image-tool" capabilities) == *"aurora-tar"* ]] \
+    || fail "Neo decoder is outdated: rebuild it with Aurora archive support"
+fi
 # Optional execution engines belong to the signed app, not the download cache.
 # Admit only files whose name, size and hash match its sealed catalog.
 if [[ $sealed_catalog_available == "true" && -d "$release_directory/engine-artifacts" ]]; then

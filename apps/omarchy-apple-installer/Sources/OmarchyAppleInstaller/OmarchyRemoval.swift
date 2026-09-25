@@ -297,7 +297,7 @@
       process.standardOutput = pipe
       process.standardError = FileHandle.nullDevice
       process.standardInput = FileHandle.nullDevice
-      try process.run()
+      try HelperSubprocessLifetime.shared.run(process)
       let result = pipe.fileHandleForReading.readDataToEndOfFile()
       process.waitUntilExit()
       guard process.terminationReason == .exit, process.terminationStatus == 0 else {

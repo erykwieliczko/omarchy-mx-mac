@@ -58,3 +58,48 @@ spctl -a -vv -t execute ~/Downloads/"Omarchy MX Mac Installer.app"
 ```
 
 Gatekeeper must report `Notarized Developer ID`.
+
+## Standalone app and advanced options
+
+New source builds also run directly as an unpacked `.app`, including from the
+Desktop. They request macOS administrator approval for a temporary installation
+service when an operation needs it. The optional package wrapper only copies the
+app into Applications. The currently published download above may still use the
+older persistent helper; an administrator must retire that helper only after
+confirming no operation is active before switching to a standalone build.
+
+In standalone builds, open **Advanced → Uninstall Omarchy…** to remove Omarchy and
+its data and return the space to macOS. Review the capacity, type the exact phrase
+shown, and enter your macOS administrator credentials. Your macOS files and Apple
+Recovery are retained. Keep the Mac powered on until removal finishes. An
+unfamiliar or incomplete disk layout is refused; interrupted removal requires
+review before further disk changes.
+
+Locally built ad-hoc apps do not require a paid developer account to start their
+helper. This does not grant downloaded apps notarized Gatekeeper approval.
+
+Development builds recognize MacBook Neo automatically and show “MacBook Neo”
+in the hardware header. Selecting Neo manually
+in Advanced uses the same experimental path: pinned Apple 26.6.2 Recovery and
+firmware, the original Linux userspace payload, and a third Aurora Silicon download
+from Backblaze. Its m1n1 and U-Boot live separately on EFI under
+`aurora/boot/boot.bin`; the original engine and OS archives remain unchanged.
+The bundle's size and SHA-256 are pinned in the app and verified before disk
+changes. The third archive supplies the J700 kernel, modules and initramfs under
+`/aurora`, with **aurora-silicon-dirtyroom-J700** as the default boot entry and the
+stock kernel retained as a fallback. Boot updates and encryption re-keying rebuild
+the Aurora image with the current root arguments. This is an experimental kernel
+candidate, not hardware qualification; onboard Bluetooth and graphics/userspace
+compatibility still need testing. M1/M2 continue to use their existing kernel.
+Initial checks ask you to update
+macOS to 26.6.2 or later if the host system firmware is too old for this Recovery
+version. Complete the update in System Settings → General → Software Update,
+restart, then reopen the installer. M1/M2 selections keep their existing Apple
+firmware paths.
+
+The encryption checkbox is passed to first boot in `omarchy/install.conf` on the
+Omarchy EFI partition. An unchecked box writes `encrypt=0`. The corrected
+standalone installer verifies the actual EFI mount before saving this choice,
+including when the installation engine has already mounted the volume. If saving
+fails, the Recovery screen warns **Encryption choice not recorded: first boot
+will encrypt**; the absent-file default is encryption enabled.

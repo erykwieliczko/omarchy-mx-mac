@@ -55,11 +55,13 @@
     private let effectiveUserID: @Sendable () -> uid_t
     private let expectedFileOwnerID: @Sendable () -> uid_t
     private let extractionOptions: [String]
+    private let developmentOverride: DevelopmentMachineOverride?
 
-    public init() {
+    public init(developmentOverride: DevelopmentMachineOverride? = nil) {
       effectiveUserID = { geteuid() }
       expectedFileOwnerID = { geteuid() }
       extractionOptions = []
+      self.developmentOverride = developmentOverride
     }
 
     init(
@@ -70,6 +72,7 @@
       self.effectiveUserID = effectiveUserID
       self.expectedFileOwnerID = expectedFileOwnerID
       self.extractionOptions = extractionOptions
+      developmentOverride = nil
     }
 
     public func execute(
@@ -79,6 +82,11 @@
     ) async throws -> Data {
       guard effectiveUserID() == 0 else {
         throw PinnedAsahiEngineExecutionError.privilegeRequired
+      }
+      if let developmentOverride {
+        guard package.deviceIdentifier == developmentOverride.profile.artifactProfile.id,
+          package.repairManifestURL == nil
+        else { throw DevelopmentMachineOverrideError.invalidProfile }
       }
       let journal = try preparePersistentJournal(for: package)
       return try run(
@@ -208,6 +216,17 @@
       let process = Process()
       process.executableURL = Self.pythonURL(in: bundle)
       process.arguments = [bundle.appendingPathComponent("main.py").path]
+      if let developmentOverride {
+        process.arguments = try developmentOverride.engineArguments(in: bundle)
+        let evidence = try JSONSerialization.data(
+          withJSONObject: [
+            "development_override": true,
+            "physical_device": developmentOverride.physicalDeviceIdentifier,
+            "selected_profile": developmentOverride.profile.id,
+            "engine_execution_modified": true,
+          ], options: [.sortedKeys])
+        try evidence.write(to: URL(fileURLWithPath: transcriptURL.path + ".development.json"))
+      }
       process.environment = environment(
         bundle: bundle,
         executionRoot: executionRoot,
@@ -232,7 +251,7 @@
       // Every exit from here, including a failed stdin write, stops the reader.
       defer { errorCollector.cancel() }
       do {
-        try process.run()
+        try HelperSubprocessLifetime.shared.run(process)
         if let standardInput, let inputPipe {
           try inputPipe.fileHandleForWriting.write(contentsOf: standardInput)
           try inputPipe.fileHandleForWriting.close()
@@ -245,6 +264,12 @@
       guard process.terminationReason == .exit,
         process.terminationStatus == 0
       else {
+        let report = failureReport(
+          standardError: capturedError, secrets: secrets,
+          exitStatus: process.terminationStatus, journal: journal)
+        if report.notice.reason == .neoSystemFirmwareUpdateRequired {
+          throw PinnedAsahiEngineExecutionError.engineFailed(report)
+        }
         if let journal, let retryIdentity,
           isRecoveryAuthorizationRetryEligible(
             journal: journal,
@@ -254,14 +279,7 @@
           throw PinnedAsahiEngineExecutionError
             .recoveryAuthorizationFailed
         }
-        throw PinnedAsahiEngineExecutionError.engineFailed(
-          failureReport(
-            standardError: capturedError,
-            secrets: secrets,
-            exitStatus: process.terminationStatus,
-            journal: journal
-          )
-        )
+        throw PinnedAsahiEngineExecutionError.engineFailed(report)
       }
       return try readTranscript(transcriptURL)
     }
@@ -542,7 +560,7 @@
       process.standardOutput = output
       process.standardError = FileHandle.nullDevice
       do {
-        try process.run()
+        try HelperSubprocessLifetime.shared.run(process)
       } catch {
         throw PinnedAsahiEngineExecutionError.launchFailed
       }
@@ -591,7 +609,7 @@
       process.standardOutput = FileHandle.nullDevice
       process.standardError = FileHandle.nullDevice
       do {
-        try process.run()
+        try HelperSubprocessLifetime.shared.run(process)
         process.waitUntilExit()
       } catch {
         throw PinnedAsahiEngineExecutionError.launchFailed
