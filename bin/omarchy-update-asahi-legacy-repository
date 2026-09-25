@@ -10,7 +10,8 @@
 # [omarchy] ones. install/hardware/pacman.sh drops the section, keeping
 # [omarchy] ahead of everything it shadowed; then each legacy package is
 # replaced by its [omarchy] equivalent, only where the legacy one is installed
-# and the replacement is available. Nothing is done on a Mac without either.
+# and the replacement is available, and the retired sync database leaves
+# pacman's sync directory. Nothing is done on a Mac without any of them.
 #
 # Exit 0 when there was nothing to do or everything was done, 1 when a step
 # could not finish. A step that fails leaves what it has not finished in
@@ -108,5 +109,101 @@ for pair in "${legacy_replacements[@]}"; do
     status=1
   fi
 done
+
+# The retired repository's sync database. pacman ignores a database whose
+# section is gone, but omarchy-update-asahi-bundle reads it, or the copy
+# install/hardware/pacman.sh keeps when it drops the section, to prove which
+# installed packages that repository built. With the section gone the live
+# copy can no longer change, so it moves to the kept copy (Macs that lost the
+# section before pacman.sh kept one have only the live copy). The kept copy
+# goes once no installed package is one that repository built: omarchy update
+# runs the bundle before this, so a legacy bundle package it replaced no
+# longer matches, and one it could not replace keeps the proof for next time.
+# Whenever the answer is uncertain, the database stays.
+kept_db="${OMARCHY_RETIRED_REPOSITORY_DIR:-/var/lib/omarchy/retired-repositories}/omarchy-aarch64.db"
+
+desc_field() {
+  awk -v field="%$1%" '$0 == field { getline; print; exit }'
+}
+
+# Succeeds when an installed package has the name, version and build date of
+# an entry in the database, the way the bundle looks it up (the entry named
+# after the installed package's local directory), and whenever that cannot be
+# decided: an unreadable database, local package database or entry.
+proves_installed_package() {
+  local database=$1 members member dir local_desc local_entry entry field
+  members=$(bsdtar -tf "$database" 2>/dev/null) || return 0
+  [[ -n $members && -r $db_path/local && -x $db_path/local ]] || return 0
+  while IFS= read -r member; do
+    [[ $member == */desc ]] || continue
+    dir=${member%/desc}
+    dir=${dir#./}
+    [[ -n $dir && $dir != */* && -e $db_path/local/$dir ]] || continue
+    local_desc="$db_path/local/$dir/desc"
+    local_entry=$(cat -- "$local_desc" 2>/dev/null) || return 0
+    entry=$(bsdtar -xOf "$database" "$member" 2>/dev/null) || return 0
+    for field in NAME VERSION BUILDDATE; do
+      [[ $(desc_field "$field" <<<"$entry") == "$(desc_field "$field" <<<"$local_entry")" ]] || continue 2
+    done
+    return 0
+  done <<<"$members"
+  return 1
+}
+
+retire_sync_database() {
+  local repositories live_db sidecars=() file retire_live=1 result=0
+
+  # pacman-conf reads the configuration pacman does, Include files and all.
+  if ! repositories=$(pacman-conf --config "$pacman_conf" --repo-list 2>/dev/null) ||
+    ! db_path=$(pacman-conf --config "$pacman_conf" DBPath 2>/dev/null); then
+    echo "Could not read the pacman configuration; the retired [omarchy-aarch64] sync database stays." >&2
+    return 1
+  fi
+  ! grep -Fxq omarchy-aarch64 <<<"$repositories" || return 0
+  db_path=${db_path:-/var/lib/pacman}
+  db_path=${db_path%/}
+  live_db="$db_path/sync/omarchy-aarch64.db"
+
+  # Signatures and the file-list database prove nothing and are simply removed.
+  for file in "$live_db.sig" "$db_path/sync/omarchy-aarch64.files" "$db_path/sync/omarchy-aarch64.files.sig"; do
+    [[ -e $file ]] && sidecars+=("$file")
+  done
+  if (( ${#sidecars[@]} )) && ! sudo rm -f -- "${sidecars[@]}"; then
+    result=1
+  fi
+
+  if [[ -f $live_db ]]; then
+    if proves_installed_package "$live_db" && ! cmp -s "$live_db" "$kept_db"; then
+      # Existence is asked with the privilege the replacement would use: a
+      # kept copy this user cannot see or read still counts as proof.
+      if sudo test -e "$kept_db" && proves_installed_package "$kept_db"; then
+        # Both prove something and differ: both stay for the bundle.
+        retire_live=0
+      elif ! sudo install -D -m 0644 "$live_db" "$kept_db"; then
+        echo "Could not keep the retired [omarchy-aarch64] sync database; it stays in $db_path/sync." >&2
+        retire_live=0
+        result=1
+      fi
+    fi
+    if (( retire_live )); then
+      if sudo rm -f -- "$live_db"; then
+        echo "Removed the retired [omarchy-aarch64] sync database from $db_path/sync"
+      else
+        result=1
+      fi
+    fi
+  fi
+
+  if [[ -f $kept_db && ! -f $live_db ]] && ! proves_installed_package "$kept_db"; then
+    if sudo rm -f -- "$kept_db"; then
+      echo "Removed the kept [omarchy-aarch64] sync database; no installed package came from that repository"
+    else
+      result=1
+    fi
+  fi
+  return "$result"
+}
+
+retire_sync_database || status=1
 
 exit "$status"
